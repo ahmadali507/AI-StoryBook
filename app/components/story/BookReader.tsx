@@ -2,7 +2,7 @@
 
 import React, { forwardRef, useCallback, useRef, useState, useEffect } from "react";
 import HTMLFlipBook from "react-pageflip";
-import { ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface BookReaderProps {
     story: {
@@ -11,49 +11,158 @@ interface BookReaderProps {
         chapters: {
             title: string;
             content: string;
-            illustrationUrl?: string; // Placeholder for now
+            illustrationUrl?: string;
             illustrationPrompt?: string;
         }[];
     };
     onPageChange?: (page: number) => void;
 }
 
-// Page Component
+// Clean Modern Page Component
 const Page = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
-        <div className="page-content h-full bg-white shadow-inner border-l border-slate-100 overflow-hidden relative" ref={ref}>
-            <div className="h-full w-full p-8 md:p-12 flex flex-col">
-                {props.children}
-                <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-slate-400 font-[family-name:var(--font-inter)]">
-                    {props.number}
+        <div
+            className="page-content h-full bg-white shadow-sm border-l border-slate-100 relative overflow-hidden"
+            ref={ref}
+        >
+            <div className="h-full flex flex-col p-8 md:p-12">
+                {/* Header Line */}
+                <div className="w-full h-1 bg-gradient-to-r from-sky-500/20 to-transparent mb-8"></div>
+
+                {/* Main content area */}
+                <div className="flex-1 flex flex-col font-sans text-slate-700 overflow-hidden">
+                    {props.children}
+                </div>
+
+                {/* Footer / Page number */}
+                <div className="mt-6 flex justify-between items-end border-t border-slate-100 pt-4">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest font-sans font-semibold">
+                        {props.runningHeader || "Storybook"}
+                    </span>
+                    <span className="text-sm text-slate-400 font-sans font-medium">
+                        {props.number}
+                    </span>
                 </div>
             </div>
-            {/* Paper Texture Overlay - Subtle */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/paper.png')]"></div>
+
             {/* Spine Shadow */}
-            <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-black/5 to-transparent pointer-events-none"></div>
+            <div className={`absolute top-0 bottom-0 w-6 pointer-events-none ${props.number % 2 === 0 ? 'left-0 bg-gradient-to-r' : 'right-0 bg-gradient-to-l'} from-black/[0.04] to-transparent`} />
         </div>
     );
 });
 Page.displayName = "Page";
 
+// Text Page Component
+const TextPage = forwardRef<HTMLDivElement, any>((props, ref) => {
+    return (
+        <Page {...props} ref={ref}>
+            {/* Chapter header */}
+            {props.isChapterStart && (
+                <div className="mb-8 flex-shrink-0">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-8 bg-sky-600 rounded-sm"></div>
+                        <h2 className="font-sans text-2xl font-bold text-slate-900 uppercase tracking-tight leading-none">
+                            {props.chapterTitle}
+                        </h2>
+                    </div>
+                </div>
+            )}
+
+            {/* Body text */}
+            <div className="flex-1 text-justify font-sans text-sm leading-relaxed text-slate-700 overflow-hidden">
+                {props.content.split('\n\n').map((paragraph: string, pIndex: number) => (
+                    <p key={pIndex} className="mb-4 last:mb-0">
+                        {paragraph}
+                    </p>
+                ))}
+            </div>
+        </Page>
+    );
+});
+TextPage.displayName = "TextPage";
+
+// Illustration Page Component
+const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
+    return (
+        <Page {...props} ref={ref}>
+            <div className="h-full flex flex-col justify-center">
+                <div className="relative w-full aspect-[3/4] bg-slate-50 rounded-sm overflow-hidden border border-slate-100 shadow-inner">
+                    {props.illustrationUrl ? (
+                        <img
+                            src={props.illustrationUrl}
+                            alt={props.alt || "Illustration"}
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-slate-300">
+                            <span className="text-xs uppercase tracking-widest">No Illustration</span>
+                        </div>
+                    )}
+                </div>
+                {props.chapterLabel && (
+                    <div className="mt-4 text-center">
+                        <span className="text-xs font-sans font-bold text-sky-600 uppercase tracking-widest">
+                            {props.chapterLabel}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </Page>
+    );
+});
+IllustrationPage.displayName = "IllustrationPage";
+
 // Cover Component
 const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
-        <div className="page-content h-full bg-sky-900 text-white shadow-2xl relative overflow-hidden" ref={ref} data-density="hard">
-            <div className="h-full w-full p-10 flex flex-col items-start justify-center text-left border-white/10 m-0">
-                <div className="w-12 h-1 bg-sky-400 mb-6"></div>
-                <h1 className="font-[family-name:var(--font-inter)] text-4xl md:text-5xl font-bold mb-4 tracking-tight leading-tight">
+        <div
+            className="page-content h-full bg-sky-900 text-white shadow-2xl relative overflow-hidden"
+            ref={ref}
+            data-density="hard"
+        >
+            <div className="h-full flex flex-col justify-center px-12 py-16">
+                <div className="w-16 h-2 bg-sky-400 mb-8"></div>
+
+                <h1 className="font-sans text-5xl font-bold mb-6 leading-tight tracking-tight">
                     {props.title}
                 </h1>
-                <p className="text-sky-200 font-[family-name:var(--font-inter)] text-xl font-light">
-                    A personalized story
-                </p>
+
+                <div className="w-full h-px bg-white/20 my-8"></div>
+
+                {props.author && (
+                    <p className="font-sans text-xl text-sky-100 font-light">
+                        {props.author}
+                    </p>
+                )}
+
+                <div className="mt-auto">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold">
+                        Personalized Edition
+                    </p>
+                </div>
             </div>
         </div>
     );
 });
 Cover.displayName = "Cover";
+
+// Back Cover Component  
+const BackCover = forwardRef<HTMLDivElement, any>((props, ref) => {
+    return (
+        <div
+            className="page-content h-full bg-sky-900 text-white shadow-2xl relative overflow-hidden"
+            ref={ref}
+            data-density="hard"
+        >
+            <div className="h-full flex flex-col items-center justify-center px-16 text-center">
+                <div className="w-12 h-1 bg-sky-400 mb-8"></div>
+                <h3 className="font-sans text-3xl font-bold mb-4 tracking-tight">The End</h3>
+                <p className="font-sans text-sky-200 text-sm opacity-75">Created with AI Storybook</p>
+            </div>
+        </div>
+    );
+});
+BackCover.displayName = "BackCover";
 
 export default function BookReader({ story, onPageChange }: BookReaderProps) {
     const book = useRef<any>(null);
@@ -65,33 +174,147 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
         };
-
-        // Initial check
         checkMobile();
-
-        // Add listener
         window.addEventListener('resize', checkMobile);
-
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
-
-    // Calculate pages: Cover + (Chapter * 2 pages per chapter: Illustration + Text) + Back Cover
-    // Adjust logic as needed. For now: 
-    // Page 0: Cover
-    // Page 1: Illustration 1
-    // Page 2: Text 1
-    // ...
-    // Last Page: Back Cover
 
     const onFlip = useCallback((e: any) => {
         setCurrentPage(e.data);
         if (onPageChange) onPageChange(e.data);
     }, [onPageChange]);
 
+    /**
+     * Improved text splitting that respects paragraph boundaries
+     * and ensures no text is cut off
+     */
+    const splitTextIntoPages = (content: string, isFirstPage: boolean = false) => {
+        const paragraphs = content.split('\n\n').filter(p => p.trim());
+        const pages: string[] = [];
+        let currentPage: string[] = [];
+        
+        // Character limits (approximate based on page layout)
+        // First page has less space due to chapter header
+        const FIRST_PAGE_LIMIT = 1200;
+        const REGULAR_PAGE_LIMIT = 1800;
+        
+        let currentCharCount = 0;
+        let isFirstPageOfChapter = isFirstPage;
+
+        for (const paragraph of paragraphs) {
+            const paragraphLength = paragraph.length;
+            const currentLimit = isFirstPageOfChapter ? FIRST_PAGE_LIMIT : REGULAR_PAGE_LIMIT;
+            
+            // If adding this paragraph exceeds limit and we have content, create new page
+            if (currentCharCount + paragraphLength > currentLimit && currentPage.length > 0) {
+                // Save current page
+                pages.push(currentPage.join('\n\n'));
+                // Start new page with this paragraph
+                currentPage = [paragraph];
+                currentCharCount = paragraphLength;
+                isFirstPageOfChapter = false; // No longer first page
+            } 
+            // If single paragraph is too long for one page, split it
+            else if (paragraphLength > currentLimit && currentPage.length === 0) {
+                // Split very long paragraph by sentences
+                const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
+                let tempPage: string[] = [];
+                let tempCount = 0;
+                
+                for (const sentence of sentences) {
+                    const sentenceLength = sentence.length;
+                    
+                    if (tempCount + sentenceLength > currentLimit && tempPage.length > 0) {
+                        pages.push(tempPage.join(' '));
+                        tempPage = [sentence];
+                        tempCount = sentenceLength;
+                        isFirstPageOfChapter = false;
+                    } else {
+                        tempPage.push(sentence);
+                        tempCount += sentenceLength;
+                    }
+                }
+                
+                if (tempPage.length > 0) {
+                    currentPage = [tempPage.join(' ')];
+                    currentCharCount = tempCount;
+                }
+            }
+            // Otherwise add paragraph to current page
+            else {
+                currentPage.push(paragraph);
+                currentCharCount += paragraphLength;
+            }
+        }
+
+        // Add remaining content as final page
+        if (currentPage.length > 0) {
+            pages.push(currentPage.join('\n\n'));
+        }
+
+        // Return at least one page
+        return pages.length > 0 ? pages : [''];
+    };
+
+    // Generate all pages for the book
+    const generatePages = () => {
+        const pages = [];
+        let pageNumber = 1;
+
+        // Cover page
+        pages.push(
+            <Cover
+                key="cover"
+                title={story.title}
+                author={story.author}
+            />
+        );
+
+        // Process each chapter
+        story.chapters.forEach((chapter, chapterIndex) => {
+            // Illustration page
+            pages.push(
+                <IllustrationPage
+                    key={`illust-${chapterIndex}`}
+                    number={pageNumber++}
+                    runningHeader={story.title}
+                    illustrationUrl={chapter.illustrationUrl}
+                    alt={`${chapter.title} illustration`}
+                    chapterLabel={`Chapter ${chapterIndex + 1}`}
+                />
+            );
+
+            // Split chapter text into pages
+            const textPages = splitTextIntoPages(chapter.content, true);
+
+            textPages.forEach((pageContent, pageIndex) => {
+                pages.push(
+                    <TextPage
+                        key={`text-${chapterIndex}-${pageIndex}-${pageNumber}`}
+                        number={pageNumber++}
+                        runningHeader={story.title}
+                        content={pageContent}
+                        isChapterStart={pageIndex === 0}
+                        chapterLabel={`Chapter ${chapterIndex + 1}`}
+                        chapterTitle={chapter.title}
+                    />
+                );
+            });
+        });
+
+        // Back cover
+        pages.push(<BackCover key="back-cover" />);
+
+        return pages;
+    };
+
+    // Memoize generated pages
+    const [generatedPages, setGeneratedPages] = useState<React.ReactElement[]>([]);
+
     useEffect(() => {
-        // Initial total pages count based on story length
-        // Cover (1) + Chapters * 2 + Back Cover (1)
-        setTotalPages(1 + (story.chapters.length * 2) + 1);
+        const pages = generatePages();
+        setGeneratedPages(pages);
+        setTotalPages(pages.length);
     }, [story]);
 
     const nextFlip = () => {
@@ -103,113 +326,69 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full min-h-[600px] py-8">
-            {/* Book Container with 3D perspective */}
-            <div className="relative shadow-2xl rounded-sm">
+        <div className="flex flex-col items-center justify-center w-full min-h-screen py-12 bg-slate-200">
+            {/* Book Container */}
+            <div className="relative mb-8">
                 <HTMLFlipBook
-                    width={600}
-                    height={800}
+                style={{}}
+                    width={550}
+                    height={733}
                     size="stretch"
-                    minWidth={400}
-                    maxWidth={1000}
-                    minHeight={500}
-                    maxHeight={1533}
-                    maxShadowOpacity={0.5}
+                    minWidth={550}
+                    maxWidth={550}
+                    minHeight={733}
+                    maxHeight={733}
+                    maxShadowOpacity={0.4}
                     showCover={true}
                     mobileScrollSupport={true}
                     onFlip={onFlip}
                     ref={book}
                     className="shadow-2xl mx-auto"
-                    style={{ margin: '0 auto' }}
                     startPage={0}
                     drawShadow={true}
-                    flippingTime={1000}
+                    flippingTime={800}
                     usePortrait={isMobile}
                     startZIndex={0}
-                    autoSize={true}
+                    autoSize={false}
                     clickEventForward={true}
                     useMouseEvents={true}
                     swipeDistance={30}
                     showPageCorners={true}
                     disableFlipByClick={false}
                 >
-                    {/* Front Cover */}
-                    <Cover title={story.title} key="cover" />
-
-                    {/* Story Pages */}
-                    {story.chapters.flatMap((chapter, index) => [
-                        /* Left Page: Illustration */
-                        <Page number={(index * 2) + 1} key={`page-${index}-left`}>
-                            <div className="h-full flex items-center justify-center bg-stone-100 rounded-lg shadow-inner overflow-hidden border-8 border-white transform rotate-1 hover:rotate-0 transition-transform duration-500">
-                                <div className="text-stone-300 flex flex-col items-center">
-                                    <div className="w-16 h-16 rounded-full bg-stone-200 mb-2"></div>
-                                    <span className="font-serif italic text-sm">Illustration</span>
-                                </div>
-                                <img
-                                    src={`https://placehold.co/600x800/eaddcf/5d4037?text=Chapter+${index + 1}`}
-                                    alt={`Chapter ${index + 1}`}
-                                    className="w-full h-full object-cover opacity-90 mix-blend-multiply"
-                                />
-                            </div>
-                        </Page>,
-
-                        /* Right Page: Text */
-                        <Page number={(index * 2) + 2} key={`page-${index}-right`}>
-                            <div className="h-full flex flex-col px-8 py-8 bg-white/50">
-                                {/* Header Style matching reference */}
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-1.5 h-8 bg-sky-600 rounded-sm"></div>
-                                    <h2 className="font-[family-name:var(--font-inter)] text-2xl font-bold text-slate-800 uppercase tracking-tight">
-                                        {chapter.title}
-                                    </h2>
-                                </div>
-
-                                {/* Content Style matching reference */}
-                                <div className="prose prose-sm font-[family-name:var(--font-inter)] leading-normal text-slate-700 flex-1 text-justify overflow-hidden">
-                                    {chapter.content.split('\n\n').map((paragraph, pIndex) => (
-                                        <p key={pIndex} className="mb-4">
-                                            {paragraph}
-                                        </p>
-                                    ))}
-                                </div>
-                            </div>
-                        </Page>
-                    ])}
-
-                    {/* Back Cover */}
-                    <div className="page-content h-full bg-sky-900 text-white shadow-2xl flex items-center justify-center" data-density="hard" key="back-cover">
-                        <div className="text-center p-8 opacity-80">
-                            <div className="w-12 h-1 bg-sky-400 mx-auto mb-6"></div>
-                            <h3 className="font-[family-name:var(--font-inter)] text-2xl font-bold mb-2 tracking-tight">The End</h3>
-                            <p className="font-[family-name:var(--font-inter)] text-sky-200 opacity-75">Created with AI Storybook</p>
-                        </div>
-                    </div>
+                    {generatedPages}
                 </HTMLFlipBook>
             </div>
 
             {/* Controls */}
-            <div className="mt-8 flex items-center gap-6 bg-white/90 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg border border-stone-200">
+            <div className="flex items-center gap-8 bg-white/80 backdrop-blur-md px-8 py-4 rounded-full shadow-lg border border-stone-200/50">
                 <button
                     onClick={prevFlip}
-                    className="p-2 rounded-full hover:bg-stone-100 text-stone-600 transition-colors"
+                    className="p-2.5 rounded-full hover:bg-stone-100 text-stone-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
                     disabled={currentPage === 0}
+                    aria-label="Previous page"
                 >
-                    <ChevronLeft className="w-6 h-6" />
+                    <ChevronLeft className="w-5 h-5" />
                 </button>
 
-                <span className="font-medium text-stone-600 min-w-[3rem] text-center font-serif">
+                <span
+                    className="text-stone-600 min-w-[4rem] text-center font-medium"
+                    style={{
+                        fontSize: '11pt'
+                    }}
+                >
                     {currentPage} / {totalPages}
                 </span>
 
                 <button
                     onClick={nextFlip}
-                    className="p-2 rounded-full hover:bg-stone-100 text-stone-600 transition-colors"
-                    disabled={currentPage >= totalPages}
+                    className="p-2.5 rounded-full hover:bg-stone-100 text-stone-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                    disabled={currentPage >= totalPages - 1}
+                    aria-label="Next page"
                 >
-                    <ChevronRight className="w-6 h-6" />
+                    <ChevronRight className="w-5 h-5" />
                 </button>
             </div>
         </div>
     );
 }
-
