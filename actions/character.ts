@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { generateCharacterSheet as generateSheet } from "@/lib/replicate";
+import { uploadImageFromUrl } from "@/lib/storage-utils";
 import {
     buildVisualPrompt,
     buildCharacterSheetPrompt,
@@ -54,30 +55,47 @@ export async function saveCharacter(
         data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-        return { success: false, error: "Not authenticated" };
+    return { success: false, error: "Not authenticated" };
+}
+
+let permReferenceUrl = character.referenceImageUrl;
+
+// Upload reference image to Supabase Storage if it exists
+if (character.referenceImageUrl) {
+    try {
+        permReferenceUrl = await uploadImageFromUrl(
+            character.referenceImageUrl,
+            'characters',
+            user.id
+        );
+    } catch (uploadError) {
+        console.error('Failed to upload character image:', uploadError);
+        // Fallback to original URL or fail?
+        // Let's fail for now as per "must use storage" requirement
+        return { success: false, error: "Failed to save character image to storage" };
     }
+}
 
-    const { data, error } = await supabase
-        .from("characters")
-        .insert({
-            user_id: user.id,
-            name: character.name,
-            appearance: character.appearance,
-            personality: character.personality,
-            visual_prompt: character.visualPrompt,
-            art_style: character.artStyle,
-            seed_number: character.seedNumber,
-            reference_image_url: character.referenceImageUrl,
-        })
-        .select("id")
-        .single();
+const { data, error } = await supabase
+    .from("characters")
+    .insert({
+        user_id: user.id,
+        name: character.name,
+        appearance: character.appearance,
+        personality: character.personality,
+        visual_prompt: character.visualPrompt,
+        art_style: character.artStyle,
+        seed_number: character.seedNumber,
+        reference_image_url: permReferenceUrl,
+    })
+    .select("id")
+    .single();
 
-    if (error) {
-        return { success: false, error: error.message };
-    }
+if (error) {
+    return { success: false, error: error.message };
+}
 
-    return { success: true, characterId: data.id };
+return { success: true, characterId: data.id };
 }
 
 /**
