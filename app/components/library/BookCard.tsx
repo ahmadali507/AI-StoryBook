@@ -3,7 +3,7 @@ import { Book, Edit3, Printer, Trash2, Eye } from "lucide-react";
 import { Badge } from "@/app/components/common";
 
 interface BookCardProps {
-    id: number;
+    id: string | number;
     title: string;
     status: string;
     date: string;
@@ -15,10 +15,18 @@ export default function BookCard({ id, title, status, date, pages, cover }: Book
     return (
         <div className="bg-surface border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow group">
             {/* Cover Image */}
-            <div className="h-48 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center relative">
-                <div className="w-24 h-32 bg-white rounded-lg shadow-lg flex items-center justify-center">
-                    <Book className="w-10 h-10 text-primary" />
-                </div>
+            <div className="h-48 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center relative overflow-hidden">
+                {cover ? (
+                    <img
+                        src={cover}
+                        alt={title}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="w-24 h-32 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        <Book className="w-10 h-10 text-primary" />
+                    </div>
+                )}
 
                 {/* Hover Actions */}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">

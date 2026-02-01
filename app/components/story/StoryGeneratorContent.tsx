@@ -51,7 +51,13 @@ const steps = [
     { id: 4, label: "Generate", key: "generate" },
 ];
 
-import { generateStoryOutline, createStorybook, generateChapter } from "@/actions/story";
+import {
+    generateStoryOutline,
+    createStorybook,
+    generateChapter,
+    updateStorybook,
+    generateAndSaveCover
+} from "@/actions/story";
 import { generateIllustration, saveIllustration } from "@/actions/illustration";
 import { Character, StorySetting, ArtStyle } from "@/types/storybook";
 
@@ -239,6 +245,12 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             }
             const outline = outlineResult.outline;
 
+            // Update title from generated outline
+            await updateStorybook(storybookId, { title: outline.title });
+
+            // Trigger cover generation with the new title
+            generateAndSaveCover(storybookId);
+
             // 3. Generate Chapters & Illustrations Loop
             // We do this sequentially to maintain context and allow progress updates
             for (const chapterOutline of outline.chapters) {
@@ -280,6 +292,9 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                     seedUsed: seed
                 });
             }
+
+            // Mark story as complete
+            await updateStorybook(storybookId, { status: "complete" });
 
             setGenerationStep("Finalizing...");
             setIsGenerated(true);
@@ -616,7 +631,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
 
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                     <Link
-                                        href={generatedStoryId ? `/library/${generatedStoryId}` : "/library"}
+                                        href={generatedStoryId ? `/story/${generatedStoryId}` : "/library"}
                                         className="inline-flex items-center justify-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
                                     >
                                         <BookOpen className="w-5 h-5" />

@@ -1,23 +1,41 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Book } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import SearchFilter from "./SearchFilter";
 import BookCard from "./BookCard";
-
-const books = [
-    { id: 1, title: "Luna's Forest Adventure", status: "complete", date: "Jan 28, 2026", pages: 12, cover: "" },
-    { id: 2, title: "The Space Cat Journey", status: "draft", date: "Jan 25, 2026", pages: 8, cover: "" },
-    { id: 3, title: "Under the Sea Magic", status: "complete", date: "Jan 20, 2026", pages: 15, cover: "" },
-    { id: 4, title: "Dragon's Hidden Castle", status: "printed", date: "Jan 15, 2026", pages: 12, cover: "" },
-    { id: 5, title: "The Magical Garden", status: "draft", date: "Jan 10, 2026", pages: 6, cover: "" },
-    { id: 6, title: "Adventure in Rainbow Land", status: "complete", date: "Jan 5, 2026", pages: 10, cover: "" },
-];
 
 export default function LibraryContent() {
     const [searchQuery, setSearchQuery] = useState("");
     const [filter, setFilter] = useState("all");
+    const [books, setBooks] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const supabase = createClient();
+
+    useEffect(() => {
+        const fetchBooks = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from("storybooks")
+                    .select("*")
+                    .order("created_at", { ascending: false });
+
+                if (error) {
+                    console.error("Error fetching books:", error);
+                } else {
+                    setBooks(data || []);
+                }
+            } catch (err) {
+                console.error("Unexpected error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBooks();
+    }, []);
 
     const filteredBooks = useMemo(() => {
         return books.filter((book) => {
@@ -25,7 +43,7 @@ export default function LibraryContent() {
             const matchesFilter = filter === "all" || book.status === filter;
             return matchesSearch && matchesFilter;
         });
-    }, [searchQuery, filter]);
+    }, [books, searchQuery, filter]);
 
     return (
         <>
@@ -59,7 +77,15 @@ export default function LibraryContent() {
             {filteredBooks.length > 0 ? (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredBooks.map((book) => (
-                        <BookCard key={book.id} {...book} />
+                        <BookCard
+                            key={book.id}
+                            id={book.id}
+                            title={book.title}
+                            status={book.status}
+                            date={new Date(book.created_at).toLocaleDateString()}
+                            pages={book.target_chapters || 0}
+                            cover={book.cover_image_url || ""}
+                        />
                     ))}
                 </div>
             ) : (

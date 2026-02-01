@@ -1,9 +1,9 @@
 
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
     ChevronLeft,
     Share2,
@@ -11,30 +11,90 @@ import {
     ShoppingCart
 } from "lucide-react";
 import BookReader from "@/app/components/story/BookReader";
+import { createClient } from "@/lib/supabase/client";
 
 export default function StoryViewer() {
-    // Dummy story data for demonstration
-    const story = {
-        title: "Luna's Forest Adventure",
-        author: "AI Storybook",
-        chapters: [
-            {
-                title: "The Whispering Grove",
-                content: "Luna stepped deeper into the ancient woods, the canopy above filtering the sunlight into golden ribbons on the mossy ground. The air hummed with the quiet symphony of the forest, and with each step, the whispering of the leaves grew louder, promising secrets and wonder.",
-                illustrationUrl: "/placeholder-1.jpg"
-            },
-            {
-                title: "A Fox's Tale",
-                content: "A small, curious fox peeked out from behind a fern, its eyes wide with wonder, beckoning her to follow. Luna hesitated for a moment, but the fox's playful yip encouraged her to take a step forward.",
-                illustrationUrl: "/placeholder-2.jpg"
-            },
-            {
-                title: "The Hidden Clearing",
-                content: "They arrived at a clearing bathed in magical light, where the laws of nature seemed to dance to a different rhythm. Fireflies woven from pure sunlight drifted through the afternoon air, their glow pulsing in time with the heartbeat of the forest. In the center stood a tree of impossible stature, its bark shimmering like spun silver and its leaves chiming softly like thousands of tiny diamonds colliding in a gentle breeze.\n\nLuna approached the tree with a mixture of reverence and curiosity. The ground beneath her boots felt soft, like walking on a cloud of moss. As she reached out to touch the silver bark, a warm hum vibrated through her fingertips, spreading up her arm and warming her chest. It was a sensation of pure welcome, as if the tree had been waiting for her—and only her—for a thousand years.\n\n\"This is the Heart of the Woods,\" said a soft voice, not from the fox, but from the air itself. Luna spun around, but saw no one. The fox merely sat, wrapping its tail around its paws, looking at her with knowing eyes. The voice continued, echoing gently, \"It remembers every story ever told, and it has been waiting for a new storyteller to awaken its magic.\"\n\nWith a deep breath, Luna realized why she had felt drawn to the forest. It wasn't just an adventure; it was a calling. She sat at the base of the silver tree, opened her journal, and began to write, the words flowing from her pen like water from a spring. afjaslf asfdaldflka skdlf alsdfasldf ajsdklfa dlfalkdj faldk jfalksd ",
-                illustrationUrl: "/placeholder-3.jpg"
+    const params = useParams();
+    const id = params?.id as string;
+    const [story, setStory] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const supabase = createClient();
+
+    useEffect(() => {
+        const fetchStory = async () => {
+            if (!id) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from("storybooks")
+                    .select("*")
+                    .eq("id", id)
+                    .single();
+
+                if (error) {
+                    console.error("Error fetching story:", error);
+                } else {
+                    // Start with default structure
+                    let storyData: {
+                        title: string;
+                        author: string;
+                        chapters: any[];
+                        coverImageUrl?: string;
+                    } = {
+                        title: data.title,
+                        author: "AI Storybook", // Could fetch user name if needed
+                        chapters: [],
+                        coverImageUrl: undefined
+                    };
+
+                    // If content exists, use it
+                    if (data.content) {
+                        try {
+                            const content = typeof data.content === 'string'
+                                ? JSON.parse(data.content)
+                                : data.content;
+
+                            storyData = { ...storyData, ...content, coverImageUrl: data.cover_image_url };
+                        } catch (e) {
+                            console.error("Error parsing story content:", e);
+                        }
+                    } else if (data.cover_image_url) {
+                        storyData = { ...storyData, coverImageUrl: data.cover_image_url };
+                    }
+
+                    setStory(storyData);
+                }
+            } catch (err) {
+                console.error("Unexpected error:", err);
+            } finally {
+                setLoading(false);
             }
-        ]
-    };
+        };
+
+        fetchStory();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#F5F0E6] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!story) {
+        return (
+            <div className="min-h-screen bg-[#F5F0E6] flex flex-col items-center justify-center gap-4">
+                <h1 className="text-2xl font-bold text-stone-800">Story not found</h1>
+                <Link
+                    href="/library"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                    Back to Library
+                </Link>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#F5F0E6] flex flex-col">

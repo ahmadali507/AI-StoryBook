@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import {
     generateStoryOutline as generateOutline,
     generateChapterContent as generateContent,
+    generateCoverPrompt,
 } from "@/lib/gemini";
-import { generateSeed } from "@/lib/character-builder";
+import { generateBookCover } from "@/lib/replicate";
+import { generateSeed, getNegativePrompt } from "@/lib/character-builder";
 import { getCharacter } from "./character";
 import {
     Character,
@@ -123,6 +125,14 @@ export async function createStorybook(
         return { success: false, error: linkError.message };
     }
 
+    // Start cover generation in background (or await if needed)
+    // For now, valid to await to ensure it starts, or just fire and forget if platform supports it.
+    // Given Next.js server actions, best to await or let client trigger. 
+    // I'll await it for simplicity ensuring it exists when they land on the page.
+    // But it might be slow. Let's try fire-and-forget style but catch errors so it doesn't block response?
+    // Actually, I'll await it but ignore errors so creation succeeds even if cover fails.
+    generateAndSaveCover(storybook.id).catch(console.error);
+
     return { success: true, storybookId: storybook.id };
 }
 
@@ -214,6 +224,9 @@ export async function generateChapter(
         if (chapterError) {
             return { success: false, error: chapterError.message };
         }
+
+        // Update full story JSON content
+        await syncStoryContent(storybookId);
 
         return { success: true, chapterId: chapter.id, content };
     } catch (error) {
@@ -398,6 +411,82 @@ export async function extendStory(
 
     if (updateError) {
         return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
+}
+
+/**
+ * Sync story content to JSON column for easy retrieval
+ */
+export async function syncStoryContent(storybookId: string) {
+    const storybook = await getStorybookWithChapters(storybookId);
+    if (!storybook) return;
+
+    const content = {
+        title: storybook.title,
+        author: "AI Storybook",
+        chapters: storybook.chapters?.map(ch => ({
+            title: ch.title,
+            content: ch.content,
+            illustrationUrl: ch.illustrations?.[0]?.imageUrl
+        })) || []
+    };
+
+    const supabase = await createClient();
+    await supabase.from("storybooks").update({ content }).eq("id", storybookId);
+}
+
+/**
+ * Generate and save a cover image for the storybook
+ */
+export async function generateAndSaveCover(storybookId: string) {
+    const storybook = await getStorybookWithChapters(storybookId);
+    if (!storybook) return { success: false, error: "Storybook not found" };
+
+    try {
+        const prompt = await generateCoverPrompt(
+            storybook.title,
+            storybook.setting,
+            storybook.artStyle,
+            storybook.theme
+        );
+
+        // Using generateBookCover for better aspect ratio (3:4)
+        const negativePrompt = getNegativePrompt(storybook.artStyle);
+        const imageUrl = await generateBookCover(prompt, storybook.globalSeed, negativePrompt);
+
+        const supabase = await createClient();
+        await supabase.from("storybooks").update({ cover_image_url: imageUrl }).eq("id", storybookId);
+
+        return { success: true, imageUrl };
+    } catch (e) {
+        console.error("Cover generation failed:", e);
+        return { success: false, error: "Failed to generate cover" };
+    }
+}
+
+/**
+ * Update storybook details
+ */
+export async function updateStorybook(
+    id: string,
+    updates: { title?: string; status?: StoryStatus }
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+        .from("storybooks")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    // If title changed, sync content again to update the JSON
+    if (updates.title) {
+        await syncStoryContent(id);
     }
 
     return { success: true };

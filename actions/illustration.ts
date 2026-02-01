@@ -5,6 +5,7 @@ import { generateSceneIllustration } from "@/lib/replicate";
 import {
     buildScenePrompt,
     buildMultiCharacterScenePrompt,
+    getNegativePrompt,
 } from "@/lib/character-builder";
 import {
     Character,
@@ -12,6 +13,7 @@ import {
     GenerateIllustrationRequest,
     Illustration,
 } from "@/types/storybook";
+import { syncStoryContent } from "./story";
 
 /**
  * Generate an illustration for a scene
@@ -20,6 +22,8 @@ export async function generateIllustration(
     data: GenerateIllustrationRequest
 ): Promise<{ imageUrl: string; promptUsed: string }> {
     let prompt: string;
+
+    const negativePrompt = getNegativePrompt(data.artStyle);
 
     if (data.characters.length === 1) {
         prompt = buildScenePrompt(data.characters[0], data.sceneDescription);
@@ -31,7 +35,7 @@ export async function generateIllustration(
         );
     }
 
-    const imageUrl = await generateSceneIllustration(prompt, data.seedNumber);
+    const imageUrl = await generateSceneIllustration(prompt, data.seedNumber, negativePrompt);
 
     return {
         imageUrl,
@@ -65,6 +69,22 @@ export async function saveIllustration(
 
     if (error) {
         return { success: false, error: error.message };
+    }
+
+    // Get storybook ID to sync content
+    try {
+        const { data: chapter } = await supabase
+            .from("chapters")
+            .select("storybook_id")
+            .eq("id", chapterId)
+            .single();
+
+        if (chapter) {
+            await syncStoryContent(chapter.storybook_id);
+        }
+    } catch (e) {
+        console.error("Failed to sync story content after illustration save:", e);
+        // Don't fail the whole operation if sync fails
     }
 
     return { success: true, illustrationId: data.id };

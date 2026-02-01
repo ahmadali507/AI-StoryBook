@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Character, StorySetting, STORY_SETTING_LABELS } from '@/types/storybook';
+import { StoryState, StoryChatResponse, ChatMessage } from '@/types/chat';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -15,6 +16,25 @@ interface ChapterOutline {
     title: string;
     summary: string;
     sceneDescription: string;
+}
+
+/**
+ * Helper to safely parse JSON from AI response
+ */
+function parseAIResponse(text: string): any {
+    try {
+        // First try to find JSON block
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error('No JSON found in response');
+        }
+
+        const jsonStr = jsonMatch[0];
+        return JSON.parse(jsonStr);
+    } catch (error) {
+        console.error('Failed to parse AI response:', text);
+        throw new Error('Failed to parse AI response: ' + (error instanceof Error ? error.message : String(error)));
+    }
 }
 
 /**
@@ -48,7 +68,7 @@ Requirements:
 - Include clear scene descriptions for illustrations
 - End with a positive, heartwarming conclusion
 
-Respond in JSON format:
+Respond in strict JSON format. IMPORTANT: Escape all newlines in string values (use \\n). Do not use control characters.
 {
   "title": "Story title",
   "chapters": [
@@ -63,14 +83,7 @@ Respond in JSON format:
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-
-    // Extract JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-        throw new Error('Failed to parse story outline from AI response');
-    }
-
-    return JSON.parse(jsonMatch[0]) as StoryOutline;
+    return parseAIResponse(text) as StoryOutline;
 }
 
 /**
@@ -99,7 +112,7 @@ Requirements:
 
 Also provide an updated scene description for the illustration.
 
-Respond in JSON format:
+Respond in strict JSON format. IMPORTANT: Escape all newlines in string values (use \\n). Do not use control characters.
 {
   "content": "The chapter text...",
   "sceneDescription": "Visual scene description for illustration"
@@ -107,13 +120,7 @@ Respond in JSON format:
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-        throw new Error('Failed to parse chapter content from AI response');
-    }
-
-    return JSON.parse(jsonMatch[0]);
+    return parseAIResponse(text);
 }
 
 /**
@@ -147,4 +154,91 @@ Keep the prompt under 200 words. Return only the prompt text, no JSON.`;
 
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
+}
+
+/**
+ * Generate a cover image prompt
+ */
+export async function generateCoverPrompt(
+    title: string,
+    setting: string,
+    artStyle: string,
+    theme?: string
+): Promise<string> {
+    const prompt = `Create a detailed illustration prompt for a storybook cover.
+
+Title: ${title}
+Setting: ${setting}
+Art Style: ${artStyle}
+${theme ? `Theme: ${theme}` : ''}
+
+Create a single, detailed prompt that describes:
+- A captivating central scene representing the story
+- Magical and inviting atmosphere
+- High quality, detailed, professional book cover art
+- No text or words in the image (except maybe stylized title if implied, but better to avoid text)
+
+Keep the prompt under 200 words. Return only the prompt text, no JSON.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+}
+
+/**
+ * Storyteller Persona System Prompt
+ */
+const STORYTELLER_PERSONA = `You are a magical, warm, and encouraging Storyteller. 
+Your goal is to help the user create a unique story for a storybook.
+You need to gather specific information from the user to build the story:
+1. Character Name & Description (Appearance, Personality)
+2. Setting (Where the story takes place)
+3. Theme (The moral or feeling of the story)
+
+Talk to the user naturally. Be curious. Ask one question at a time.
+Verify you have the details before moving on.
+If the user gives short answers, ask for a bit more detail to make the illustrations better.
+
+Output must be in strict JSON format:
+{
+  "reply": "Your conversational response to the user...",
+  "extractedData": {
+    "characterName": "Name if found",
+    "characterDescription": "Description if found",
+    "setting": "Setting if found",
+    "theme": "Theme if found"
+  },
+  "suggestions": ["Short suggestion 1", "Short suggestion 2", "Short suggestion 3"],
+  "isComplete": boolean // Set to true ONLY when you have all 3 key elements confirmed
+}
+`;
+
+/**
+ * Enhanced chat function with NLU and Persona
+ */
+export async function chatWithStoryteller(
+    history: ChatMessage[],
+    userInput: string,
+    currentContext: StoryState
+): Promise<StoryChatResponse> {
+    const historyText = history.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+
+    const contextPrompt = `
+Current collected data:
+- Character Name: ${currentContext.characterName || 'Not set'}
+- Character Description: ${currentContext.characterDescription || 'Not set'}
+- Setting: ${currentContext.setting || 'Not set'}
+- Theme: ${currentContext.theme || 'Not set'}
+
+User Input: ${userInput}
+
+Based on the history and new input, continue the conversation. 
+Extract any new information. 
+Provide helpful short suggestions for the user's next response.
+`;
+
+    const fullPrompt = `${STORYTELLER_PERSONA}\n\nConversation History:\n${historyText}\n${contextPrompt}`;
+
+    const result = await model.generateContent(fullPrompt);
+    const text = result.response.text();
+    return parseAIResponse(text) as StoryChatResponse;
 }

@@ -5,6 +5,40 @@ import {
     ART_STYLE_PROMPTS
 } from '@/types/storybook';
 
+// Quality boosters to append to all prompts
+const QUALITY_BOOSTERS = "masterpiece, best quality, high resolution, 8k, extremely detailed, cinematic lighting, perfect composition, high fidelity";
+
+// Default negative prompt for basic quality control
+const BASE_NEGATIVE_PROMPT = "bad anatomy, low quality, blurry, pixelated, watermark, text, bad proportions, out of frame, disfigured, ugly, distorted, noise, grainy";
+
+/**
+ * Get negative prompt based on art style
+ */
+export function getNegativePrompt(artStyle: ArtStyle): string {
+    let styleNegatives = "";
+
+    switch (artStyle) {
+        case 'watercolor':
+        case 'cartoon':
+        case 'storybook':
+            // For stylized art, avoid realistic artifacts
+            styleNegatives = "photorealistic, photograph, real photo, 3d render, clay";
+            break;
+        case 'anime':
+            styleNegatives = "photorealistic, 3d, western cartoon, sketch, rough";
+            break;
+        case '3d-clay':
+            styleNegatives = "2d, painting, drawing, sketch, cartoon, anime, illustration, flat";
+            break;
+        case 'fantasy':
+            // For realistic/epic fantasy, avoid childish styles
+            styleNegatives = "cartoon, sketch, anime, childish, doodle, flat color, simple";
+            break;
+    }
+
+    return `${BASE_NEGATIVE_PROMPT}, ${styleNegatives}`;
+}
+
 /**
  * Generates a unique seed number for character consistency
  */
@@ -96,7 +130,8 @@ Character: ${character.visualPrompt}
 
 Scene: ${sceneDescription}
 
-Maintain exact character appearance throughout. Consistent proportions and features.`;
+Maintain exact character appearance throughout. Consistent proportions and features.
+${QUALITY_BOOSTERS}`;
 }
 
 /**
@@ -121,7 +156,8 @@ ${characterDescriptions}
 
 They are ${sceneDescription}
 
-All characters interacting naturally. Maintain consistent art style and character proportions throughout.`;
+All characters interacting naturally. Maintain consistent art style and character proportions throughout.
+${QUALITY_BOOSTERS}`;
 }
 
 /**
@@ -146,5 +182,6 @@ Multiple views: front view, 3/4 view, side profile
 Multiple expressions: happy, curious, surprised, determined
 White/simple background
 Consistent character design across all views
-Children's book character style`;
+Children's book character style
+${QUALITY_BOOSTERS}`;
 }

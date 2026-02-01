@@ -10,6 +10,7 @@ interface SeedreamInput {
     aspect_ratio?: string;
     output_format?: string;
     output_quality?: number;
+    negative_prompt?: string;
 }
 
 /**
@@ -18,7 +19,8 @@ interface SeedreamInput {
 export async function generateWithSeedream(
     prompt: string,
     seed?: number,
-    aspectRatio: string = '4:3'
+    aspectRatio: string = '4:3',
+    negativePrompt?: string
 ): Promise<string> {
     const input: SeedreamInput = {
         prompt,
@@ -26,6 +28,7 @@ export async function generateWithSeedream(
         aspect_ratio: aspectRatio,
         output_format: 'webp',
         output_quality: 90,
+        negative_prompt: negativePrompt,
     };
 
     const output = await replicate.run('bytedance/seedream-4.5', { input });
@@ -52,9 +55,10 @@ export async function generateWithSeedream(
  */
 export async function generateCharacterSheet(
     prompt: string,
-    seed: number
+    seed: number,
+    negativePrompt?: string
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '16:9');
+    return generateWithSeedream(prompt, seed, '16:9', negativePrompt);
 }
 
 /**
@@ -62,9 +66,10 @@ export async function generateCharacterSheet(
  */
 export async function generateSceneIllustration(
     prompt: string,
-    seed: number
+    seed: number,
+    negativePrompt?: string
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '4:3');
+    return generateWithSeedream(prompt, seed, '4:3', negativePrompt);
 }
 
 /**
@@ -72,7 +77,8 @@ export async function generateSceneIllustration(
  */
 export async function generateBookCover(
     prompt: string,
-    seed: number
+    seed: number,
+    negativePrompt?: string
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '3:4');
+    return generateWithSeedream(prompt, seed, '3:4', negativePrompt);
 }

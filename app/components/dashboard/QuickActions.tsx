@@ -6,8 +6,16 @@ const creationModes = [
         icon: Wand2,
         label: "Story Builder",
         description: "Create characters, choose theme, generate story step-by-step",
-        href: "/character-creator",
+        href: "/story-generator",
         gradient: "from-primary to-primary/70",
+        featured: true,
+    },
+    {
+        icon: Users,
+        label: "Character Creator",
+        description: "Design unique characters for your stories",
+        href: "/character-creator",
+        gradient: "from-pink-500 to-pink-600",
         featured: true,
     },
     {

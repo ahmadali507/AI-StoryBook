@@ -33,12 +33,12 @@ export type ArtStyle =
     | 'fantasy';
 
 export const ART_STYLE_PROMPTS: Record<ArtStyle, string> = {
-    watercolor: "Soft watercolor children's book illustration, pastel colors, gentle edges, warm lighting, whimsical atmosphere",
-    cartoon: "Vibrant cartoon illustration, bold outlines, bright saturated colors, clean vector style, friendly expressions",
-    storybook: "Classic children's storybook illustration, warm tones, detailed backgrounds, timeless storytelling style",
-    anime: "Anime-inspired children's illustration, expressive large eyes, soft shading, playful character designs",
-    '3d-clay': "3D claymation style, soft rounded forms, smooth textures, warm studio lighting, Pixar-inspired",
-    fantasy: "Magical fantasy illustration, ethereal lighting, rich details, enchanting atmosphere, dream-like quality"
+    watercolor: "Beautiful watercolor painting, soft edges, pastel colors, artistic, detailed, masterpiece, soft natural lighting, high quality",
+    cartoon: "High fidelity modern cartoon style, clean lines, vibrant colors, expressive characters, smooth gradients, 4k resolution, highly detailed",
+    storybook: "Magical realism storybook illustration, intricate details, golden hour lighting, enchanting atmosphere, matte painting style, highly detailed, masterpiece",
+    anime: "High quality anime style, Studio Ghibli inspired, detailed background, expressive eyes, soft shading, cinematic lighting, masterpiece, 8k",
+    '3d-clay': "3D claymation style, octane render, ray tracing, volumetric lighting, detailed textures, depth of field, best quality, Pixar style",
+    fantasy: "Epic fantasy concept art, digital painting, cinematic lighting, intricate details, sharp focus, artstation, 8k, majestic, masterpiece"
 };
 
 export const ART_STYLE_LABELS: Record<ArtStyle, string> = {
@@ -84,6 +84,8 @@ export interface Storybook {
     description?: string;
     characters?: Character[];
     chapters?: Chapter[];
+    content?: any;
+    coverImageUrl?: string;
     createdAt?: Date;
 }
 

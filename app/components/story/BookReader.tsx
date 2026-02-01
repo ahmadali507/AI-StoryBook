@@ -8,6 +8,7 @@ interface BookReaderProps {
     story: {
         title: string;
         author?: string;
+        coverImageUrl?: string;
         chapters: {
             title: string;
             content: string;
@@ -120,23 +121,34 @@ const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
             ref={ref}
             data-density="hard"
         >
-            <div className="h-full flex flex-col justify-center px-12 py-16">
+            {props.coverUrl ? (
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src={props.coverUrl}
+                        alt="Book Cover"
+                        className="w-full h-full object-cover opacity-90"
+                    />
+                    <div className="absolute inset-0 bg-black/30"></div>
+                </div>
+            ) : null}
+
+            <div className="h-full flex flex-col justify-center px-12 py-16 relative z-10">
                 <div className="w-16 h-2 bg-sky-400 mb-8"></div>
 
-                <h1 className="font-sans text-5xl font-bold mb-6 leading-tight tracking-tight">
+                <h1 className="font-sans text-5xl font-bold mb-6 leading-tight tracking-tight drop-shadow-lg">
                     {props.title}
                 </h1>
 
                 <div className="w-full h-px bg-white/20 my-8"></div>
 
                 {props.author && (
-                    <p className="font-sans text-xl text-sky-100 font-light">
+                    <p className="font-sans text-xl text-sky-100 font-light drop-shadow-md">
                         {props.author}
                     </p>
                 )}
 
                 <div className="mt-auto">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold drop-shadow-sm">
                         Personalized Edition
                     </p>
                 </div>
@@ -192,19 +204,19 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
         const paragraphs = content.split('\n\n').filter(p => p.trim());
         const pages: string[] = [];
         let currentPage: string[] = [];
-        
+
         // Character limits (approximate based on page layout)
         // First page has less space due to chapter header
         const FIRST_PAGE_LIMIT = 1200;
         const REGULAR_PAGE_LIMIT = 1800;
-        
+
         let currentCharCount = 0;
         let isFirstPageOfChapter = isFirstPage;
 
         for (const paragraph of paragraphs) {
             const paragraphLength = paragraph.length;
             const currentLimit = isFirstPageOfChapter ? FIRST_PAGE_LIMIT : REGULAR_PAGE_LIMIT;
-            
+
             // If adding this paragraph exceeds limit and we have content, create new page
             if (currentCharCount + paragraphLength > currentLimit && currentPage.length > 0) {
                 // Save current page
@@ -213,17 +225,17 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                 currentPage = [paragraph];
                 currentCharCount = paragraphLength;
                 isFirstPageOfChapter = false; // No longer first page
-            } 
+            }
             // If single paragraph is too long for one page, split it
             else if (paragraphLength > currentLimit && currentPage.length === 0) {
                 // Split very long paragraph by sentences
                 const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
                 let tempPage: string[] = [];
                 let tempCount = 0;
-                
+
                 for (const sentence of sentences) {
                     const sentenceLength = sentence.length;
-                    
+
                     if (tempCount + sentenceLength > currentLimit && tempPage.length > 0) {
                         pages.push(tempPage.join(' '));
                         tempPage = [sentence];
@@ -234,7 +246,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                         tempCount += sentenceLength;
                     }
                 }
-                
+
                 if (tempPage.length > 0) {
                     currentPage = [tempPage.join(' ')];
                     currentCharCount = tempCount;
@@ -267,6 +279,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                 key="cover"
                 title={story.title}
                 author={story.author}
+                coverUrl={story.coverImageUrl}
             />
         );
 
@@ -330,7 +343,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
             {/* Book Container */}
             <div className="relative mb-8">
                 <HTMLFlipBook
-                style={{}}
+                    style={{}}
                     width={550}
                     height={733}
                     size="stretch"
