@@ -73,7 +73,8 @@ export async function createStorybook(
     setting: StorySetting,
     artStyle: ArtStyle,
     targetChapters: number,
-    theme?: string
+    theme?: string,
+    description?: string
 ): Promise<{ success: boolean; storybookId?: string; error?: string }> {
     const supabase = await createClient();
 
@@ -96,6 +97,7 @@ export async function createStorybook(
             global_seed: globalSeed,
             setting,
             theme,
+            description,
             target_chapters: targetChapters,
             status: "draft",
         })
@@ -253,6 +255,7 @@ export async function getStorybooks(): Promise<Storybook[]> {
         globalSeed: row.global_seed,
         setting: row.setting as StorySetting,
         theme: row.theme,
+        description: row.description,
         targetChapters: row.target_chapters,
         status: row.status as StoryStatus,
         createdAt: new Date(row.created_at),
@@ -335,6 +338,7 @@ export async function getStorybookWithChapters(
         globalSeed: data.global_seed,
         setting: data.setting as StorySetting,
         theme: data.theme,
+        description: data.description,
         targetChapters: data.target_chapters,
         status: data.status as StoryStatus,
         chapters,

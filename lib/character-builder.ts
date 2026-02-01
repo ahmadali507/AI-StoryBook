@@ -18,12 +18,18 @@ export function generateSeed(): number {
 export function buildVisualPrompt(
     name: string,
     appearance: CharacterAppearance,
-    personality: string[]
+    personality: string[],
+    additionalDetails?: string
 ): string {
     const parts: string[] = [];
 
     // Basic description
     parts.push(`A character named ${name}`);
+
+    // Additional User Details (Prioritize this for uniqueness)
+    if (additionalDetails) {
+        parts.push(additionalDetails);
+    }
 
     // Hair
     if (appearance.hairStyle && appearance.hairColor) {
@@ -125,9 +131,10 @@ export function buildCharacterSheetPrompt(
     name: string,
     appearance: CharacterAppearance,
     personality: string[],
-    artStyle: ArtStyle
+    artStyle: ArtStyle,
+    additionalDetails?: string
 ): string {
-    const visualPrompt = buildVisualPrompt(name, appearance, personality);
+    const visualPrompt = buildVisualPrompt(name, appearance, personality, additionalDetails);
     const artStylePrompt = ART_STYLE_PROMPTS[artStyle];
 
     return `${artStylePrompt}

@@ -7,6 +7,7 @@ export interface CharacterAppearance {
     clothing?: string;
     accessories?: string[];
     distinctiveFeatures?: string[];
+    age?: string;
 }
 
 export interface Character {
@@ -56,7 +57,8 @@ export type StorySetting =
     | 'ocean'
     | 'space'
     | 'village'
-    | 'mountain';
+    | 'mountain'
+    | 'fantasy';
 
 export const STORY_SETTING_LABELS: Record<StorySetting, string> = {
     forest: "Enchanted Forest",
@@ -64,7 +66,8 @@ export const STORY_SETTING_LABELS: Record<StorySetting, string> = {
     ocean: "Ocean World",
     space: "Space Adventure",
     village: "Cozy Village",
-    mountain: "Mountain Quest"
+    mountain: "Mountain Quest",
+    fantasy: "Magical Fantasy World"
 };
 
 // Storybook types
@@ -78,6 +81,7 @@ export interface Storybook {
     theme?: string;
     targetChapters: number;
     status: StoryStatus;
+    description?: string;
     characters?: Character[];
     chapters?: Chapter[];
     createdAt?: Date;
@@ -113,6 +117,7 @@ export interface GenerateCharacterSheetRequest {
     appearance: CharacterAppearance;
     personality: string[];
     artStyle: ArtStyle;
+    additionalDetails?: string;
 }
 
 export interface GenerateStoryOutlineRequest {

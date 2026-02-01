@@ -33,7 +33,7 @@ export async function generateStoryOutline(
 
     const settingName = STORY_SETTING_LABELS[setting];
 
-    const prompt = `Create a children's storybook outline with exactly ${targetChapters} chapters.
+    const prompt = `Create a comprehensive storybook outline with exactly ${targetChapters} chapters.
 
 Characters:
 ${characterDescriptions}
@@ -43,7 +43,7 @@ ${theme ? `Theme: ${theme}` : ''}
 ${additionalDetails ? `Additional details: ${additionalDetails}` : ''}
 
 Requirements:
-- Age-appropriate for children 4-10 years old
+- Age-appropriate for children/adults.
 - Each chapter should be engaging and move the story forward
 - Include clear scene descriptions for illustrations
 - End with a positive, heartwarming conclusion

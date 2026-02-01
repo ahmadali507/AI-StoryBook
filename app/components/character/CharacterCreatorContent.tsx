@@ -10,10 +10,17 @@ import {
     Check,
     Shuffle,
     Trash2,
-    Save
+    Save,
+    Loader2,
+    Sparkles
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import { generateCharacterSheet, saveCharacter } from "@/actions/character";
+import { GenerateCharacterSheetRequest, Character as DBCharacter } from "@/types/storybook";
 
 const hairStyles = ["Short & Wavy", "Long & Straight", "Curly", "Braided", "Ponytail"];
+const hairColors = ["Brown", "Black", "Blonde", "Red", "Silver", "Multicolor"];
 const eyeColors = ["Brown", "Blue", "Green", "Hazel", "Gray"];
 const skinTones = ["Light", "Medium", "Tan", "Brown", "Dark"];
 const outfits = ["Casual", "Adventurer", "Princess/Prince", "Superhero", "Wizard"];
@@ -30,9 +37,21 @@ interface Character {
     age: string;
     gender: string;
     hairStyle: string;
+    hairColor: string;
     eyeColor: string;
     skinTone: string;
     outfit: string;
+    accessories: string[];
+    personality: string[];
+    customHairStyle?: string;
+    customHairColor?: string;
+    customEyeColor?: string;
+    customSkinTone?: string;
+    customOutfit?: string;
+    customDescription?: string;
+}
+
+interface CharacterState extends Omit<Character, 'accessories' | 'personality'> {
     accessories: string[];
     personality: string[];
 }
@@ -41,39 +60,69 @@ function TraitSelector({
     options,
     selected,
     onSelect,
+    onCustomChange,
+    customValue = "",
     multiple = false,
 }: {
     options: string[];
     selected: string | string[];
     onSelect: (value: string) => void;
+    onCustomChange?: (value: string) => void;
+    customValue?: string;
     multiple?: boolean;
 }) {
+    const [showCustom, setShowCustom] = useState(!!customValue);
+
     return (
-        <div className="flex flex-wrap gap-2">
-            {options.map((option) => {
-                const isSelected = multiple
-                    ? (selected as string[]).includes(option)
-                    : selected === option;
-                return (
+        <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+                {options.map((option) => {
+                    const isSelected = multiple
+                        ? (selected as string[]).includes(option)
+                        : selected === option;
+                    return (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => onSelect(option)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer ${isSelected
+                                ? "bg-primary text-white"
+                                : "bg-background border border-border text-foreground hover:border-primary"
+                                }`}
+                        >
+                            {isSelected && <Check className="w-4 h-4 inline mr-1" />}
+                            {option}
+                        </button>
+                    );
+                })}
+                {onCustomChange && (
                     <button
-                        key={option}
                         type="button"
-                        onClick={() => onSelect(option)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer ${isSelected
+                        onClick={() => setShowCustom(!showCustom)}
+                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all cursor-pointer ${showCustom
                             ? "bg-primary text-white"
                             : "bg-background border border-border text-foreground hover:border-primary"
                             }`}
                     >
-                        {isSelected && <Check className="w-4 h-4 inline mr-1" />}
-                        {option}
+                        {showCustom && <Check className="w-4 h-4 inline mr-1" />}
+                        Custom
                     </button>
-                );
-            })}
+                )}
+            </div>
+            {showCustom && onCustomChange && (
+                <input
+                    type="text"
+                    value={customValue}
+                    onChange={(e) => onCustomChange(e.target.value)}
+                    placeholder="Describe your own..."
+                    className="w-full px-4 py-2 rounded-xl border border-border bg-background focus:border-primary outline-none transition-all"
+                />
+            )}
         </div>
     );
 }
 
-function CharacterPreview({ character }: { character: Character }) {
+function CharacterPreview({ character, generatedImage, isGenerating }: { character: Character; generatedImage?: string | null; isGenerating: boolean }) {
     return (
         <div className="bg-surface border border-border rounded-2xl p-6 sticky top-24">
             <h2 className="font-heading text-xl font-semibold text-foreground mb-6">
@@ -81,27 +130,46 @@ function CharacterPreview({ character }: { character: Character }) {
             </h2>
 
             {/* Avatar Preview */}
-            <div className="aspect-square max-w-xs mx-auto bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 rounded-2xl flex items-center justify-center mb-6">
-                <div className="text-center">
-                    <div className="w-32 h-32 bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-5xl">👤</span>
+            <div className="aspect-square max-w-xs mx-auto bg-gradient-to-br from-primary/10 via-secondary/5 to-primary/10 rounded-2xl flex items-center justify-center mb-6 overflow-hidden relative">
+                {isGenerating ? (
+                    <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <span className="text-sm text-text-muted">Dreaming up character...</span>
                     </div>
-                    <p className="text-lg font-semibold text-foreground">
-                        {character.name || "Your Character"}
-                    </p>
-                    {character.age && (
-                        <p className="text-sm text-text-muted">{character.age} years old</p>
-                    )}
-                </div>
+                ) : generatedImage ? (
+                    <img
+                        src={generatedImage}
+                        alt={character.name || "Generated Character"}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="text-center p-4">
+                        <div className="w-32 h-32 bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                            <span className="text-5xl">👤</span>
+                        </div>
+                        <p className="text-sm text-text-muted">
+                            Complete the steps to generate your character
+                        </p>
+                    </div>
+                )}
+            </div>
+
+            <div className="text-center mb-6">
+                <p className="text-lg font-semibold text-foreground">
+                    {character.name || "Your Character"}
+                </p>
+                {character.age && (
+                    <p className="text-sm text-text-muted">{character.age} years old</p>
+                )}
             </div>
 
             {/* Character Details */}
             {(character.hairStyle || character.eyeColor || character.skinTone) && (
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm mb-6">
                     {character.hairStyle && (
                         <div className="flex justify-between">
                             <span className="text-text-muted">Hair</span>
-                            <span className="text-foreground">{character.hairStyle}</span>
+                            <span className="text-foreground">{character.hairStyle} ({character.hairColor})</span>
                         </div>
                     )}
                     {character.eyeColor && (
@@ -118,33 +186,69 @@ function CharacterPreview({ character }: { character: Character }) {
                     )}
                 </div>
             )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 mt-6">
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-background transition-colors cursor-pointer">
-                    <Shuffle className="w-4 h-4" />
-                    Randomize
-                </button>
-                <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:bg-background transition-colors text-error cursor-pointer">
-                    <Trash2 className="w-4 h-4" />
-                </button>
-            </div>
         </div>
     );
 }
 
 export default function CharacterCreatorContent() {
+    const router = useRouter();
     const [currentStep, setCurrentStep] = useState(1);
+    const [isSaving, setIsSaving] = useState(false);
     const [character, setCharacter] = useState<Character>({
         name: "",
         age: "",
         gender: "",
         hairStyle: "",
+        hairColor: "",
         eyeColor: "",
         skinTone: "",
         outfit: "",
         accessories: [],
         personality: [],
+        customHairStyle: "",
+        customHairColor: "",
+        customEyeColor: "",
+        customSkinTone: "",
+        customOutfit: "",
+        customDescription: ""
+    });
+
+    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+    const [generationSeed, setGenerationSeed] = useState<number>(0);
+    const [visualPrompt, setVisualPrompt] = useState<string>("");
+
+    // Mutations
+    const generatePreviewMutation = useMutation({
+        mutationFn: async (data: GenerateCharacterSheetRequest) => {
+            return await generateCharacterSheet(data);
+        },
+        onSuccess: (data) => {
+            setGeneratedImage(data.imageUrl);
+            setGenerationSeed(data.seed);
+            setVisualPrompt(data.visualPrompt);
+        },
+        onError: (error) => {
+            console.error("Failed to generate preview:", error);
+            alert("Failed to generate character preview. Please try again.");
+        }
+    });
+
+    const saveCharacterMutation = useMutation({
+        mutationFn: async (data: any) => {
+            return await saveCharacter(data);
+        },
+        onSuccess: (result) => {
+            if (result.success) {
+                router.push("/story-generator");
+            } else {
+                console.error("Failed to save:", result.error);
+                alert("Failed to save character: " + result.error);
+            }
+        },
+        onError: (error) => {
+            console.error("Failed to save character:", error);
+            alert("Failed to save character. Please try again.");
+        }
     });
 
     const personalities = ["Brave", "Curious", "Kind", "Funny", "Creative", "Adventurous", "Shy", "Smart"];
@@ -171,6 +275,54 @@ export default function CharacterCreatorContent() {
                     ? [...prev.personality, trait]
                     : prev.personality,
         }));
+    };
+
+    const handleGeneratePreview = () => {
+        const appearance = {
+            hairStyle: character.customHairStyle || character.hairStyle,
+            hairColor: character.customHairColor || character.hairColor,
+            eyeColor: character.customEyeColor || character.eyeColor,
+            skinTone: character.customSkinTone || character.skinTone,
+            clothing: character.customOutfit || character.outfit,
+            accessories: character.accessories,
+            age: character.age,
+            distinctiveFeatures: [],
+        };
+
+        const request: GenerateCharacterSheetRequest = {
+            name: character.name,
+            appearance: appearance,
+            personality: character.personality,
+            artStyle: 'storybook', // Default style
+            additionalDetails: character.customDescription
+        };
+
+        generatePreviewMutation.mutate(request);
+    };
+
+    const handleSave = () => {
+        if (!generatedImage) return;
+
+        const appearance = {
+            hairStyle: character.customHairStyle || character.hairStyle,
+            hairColor: character.customHairColor || character.hairColor,
+            eyeColor: character.customEyeColor || character.eyeColor,
+            skinTone: character.customSkinTone || character.skinTone,
+            clothing: character.customOutfit || character.outfit,
+            accessories: character.accessories,
+            age: character.age,
+            distinctiveFeatures: [],
+        };
+
+        saveCharacterMutation.mutate({
+            name: character.name,
+            appearance: appearance,
+            personality: character.personality,
+            visualPrompt: visualPrompt,
+            artStyle: 'storybook',
+            seedNumber: generationSeed,
+            referenceImageUrl: generatedImage,
+        });
     };
 
     return (
@@ -235,6 +387,17 @@ export default function CharacterCreatorContent() {
                                                 onSelect={(v) => updateCharacter("gender", v)}
                                             />
                                         </div>
+                                        <div className="pt-2">
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Additional Details
+                                            </label>
+                                            <textarea
+                                                value={character.customDescription || ""}
+                                                onChange={(e) => updateCharacter("customDescription", e.target.value)}
+                                                placeholder="Any special details? e.g., Has freckles, wears a red cape..."
+                                                className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:border-primary outline-none transition-all resize-none h-24"
+                                            />
+                                        </div>
                                     </div>
                                 </>
                             )}
@@ -253,6 +416,20 @@ export default function CharacterCreatorContent() {
                                                 options={hairStyles}
                                                 selected={character.hairStyle}
                                                 onSelect={(v) => updateCharacter("hairStyle", v)}
+                                                onCustomChange={(v) => updateCharacter("customHairStyle", v)}
+                                                customValue={character.customHairStyle}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-3">
+                                                Hair Color
+                                            </label>
+                                            <TraitSelector
+                                                options={hairColors}
+                                                selected={character.hairColor}
+                                                onSelect={(v) => updateCharacter("hairColor", v)}
+                                                onCustomChange={(v) => updateCharacter("customHairColor", v)}
+                                                customValue={character.customHairColor}
                                             />
                                         </div>
                                         <div>
@@ -263,6 +440,8 @@ export default function CharacterCreatorContent() {
                                                 options={eyeColors}
                                                 selected={character.eyeColor}
                                                 onSelect={(v) => updateCharacter("eyeColor", v)}
+                                                onCustomChange={(v) => updateCharacter("customEyeColor", v)}
+                                                customValue={character.customEyeColor}
                                             />
                                         </div>
                                         <div>
@@ -273,6 +452,8 @@ export default function CharacterCreatorContent() {
                                                 options={skinTones}
                                                 selected={character.skinTone}
                                                 onSelect={(v) => updateCharacter("skinTone", v)}
+                                                onCustomChange={(v) => updateCharacter("customSkinTone", v)}
+                                                customValue={character.customSkinTone}
                                             />
                                         </div>
                                         <div>
@@ -283,6 +464,8 @@ export default function CharacterCreatorContent() {
                                                 options={outfits}
                                                 selected={character.outfit}
                                                 onSelect={(v) => updateCharacter("outfit", v)}
+                                                onCustomChange={(v) => updateCharacter("customOutfit", v)}
+                                                customValue={character.customOutfit}
                                             />
                                         </div>
                                     </div>
@@ -328,7 +511,11 @@ export default function CharacterCreatorContent() {
 
                     {/* Right Panel - Preview */}
                     <div className="lg:col-span-3">
-                        <CharacterPreview character={character} />
+                        <CharacterPreview
+                            character={character}
+                            generatedImage={generatedImage}
+                            isGenerating={generatePreviewMutation.isPending}
+                        />
 
                         {/* Navigation */}
                         <div className="flex justify-between items-center mt-6">
@@ -349,19 +536,57 @@ export default function CharacterCreatorContent() {
                                     Continue
                                     <ChevronRight className="w-5 h-5" />
                                 </button>
-                            ) : (
-                                <Link
-                                    href="/story-generator"
-                                    className="flex items-center gap-2 bg-secondary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all cursor-pointer"
+                            ) : !generatedImage ? (
+                                <button
+                                    onClick={handleGeneratePreview}
+                                    disabled={generatePreviewMutation.isPending}
+                                    className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-70"
                                 >
-                                    <Save className="w-5 h-5" />
-                                    Save & Continue
-                                </Link>
+                                    {generatePreviewMutation.isPending ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Generating Preview...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5" />
+                                            Generate Preview
+                                        </>
+                                    )}
+                                </button>
+                            ) : (
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleGeneratePreview}
+                                        disabled={saveCharacterMutation.isPending || generatePreviewMutation.isPending}
+                                        className="flex items-center gap-2 border border-border text-foreground px-6 py-3 rounded-full font-medium hover:bg-background transition-all cursor-pointer disabled:opacity-70"
+                                    >
+                                        <Shuffle className="w-5 h-5" />
+                                        Regenerate
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saveCharacterMutation.isPending}
+                                        className="flex items-center gap-2 bg-secondary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all cursor-pointer disabled:opacity-70"
+                                    >
+                                        {saveCharacterMutation.isPending ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="w-5 h-5" />
+                                                Save Character
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </div >
+        </main >
     );
 }

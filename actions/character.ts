@@ -25,13 +25,15 @@ export async function generateCharacterSheet(
     const visualPrompt = buildVisualPrompt(
         data.name,
         data.appearance,
-        data.personality
+        data.personality,
+        data.additionalDetails
     );
     const sheetPrompt = buildCharacterSheetPrompt(
         data.name,
         data.appearance,
         data.personality,
-        data.artStyle
+        data.artStyle,
+        data.additionalDetails
     );
 
     const imageUrl = await generateSheet(sheetPrompt, seed);
@@ -55,47 +57,48 @@ export async function saveCharacter(
         data: { user },
     } = await supabase.auth.getUser();
 
-    return { success: false, error: "Not authenticated" };
-}
-
-let permReferenceUrl = character.referenceImageUrl;
-
-// Upload reference image to Supabase Storage if it exists
-if (character.referenceImageUrl) {
-    try {
-        permReferenceUrl = await uploadImageFromUrl(
-            character.referenceImageUrl,
-            'characters',
-            user.id
-        );
-    } catch (uploadError) {
-        console.error('Failed to upload character image:', uploadError);
-        // Fallback to original URL or fail?
-        // Let's fail for now as per "must use storage" requirement
-        return { success: false, error: "Failed to save character image to storage" };
+    if (!user) {
+        return { success: false, error: "Not authenticated" };
     }
-}
 
-const { data, error } = await supabase
-    .from("characters")
-    .insert({
-        user_id: user.id,
-        name: character.name,
-        appearance: character.appearance,
-        personality: character.personality,
-        visual_prompt: character.visualPrompt,
-        art_style: character.artStyle,
-        seed_number: character.seedNumber,
-        reference_image_url: permReferenceUrl,
-    })
-    .select("id")
-    .single();
+    let permReferenceUrl = character.referenceImageUrl;
 
-if (error) {
-    return { success: false, error: error.message };
-}
+    // Upload reference image to Supabase Storage if it exists
+    if (character.referenceImageUrl) {
+        try {
+            permReferenceUrl = await uploadImageFromUrl(
+                character.referenceImageUrl,
+                'characters',
+                user.id
+            );
+        } catch (uploadError) {
+            console.error('Failed to upload character image:', uploadError);
+            // Fallback to original URL or fail?
+            // Let's fail for now as per "must use storage" requirement
+            return { success: false, error: "Failed to save character image to storage" };
+        }
+    }
 
-return { success: true, characterId: data.id };
+    const { data, error } = await supabase
+        .from("characters")
+        .insert({
+            user_id: user.id,
+            name: character.name,
+            appearance: character.appearance,
+            personality: character.personality,
+            visual_prompt: character.visualPrompt,
+            art_style: character.artStyle,
+            seed_number: character.seedNumber,
+            reference_image_url: permReferenceUrl,
+        })
+        .select("id")
+        .single();
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, characterId: data.id };
 }
 
 /**
