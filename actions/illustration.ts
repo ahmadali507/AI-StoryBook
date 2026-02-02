@@ -71,21 +71,8 @@ export async function saveIllustration(
         return { success: false, error: error.message };
     }
 
-    // Get storybook ID to sync content
-    try {
-        const { data: chapter } = await supabase
-            .from("chapters")
-            .select("storybook_id")
-            .eq("id", chapterId)
-            .single();
-
-        if (chapter) {
-            await syncStoryContent(chapter.storybook_id);
-        }
-    } catch (e) {
-        console.error("Failed to sync story content after illustration save:", e);
-        // Don't fail the whole operation if sync fails
-    }
+    // NOTE: We don't sync content here anymore - it will be synced once at the end of story generation
+    // to avoid Supabase client caching issues during concurrent chapter insertions
 
     return { success: true, illustrationId: data.id };
 }

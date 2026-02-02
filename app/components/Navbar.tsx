@@ -53,7 +53,7 @@ export default async function Navbar() {
                                     Login
                                 </Link>
                                 <Link
-                                    href="/create"
+                                    href="/story-generator"
                                     className="bg-secondary text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-all duration-200 cursor-pointer"
                                 >
                                     Get Started

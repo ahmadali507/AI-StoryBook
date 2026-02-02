@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from 'crypto';
 import { createClient } from "@/lib/supabase/server";
 import { generateCharacterSheet as generateSheet } from "@/lib/replicate";
 import { uploadImageFromUrl } from "@/lib/storage-utils";
@@ -51,6 +52,18 @@ export async function generateCharacterSheet(
 export async function saveCharacter(
     character: Omit<Character, "id" | "userId" | "createdAt">
 ): Promise<{ success: boolean; characterId?: string; error?: string }> {
+    console.log('[saveCharacter] ========================================');
+    console.log('[saveCharacter] Received character data:', {
+        name: character.name,
+        appearance: character.appearance,
+        personality: character.personality,
+        artStyle: character.artStyle,
+        seedNumber: character.seedNumber,
+        hasVisualPrompt: !!character.visualPrompt,
+        hasReferenceImageUrl: !!character.referenceImageUrl,
+    });
+    console.log('[saveCharacter] ========================================');
+    
     const supabase = await createClient();
 
     const {
@@ -58,9 +71,13 @@ export async function saveCharacter(
     } = await supabase.auth.getUser();
 
     if (!user) {
+        console.error('[saveCharacter] Not authenticated');
         return { success: false, error: "Not authenticated" };
     }
+    
+    console.log('[saveCharacter] User authenticated:', user.id);
 
+    const characterId = randomUUID(); // Generate UUID for character
     let permReferenceUrl = character.referenceImageUrl;
 
     // Upload reference image to Supabase Storage if it exists
@@ -79,39 +96,55 @@ export async function saveCharacter(
         }
     }
 
-    const { data, error } = await supabase
+    const characterInsertData = {
+        id: characterId, // Use our pre-generated UUID
+        user_id: user.id,
+        name: character.name,
+        appearance: character.appearance,
+        personality: character.personality,
+        visual_prompt: character.visualPrompt,
+        art_style: character.artStyle,
+        seed_number: character.seedNumber,
+        reference_image_url: permReferenceUrl,
+    };
+    
+    console.log('[saveCharacter] Inserting into database with ID:', characterId);
+    console.log('[saveCharacter] Full insert data:', JSON.stringify(characterInsertData, null, 2));
+
+    const { error } = await supabase
         .from("characters")
-        .insert({
-            user_id: user.id,
-            name: character.name,
-            appearance: character.appearance,
-            personality: character.personality,
-            visual_prompt: character.visualPrompt,
-            art_style: character.artStyle,
-            seed_number: character.seedNumber,
-            reference_image_url: permReferenceUrl,
-        })
-        .select("id")
-        .single();
+        .insert(characterInsertData);
 
     if (error) {
+        console.error('[saveCharacter] Database error:', error);
+        console.error('[saveCharacter] Failed to insert character with ID:', characterId);
         return { success: false, error: error.message };
     }
+    
+    console.log('[saveCharacter] ========================================');
+    console.log('[saveCharacter] ✓ Successfully saved character');
+    console.log('[saveCharacter] Character ID:', characterId);
+    console.log('[saveCharacter] Character Name:', character.name);
+    console.log('[saveCharacter] ========================================');
 
-    return { success: true, characterId: data.id };
+    return { success: true, characterId };
 }
 
 /**
  * Get all characters for the current user
  */
 export async function getCharacters(): Promise<Character[]> {
+    console.log('[getCharacters] ========================================');
     const supabase = await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
+    console.log('[getCharacters] User:', user ? user.id : 'NOT AUTHENTICATED');
+
     if (!user) {
+        console.log('[getCharacters] No user found, returning empty array');
         return [];
     }
 
@@ -120,10 +153,19 @@ export async function getCharacters(): Promise<Character[]> {
         .select("*")
         .order("created_at", { ascending: false });
 
+    console.log('[getCharacters] Query result:', {
+        success: !error,
+        count: data?.length || 0,
+        error: error?.message
+    });
+
     if (error || !data) {
+        console.log('[getCharacters] Error or no data:', error);
         return [];
     }
 
+    console.log('[getCharacters] Returning', data.length, 'characters');
+    console.log('[getCharacters] ========================================');
     return data.map((row) => ({
         id: row.id,
         userId: row.user_id,

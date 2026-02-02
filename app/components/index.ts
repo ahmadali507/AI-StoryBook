@@ -17,6 +17,6 @@ export * from "./dashboard";
 export * from "./library";
 export * from "./character";
 export * from "./story";
-export * from "./chat";
+export * from "../../components/chat/StoryChat";
 export * from "./order";
 export * from "./settings";

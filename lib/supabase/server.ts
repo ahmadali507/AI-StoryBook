@@ -23,6 +23,15 @@ export async function createClient() {
                     }
                 },
             },
+            // Disable caching for real-time data during story generation
+            global: {
+                fetch: (url, options = {}) => {
+                    return fetch(url, {
+                        ...options,
+                        cache: 'no-store',
+                    })
+                },
+            },
         }
     )
 }

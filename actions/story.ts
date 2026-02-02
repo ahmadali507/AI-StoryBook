@@ -144,9 +144,10 @@ export async function generateChapter(
     chapterNumber: number,
     chapterTitle: string,
     chapterSummary: string,
-    sceneDescription: string
+    sceneDescription: string,
+    providedClient?: Awaited<ReturnType<typeof createClient>>
 ): Promise<{ success: boolean; chapterId?: string; content?: string; error?: string }> {
-    const supabase = await createClient();
+    const supabase = providedClient || await createClient();
 
     // Get storybook with characters
     const { data: storybook, error: sbError } = await supabase
@@ -208,25 +209,28 @@ export async function generateChapter(
             previousSummary
         );
 
-        // Save chapter
+        // Save chapter to database
         const { data: chapter, error: chapterError } = await supabase
             .from("chapters")
-            .insert({
+            .insert([{
                 storybook_id: storybookId,
                 chapter_number: chapterNumber,
                 title: chapterTitle,
-                content,
+                content: content,
                 scene_description: updatedScene,
-            })
-            .select("id")
+            }])
+            .select()
             .single();
 
         if (chapterError) {
+            console.error(`[generateChapter] Failed to save chapter ${chapterNumber}:`, chapterError.message);
             return { success: false, error: chapterError.message };
         }
 
-        // Update full story JSON content
-        await syncStoryContent(storybookId);
+        if (!chapter) {
+            console.error(`[generateChapter] No chapter returned after insert`);
+            return { success: false, error: 'Failed to create chapter' };
+        }
 
         return { success: true, chapterId: chapter.id, content };
     } catch (error) {
@@ -279,85 +283,152 @@ export async function getStorybooks(): Promise<Storybook[]> {
  * Get a storybook with all chapters
  */
 export async function getStorybookWithChapters(
-    id: string
+    id: string,
+    providedClient?: Awaited<ReturnType<typeof createClient>>
 ): Promise<Storybook | null> {
-    const supabase = await createClient();
+    try {
+        console.log('[getStorybookWithChapters] Fetching:', id);
+        const supabase = providedClient || await createClient();
+        
+        // Query storybook
+        const { data, error } = await supabase
+            .from("storybooks")
+            .select("*")
+            .eq("id", id)
+            .single();
 
-    const { data, error } = await supabase
-        .from("storybooks")
-        .select(`
-      *,
-      chapters (
-        *,
-        illustrations (*)
-      ),
-      storybook_characters (
-        character_id,
-        position,
-        characters (*)
-      )
-    `)
-        .eq("id", id)
-        .single();
+        if (error || !data) {
+            return null;
+        }
 
-    if (error || !data) {
-        return null;
-    }
+        // Query chapters directly (no joins to avoid RLS issues)
+        // First try: Use Supabase client
+        const { data: chaptersData, error: chaptersError } = await supabase
+            .from("chapters")
+            .select("*")
+            .eq("storybook_id", id)
+            .order("chapter_number", { ascending: true });
 
-    const chapters: Chapter[] = (data.chapters || [])
-        .sort((a: { chapter_number: number }, b: { chapter_number: number }) =>
-            a.chapter_number - b.chapter_number
-        )
-        .map((ch: Record<string, unknown>) => ({
-            id: ch.id as string,
-            storybookId: ch.storybook_id as string,
-            chapterNumber: ch.chapter_number as number,
-            title: ch.title as string,
-            content: ch.content as string,
-            sceneDescription: ch.scene_description as string,
-            illustrations: ((ch.illustrations as Array<Record<string, unknown>>) || []).map(
-                (ill) => ({
-                    id: ill.id as string,
-                    chapterId: ill.chapter_id as string,
-                    imageUrl: ill.image_url as string,
-                    promptUsed: ill.prompt_used as string,
-                    seedUsed: ill.seed_used as number,
-                    position: ill.position as number,
-                })
-            ),
+        console.log('[getStorybookWithChapters] Supabase client query:', {
+            found: chaptersData?.length || 0,
+            error: chaptersError?.message,
+            storybookId: id
+        });
+
+        // If Supabase client returns 0, try RAW HTTP fetch to bypass all caching
+        let finalChaptersData = chaptersData;
+        if (!chaptersData || chaptersData.length === 0) {
+            console.log('[getStorybookWithChapters] Trying raw HTTP fetch...');
+            try {
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/chapters?storybook_id=eq.${id}&order=chapter_number.asc`,
+                    {
+                        headers: {
+                            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        cache: 'no-store'
+                    }
+                );
+                
+                if (response.ok) {
+                    const rawData = await response.json();
+                    console.log('[getStorybookWithChapters] Raw HTTP found:', rawData.length, 'chapters');
+                    finalChaptersData = rawData;
+                } else {
+                    console.log('[getStorybookWithChapters] Raw HTTP failed:', response.status, response.statusText);
+                }
+            } catch (fetchError) {
+                console.error('[getStorybookWithChapters] Raw fetch error:', fetchError);
+            }
+        }
+
+        console.log('[getStorybookWithChapters] FINAL chapters count:', finalChaptersData?.length || 0);
+        
+        // Query illustrations for all chapters
+        let illustrationsData: any[] = [];
+        if (finalChaptersData && finalChaptersData.length > 0) {
+            const chapterIds = finalChaptersData.map(ch => ch.id);
+            const { data: illustrations } = await supabase
+                .from("illustrations")
+                .select("*")
+                .in("chapter_id", chapterIds);
+            
+            illustrationsData = illustrations || [];
+        }
+
+        // Query storybook_characters
+        const { data: storyCharacters } = await supabase
+            .from("storybook_characters")
+            .select("character_id, position")
+            .eq("storybook_id", id);
+
+        // Query actual characters
+        let characters: Character[] = [];
+        if (storyCharacters && storyCharacters.length > 0) {
+            const characterIds = storyCharacters.map(sc => sc.character_id);
+            const { data: charsData } = await supabase
+                .from("characters")
+                .select("*")
+                .in("id", characterIds);
+            
+            if (charsData) {
+                characters = charsData.map((c: any) => ({
+                    id: c.id,
+                    userId: c.user_id,
+                    name: c.name,
+                    appearance: c.appearance,
+                    personality: c.personality || [],
+                    visualPrompt: c.visual_prompt,
+                    artStyle: c.art_style,
+                    seedNumber: c.seed_number,
+                    referenceImageUrl: c.reference_image_url,
+                    createdAt: c.created_at,
+                }));
+            }
+        }
+    
+        const chapters: Chapter[] = (finalChaptersData || []).map((ch: any) => ({
+            id: ch.id,
+            storybookId: ch.storybook_id,
+            chapterNumber: ch.chapter_number,
+            title: ch.title,
+            content: ch.content,
+            sceneDescription: ch.scene_description,
+            illustrations: illustrationsData
+                .filter((ill: any) => ill.chapter_id === ch.id)
+                .map((ill: any) => ({
+                    id: ill.id,
+                    chapterId: ill.chapter_id,
+                    imageUrl: ill.image_url,
+                    promptUsed: ill.prompt_used,
+                    seedUsed: ill.seed_used,
+                    position: ill.position,
+                })),
         }));
 
-    const characters: Character[] = (data.storybook_characters || [])
-        .map((sc: { characters: Record<string, unknown> }) => {
-            const c = sc.characters;
-            return {
-                id: c.id as string,
-                name: c.name as string,
-                appearance: c.appearance as Character["appearance"],
-                personality: (c.personality as string[]) || [],
-                visualPrompt: c.visual_prompt as string,
-                artStyle: c.art_style as ArtStyle,
-                seedNumber: c.seed_number as number,
-                referenceImageUrl: c.reference_image_url as string,
-            };
-        })
-        .filter(Boolean);
 
-    return {
-        id: data.id,
-        userId: data.user_id,
-        title: data.title,
-        artStyle: data.art_style as ArtStyle,
-        globalSeed: data.global_seed,
-        setting: data.setting as StorySetting,
-        theme: data.theme,
-        description: data.description,
-        targetChapters: data.target_chapters,
-        status: data.status as StoryStatus,
-        chapters,
-        characters,
-        createdAt: new Date(data.created_at),
-    };
+        return {
+            id: data.id,
+            userId: data.user_id,
+            title: data.title,
+            artStyle: data.art_style as ArtStyle,
+            globalSeed: data.global_seed,
+            setting: data.setting as StorySetting,
+            theme: data.theme,
+            description: data.description,
+            targetChapters: data.target_chapters,
+            status: data.status as StoryStatus,
+            chapters,
+            characters,
+            createdAt: new Date(data.created_at),
+        };
+    } catch (error) {
+        console.error(`[getStorybookWithChapters] ❌ EXCEPTION:`, error);
+        return null;
+    }
 }
 
 /**
@@ -419,22 +490,92 @@ export async function extendStory(
 /**
  * Sync story content to JSON column for easy retrieval
  */
-export async function syncStoryContent(storybookId: string) {
-    const storybook = await getStorybookWithChapters(storybookId);
-    if (!storybook) return;
+export async function syncStoryContent(
+    storybookId: string,
+    providedClient?: Awaited<ReturnType<typeof createClient>>
+) {
+    try {
+        // Use provided client (same connection) or create new one
+        const supabase = providedClient || await createClient();
+        
+        // Query chapters directly using the same client connection
+        const { data: directChapters, error: directError } = await supabase
+            .from("chapters")
+            .select("id, chapter_number, title, content")
+            .eq("storybook_id", storybookId)
+            .order("chapter_number", { ascending: true});
+        
+        console.log('[syncStoryContent] Found', directChapters?.length || 0, 'chapters via direct query');
+        
+        // If direct query fails, try getStorybookWithChapters
+        if (!directChapters || directChapters.length === 0) {
+            console.log('[syncStoryContent] Direct query failed, trying getStorybookWithChapters...');
+            const storybook = await getStorybookWithChapters(storybookId, supabase);
+            
+            if (!storybook) {
+                return { success: false, error: "Storybook not found" };
+            }
+            
+            const content = {
+                title: storybook.title,
+                author: "AI Storybook",
+                chapters: storybook.chapters?.map(ch => ({
+                    title: ch.title,
+                    content: ch.content,
+                    illustrationUrl: ch.illustrations?.[0]?.imageUrl
+                })) || []
+            };
+            
+            console.log('[syncStoryContent] Synced', content.chapters.length, 'chapters (from getStorybookWithChapters)');
+            
+            const { error } = await supabase
+                .from("storybooks")
+                .update({ content })
+                .eq("id", storybookId);
 
-    const content = {
-        title: storybook.title,
-        author: "AI Storybook",
-        chapters: storybook.chapters?.map(ch => ({
-            title: ch.title,
-            content: ch.content,
-            illustrationUrl: ch.illustrations?.[0]?.imageUrl
-        })) || []
-    };
+            if (error) {
+                console.error('[syncStoryContent] Error:', error.message);
+                return { success: false, error: error.message };
+            }
+            
+            return { success: true, chaptersCount: content.chapters.length };
+        }
+        
+        // Get storybook info
+        const { data: storybookData } = await supabase
+            .from("storybooks")
+            .select("title")
+            .eq("id", storybookId)
+            .single();
+        
+        // Build content from direct query results
+        const content = {
+            title: storybookData?.title || "Untitled",
+            author: "AI Storybook",
+            chapters: directChapters.map(ch => ({
+                title: ch.title,
+                content: ch.content,
+                illustrationUrl: undefined // We'll skip illustrations for now
+            }))
+        };
+        
+        console.log('[syncStoryContent] ✓ Synced', content.chapters.length, 'chapters (from direct query)');
+        
+        const { error } = await supabase
+            .from("storybooks")
+            .update({ content })
+            .eq("id", storybookId);
 
-    const supabase = await createClient();
-    await supabase.from("storybooks").update({ content }).eq("id", storybookId);
+        if (error) {
+            console.error('[syncStoryContent] Error:', error.message);
+            return { success: false, error: error.message };
+        }
+        
+        return { success: true, chaptersCount: content.chapters.length };
+    } catch (error) {
+        console.error('[syncStoryContent] Exception:', error);
+        return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
+    }
 }
 
 /**
