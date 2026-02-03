@@ -56,7 +56,8 @@ import {
     createStorybook,
     generateChapter,
     updateStorybook,
-    generateAndSaveCover
+    generateAndSaveCover,
+    syncStoryContent
 } from "@/actions/story";
 import { generateIllustration, saveIllustration } from "@/actions/illustration";
 import { Character, StorySetting, ArtStyle } from "@/types/storybook";
@@ -292,6 +293,10 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                     seedUsed: seed
                 });
             }
+
+            // Sync content to JSON column
+            setGenerationStep("Syncing story content...");
+            await syncStoryContent(storybookId);
 
             // Mark story as complete
             await updateStorybook(storybookId, { status: "complete" });

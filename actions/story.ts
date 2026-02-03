@@ -548,18 +548,37 @@ export async function syncStoryContent(
             .eq("id", storybookId)
             .single();
         
-        // Build content from direct query results
+        // Fetch illustrations for all chapters
+        const chapterIds = directChapters.map(ch => ch.id);
+        const { data: illustrations } = await supabase
+            .from("illustrations")
+            .select("chapter_id, image_url, position")
+            .in("chapter_id", chapterIds)
+            .order("position", { ascending: true });
+        
+        // Create a map of chapter_id to illustration URL
+        const illustrationMap = new Map<string, string>();
+        if (illustrations) {
+            illustrations.forEach(ill => {
+                // Store the first/primary illustration for each chapter
+                if (!illustrationMap.has(ill.chapter_id)) {
+                    illustrationMap.set(ill.chapter_id, ill.image_url);
+                }
+            });
+        }
+        
+        // Build content from direct query results with illustrations
         const content = {
             title: storybookData?.title || "Untitled",
             author: "AI Storybook",
             chapters: directChapters.map(ch => ({
                 title: ch.title,
                 content: ch.content,
-                illustrationUrl: undefined // We'll skip illustrations for now
+                illustrationUrl: illustrationMap.get(ch.id) || undefined
             }))
         };
         
-        console.log('[syncStoryContent] ✓ Synced', content.chapters.length, 'chapters (from direct query)');
+        console.log('[syncStoryContent] ✓ Synced', content.chapters.length, 'chapters with', illustrationMap.size, 'illustrations (from direct query)');
         
         const { error } = await supabase
             .from("storybooks")

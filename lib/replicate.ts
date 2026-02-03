@@ -14,13 +14,14 @@ interface SeedreamInput {
 }
 
 /**
- * Generate an image using Seedream 4.5
+ * Generate an image using Seedream 4.5 with automatic retry logic
  */
 export async function generateWithSeedream(
     prompt: string,
     seed?: number,
     aspectRatio: string = '4:3',
-    negativePrompt?: string
+    negativePrompt?: string,
+    maxRetries: number = 3
 ): Promise<string> {
     const input: SeedreamInput = {
         prompt,
@@ -31,23 +32,53 @@ export async function generateWithSeedream(
         negative_prompt: negativePrompt,
     };
 
-    const output = await replicate.run('bytedance/seedream-4.5', { input });
+    let lastError: Error | unknown;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            console.log(`[generateWithSeedream] Attempt ${attempt + 1}/${maxRetries} - Generating image...`);
+            
+            const output = await replicate.run('bytedance/seedream-4.5', { input });
 
-    // Seedream returns an array of image URLs or a single URL
-    if (Array.isArray(output) && output.length > 0) {
-        return String(output[0]);
+            // Seedream returns an array of image URLs or a single URL
+            if (Array.isArray(output) && output.length > 0) {
+                console.log(`[generateWithSeedream] ✓ Success on attempt ${attempt + 1}`);
+                return String(output[0]);
+            }
+
+            if (typeof output === 'string') {
+                console.log(`[generateWithSeedream] ✓ Success on attempt ${attempt + 1}`);
+                return output;
+            }
+
+            // Handle object output with URL property
+            if (output && typeof output === 'object' && 'url' in output) {
+                console.log(`[generateWithSeedream] ✓ Success on attempt ${attempt + 1}`);
+                return String((output as { url: string }).url);
+            }
+
+            throw new Error('Unexpected output format from Seedream');
+            
+        } catch (error) {
+            lastError = error;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            console.error(`[generateWithSeedream] ✗ Attempt ${attempt + 1}/${maxRetries} failed:`, errorMessage);
+            
+            // If it's the last attempt, throw the error
+            if (attempt === maxRetries - 1) {
+                console.error(`[generateWithSeedream] All ${maxRetries} attempts failed. Giving up.`);
+                throw error;
+            }
+            
+            // Wait before retrying (exponential backoff: 2s, 4s, 8s)
+            const waitTime = Math.pow(2, attempt + 1) * 1000;
+            console.log(`[generateWithSeedream] Retrying in ${waitTime / 1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
     }
-
-    if (typeof output === 'string') {
-        return output;
-    }
-
-    // Handle object output with URL property
-    if (output && typeof output === 'object' && 'url' in output) {
-        return String((output as { url: string }).url);
-    }
-
-    throw new Error('Unexpected output format from Seedream');
+    
+    throw lastError;
 }
 
 /**
