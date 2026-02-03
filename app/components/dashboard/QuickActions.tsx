@@ -22,7 +22,7 @@ const creationModes = [
         icon: MessageCircle,
         label: "Chat with AI",
         description: "Describe your story idea in a natural conversation",
-        href: "/create",
+        href: "/story-chat",
         gradient: "from-secondary to-secondary/70",
         featured: true,
     },

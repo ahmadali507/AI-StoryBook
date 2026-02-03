@@ -166,7 +166,9 @@ export function StoryChat() {
                     ));
                 } else if (delta.type === 'tool-call') {
                     // Track which tool is being called
-                    currentToolCall = delta.toolName;
+                    if (delta.toolName) {
+                        currentToolCall = delta.toolName;
+                    }
                     
                     // Show loading message based on tool with progress indicator
                     if (delta.toolName === 'generateCharacters') {

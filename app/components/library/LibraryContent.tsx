@@ -58,7 +58,7 @@ export default function LibraryContent() {
                     </h1>
                 </div>
                 <Link
-                    href="/create"
+                    href="/story-chat"
                     className="inline-flex items-center justify-center gap-2 bg-secondary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all cursor-pointer"
                 >
                     <Plus className="w-5 h-5" />
@@ -102,7 +102,7 @@ export default function LibraryContent() {
                             : "Start creating your first magical story!"}
                     </p>
                     <Link
-                        href="/create"
+                        href="/story-chat"
                         className="inline-flex items-center gap-2 bg-secondary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all cursor-pointer"
                     >
                         <Plus className="w-5 h-5" />

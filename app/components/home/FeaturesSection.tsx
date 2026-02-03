@@ -21,7 +21,7 @@ const creationModes = [
         title: "Chat with AI",
         subtitle: "Conversational Creation",
         description: "Perfect for users who prefer a natural, guided experience.",
-        href: "/create",
+        href: "/story-chat",
         gradient: "from-secondary via-secondary/90 to-secondary/70",
         features: [
             "Describe your story idea in conversation",

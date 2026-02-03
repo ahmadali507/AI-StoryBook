@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Character, StorySetting, STORY_SETTING_LABELS } from '@/types/storybook';
-import { StoryState, StoryChatResponse, ChatMessage } from '@/types/chat';
+import { ChatMessage } from '@/types/chat';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -16,6 +16,20 @@ interface ChapterOutline {
     title: string;
     summary: string;
     sceneDescription: string;
+}
+
+// Legacy types for unused chatWithStoryteller function
+interface StoryState {
+    characterName?: string;
+    characterDescription?: string;
+    setting?: string;
+    theme?: string;
+}
+
+interface StoryChatResponse {
+    reply: string;
+    extractedInfo?: Partial<StoryState>;
+    suggestions?: string[];
 }
 
 /**
