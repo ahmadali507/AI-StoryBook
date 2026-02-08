@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { ProgressSteps } from "@/app/components/shared";
 import {
@@ -20,7 +20,10 @@ import {
     BookOpen,
     PenTool,
     Plus,
-    Palette
+    Palette,
+    CreditCard,
+    Image as ImageIcon,
+    CheckCircle2
 } from "lucide-react";
 
 const settings = [
@@ -51,23 +54,40 @@ const steps = [
     { id: 4, label: "Generate", key: "generate" },
 ];
 
+// Generation progress messages
+const GENERATION_MESSAGES = [
+    "Planning your adventure...",
+    "Crafting the story outline...",
+    "Writing chapter content...",
+    "Creating magical illustrations...",
+    "Adding finishing touches...",
+    "Assembling your storybook...",
+];
+
 import {
     generateStoryOutline,
     createStorybook,
     generateChapter,
     updateStorybook,
     generateAndSaveCover,
-    syncStoryContent
+    syncStoryContent,
+    getStorybookWithChapters
 } from "@/actions/story";
 import { generateIllustration, saveIllustration } from "@/actions/illustration";
+import { createCheckoutSession, verifyPayment, getPaymentStatus } from "@/actions/stripe";
 import { Character, StorySetting, ArtStyle } from "@/types/storybook";
 
 interface StoryGeneratorContentProps {
     characters: Character[];
 }
 
+// Step 4 phases
+type Step4Phase = "preview" | "cover_generating" | "cover_ready" | "paying" | "generating" | "complete";
+
 export default function StoryGeneratorContent({ characters: userCharacters }: StoryGeneratorContentProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedSetting, setSelectedSetting] = useState("");
     const [customSetting, setCustomSetting] = useState("");
@@ -79,10 +99,51 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
     // Character selection state
     const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
 
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isGenerated, setIsGenerated] = useState(false);
-    const [generationStep, setGenerationStep] = useState("");
+    // Step 4 states
+    const [step4Phase, setStep4Phase] = useState<Step4Phase>("preview");
     const [generatedStoryId, setGeneratedStoryId] = useState<string | null>(null);
+    const [coverUrl, setCoverUrl] = useState<string | null>(null);
+    const [storyTitle, setStoryTitle] = useState<string>("");
+    const [generationStep, setGenerationStep] = useState("");
+    const [generationProgress, setGenerationProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
+
+    // Handle URL params for returning from Stripe
+    useEffect(() => {
+        const sessionId = searchParams.get("session_id");
+        const storybookId = searchParams.get("storybookId");
+        const paid = searchParams.get("paid");
+        const cancelled = searchParams.get("cancelled");
+
+        if (storybookId && sessionId && paid === "true") {
+            // Returning from successful Stripe payment
+            setGeneratedStoryId(storybookId);
+            setCurrentStep(4);
+            setStep4Phase("generating");
+
+            // Verify payment and start generation
+            handlePostPaymentGeneration(storybookId, sessionId);
+        } else if (storybookId && cancelled === "true") {
+            // User cancelled payment
+            setGeneratedStoryId(storybookId);
+            setCurrentStep(4);
+            setStep4Phase("cover_ready");
+            loadExistingCover(storybookId);
+        }
+    }, [searchParams]);
+
+    // Load existing cover if returning to page
+    const loadExistingCover = async (storybookId: string) => {
+        try {
+            const storybook = await getStorybookWithChapters(storybookId);
+            if (storybook?.coverUrl) {
+                setCoverUrl(storybook.coverUrl);
+                setStoryTitle(storybook.title);
+            }
+        } catch (err) {
+            console.error("Failed to load existing cover:", err);
+        }
+    };
 
     // Mutations
     const createStorybookMutation = useMutation({
@@ -202,9 +263,10 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
         }
     };
 
-    const handleGenerate = async () => {
-        setIsGenerating(true);
-        setGenerationStep("Initializing storybook...");
+    // Phase 1: Generate cover preview
+    const handleGenerateCover = async () => {
+        setStep4Phase("cover_generating");
+        setError(null);
 
         try {
             const effectiveSetting = selectedSetting === "custom" ? "fantasy" : selectedSetting as StorySetting;
@@ -212,14 +274,15 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                 ? `Custom Setting: ${customSetting}. ${storyDescription}`
                 : storyDescription;
             const themeString = selectedThemes.join(", ");
-            const targetChapters = storyLength === "short" ? 3 : storyLength === "medium" ? 5 : 7; // Reduced for demo/testing, adjustable
+            const targetChapters = storyLength === "short" ? 3 : storyLength === "medium" ? 5 : 7;
 
             // 1. Create Storybook Record
+            setGenerationStep("Creating storybook...");
             const sbResult = await createStorybookMutation.mutateAsync({
-                title: "New Adventure", // Temporary title until outline
+                title: "New Adventure",
                 characterIds: selectedCharacterIds,
                 setting: effectiveSetting,
-                artStyle: "storybook", // Default for now
+                artStyle: "storybook",
                 targetChapters,
                 theme: themeString,
                 description: customDetails
@@ -231,8 +294,8 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             const storybookId = sbResult.storybookId;
             setGeneratedStoryId(storybookId);
 
-            // 2. Generate Outline
-            setGenerationStep("Planning structure...");
+            // 2. Generate Outline to get title
+            setGenerationStep("Planning story structure...");
             const outlineResult = await generateOutlineMutation.mutateAsync({
                 characterIds: selectedCharacterIds,
                 setting: effectiveSetting,
@@ -246,18 +309,101 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             }
             const outline = outlineResult.outline;
 
-            // Update title from generated outline
+            // Update title
             await updateStorybook(storybookId, { title: outline.title });
+            setStoryTitle(outline.title);
 
-            // Trigger cover generation with the new title
-            generateAndSaveCover(storybookId);
+            // 3. Generate cover
+            setGenerationStep("Generating cover artwork...");
+            await generateAndSaveCover(storybookId);
 
-            // 3. Generate Chapters & Illustrations Loop
-            // We do this sequentially to maintain context and allow progress updates
+            // Fetch the cover URL
+            const storybook = await getStorybookWithChapters(storybookId);
+            if (storybook?.coverUrl) {
+                setCoverUrl(storybook.coverUrl);
+            }
+
+            setStep4Phase("cover_ready");
+        } catch (err) {
+            console.error("Cover generation error:", err);
+            setError(err instanceof Error ? err.message : "Failed to generate cover");
+            setStep4Phase("preview");
+        }
+    };
+
+    // Phase 2: Redirect to Stripe checkout
+    const handlePayment = async () => {
+        if (!generatedStoryId) return;
+
+        setStep4Phase("paying");
+        setError(null);
+
+        try {
+            const result = await createCheckoutSession(generatedStoryId);
+
+            if (!result.success || !result.checkoutUrl) {
+                throw new Error(result.error || "Failed to create checkout session");
+            }
+
+            // Redirect to Stripe
+            window.location.href = result.checkoutUrl;
+        } catch (err) {
+            console.error("Payment error:", err);
+            setError(err instanceof Error ? err.message : "Failed to start payment");
+            setStep4Phase("cover_ready");
+        }
+    };
+
+    // Phase 3: After payment, generate the full book
+    const handlePostPaymentGeneration = async (storybookId: string, sessionId: string) => {
+        setError(null);
+        setGenerationStep("Verifying payment...");
+        setGenerationProgress(5);
+
+        try {
+            // Verify payment
+            const paymentResult = await verifyPayment(storybookId, sessionId);
+
+            if (!paymentResult.success || !paymentResult.paid) {
+                throw new Error(paymentResult.error || "Payment verification failed");
+            }
+
+            // Load storybook data
+            const storybook = await getStorybookWithChapters(storybookId);
+            if (!storybook) {
+                throw new Error("Could not load storybook");
+            }
+            setCoverUrl(storybook.coverUrl || null);
+            setStoryTitle(storybook.title);
+
+            // Need to regenerate outline for chapter structure
+            const effectiveSetting = (storybook.setting || "fantasy") as StorySetting;
+            const targetChapters = storybook.targetChapters || 5;
+            const themeString = storybook.theme || "Adventure";
+
+            setGenerationStep("Planning your adventure...");
+            setGenerationProgress(10);
+
+            const outlineResult = await generateOutlineMutation.mutateAsync({
+                characterIds: storybook.characterIds || [],
+                setting: effectiveSetting,
+                targetChapters,
+                theme: themeString,
+                additionalDetails: storybook.description || ""
+            });
+
+            if (!outlineResult.success || !outlineResult.outline) {
+                throw new Error(outlineResult.error || "Failed to generate outline");
+            }
+            const outline = outlineResult.outline;
+
+            // Generate chapters and illustrations
+            const totalSteps = outline.chapters.length * 2; // chapter + illustration for each
+            let completedSteps = 0;
+
             for (const chapterOutline of outline.chapters) {
+                // Generate chapter text
                 setGenerationStep(`Writing Chapter ${chapterOutline.number}: ${chapterOutline.title}...`);
-
-                // Generate Text
                 const chapterResult = await generateChapterMutation.mutateAsync({
                     storybookId,
                     chapterNumber: chapterOutline.number,
@@ -269,58 +415,325 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                 if (!chapterResult.success || !chapterResult.chapterId) {
                     throw new Error(chapterResult.error || `Failed to generate chapter ${chapterOutline.number}`);
                 }
-                const chapterId = chapterResult.chapterId;
+                completedSteps++;
+                setGenerationProgress(10 + Math.round((completedSteps / totalSteps) * 80));
 
-                // Generate Illustration
+                // Generate illustration
                 setGenerationStep(`Illustrating Chapter ${chapterOutline.number}...`);
-
-                // Filter characters present in this scene? For now use all selected or main
-                const activeCharacters = userCharacters.filter(c => selectedCharacterIds.includes(c.id));
+                const activeCharacters = userCharacters.filter(c =>
+                    storybook.characterIds?.includes(c.id) || selectedCharacterIds.includes(c.id)
+                );
                 const seed = Math.floor(Math.random() * 1000000);
 
                 const illustrationResult = await generateIllustrationMutation.mutateAsync({
                     characters: activeCharacters,
-                    sceneDescription: chapterResult.content ? chapterOutline.sceneDescription : chapterOutline.sceneDescription, // Use outline description as base
+                    sceneDescription: chapterOutline.sceneDescription,
                     artStyle: "storybook",
                     seedNumber: seed
                 });
 
-                // Save Illustration
                 await saveIllustrationMutation.mutateAsync({
-                    chapterId,
+                    chapterId: chapterResult.chapterId,
                     imageUrl: illustrationResult.imageUrl,
                     promptUsed: illustrationResult.promptUsed,
                     seedUsed: seed
                 });
+
+                completedSteps++;
+                setGenerationProgress(10 + Math.round((completedSteps / totalSteps) * 80));
             }
 
-            // Sync content to JSON column
-            setGenerationStep("Syncing story content...");
+            // Sync and finalize
+            setGenerationStep("Assembling your storybook...");
+            setGenerationProgress(95);
             await syncStoryContent(storybookId);
-
-            // Mark story as complete
             await updateStorybook(storybookId, { status: "complete" });
 
-            setGenerationStep("Finalizing...");
-            setIsGenerated(true);
-        } catch (error) {
-            console.error("Generation error:", error);
-            setGenerationStep("Error: " + (error instanceof Error ? error.message : "Unknown error"));
-            // Keep generating state to show error? or reset?
-            // For now let's just alert
-            alert("Failed to generate story. Please try again.");
-        } finally {
-            setIsGenerating(false);
+            setGenerationProgress(100);
+            setGenerationStep("Your book is ready!");
+            setStep4Phase("complete");
+
+        } catch (err) {
+            console.error("Generation error:", err);
+            setError(err instanceof Error ? err.message : "Failed to generate story");
+            setStep4Phase("cover_ready");
         }
     };
+
+    // Render Step 4 content based on phase
+    const renderStep4Content = () => {
+        // Preview phase - show settings summary and generate cover button
+        if (step4Phase === "preview") {
+            return (
+                <div className="text-center">
+                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <ImageIcon className="w-10 h-10 text-primary" />
+                    </div>
+                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                        Generate Cover Preview
+                    </h2>
+                    <p className="text-text-muted mb-8">
+                        First, let's create a beautiful cover for your story
+                    </p>
+
+                    <div className="bg-background rounded-xl p-6 text-left mb-8">
+                        <div className="space-y-3">
+                            <div className="flex justify-between">
+                                <span className="text-text-muted">Setting</span>
+                                <span className="text-foreground font-medium">
+                                    {selectedSetting === "custom"
+                                        ? "Custom Setting"
+                                        : settings.find((s) => s.id === selectedSetting)?.name}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-text-muted">Themes</span>
+                                <span className="text-foreground font-medium">
+                                    {selectedThemes.join(", ") || "None selected"}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-text-muted">Length</span>
+                                <span className="text-foreground font-medium">
+                                    {storyLengths.find((l) => l.id === storyLength)?.name}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleGenerateCover}
+                        className="inline-flex items-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
+                    >
+                        <Palette className="w-5 h-5" />
+                        Generate Cover Preview
+                    </button>
+                </div>
+            );
+        }
+
+        // Cover generating phase
+        if (step4Phase === "cover_generating") {
+            return (
+                <div className="text-center">
+                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                    </div>
+                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                        Creating Your Cover...
+                    </h2>
+                    <p className="text-text-muted mb-4">
+                        {generationStep}
+                    </p>
+                    <p className="text-xs text-text-muted">
+                        This usually takes about 30 seconds
+                    </p>
+                </div>
+            );
+        }
+
+        // Cover ready - show cover and payment button
+        if (step4Phase === "cover_ready" || step4Phase === "paying") {
+            return (
+                <div className="text-center">
+                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                        Your Cover is Ready!
+                    </h2>
+                    <p className="text-lg text-primary font-medium mb-6">
+                        "{storyTitle}"
+                    </p>
+
+                    {/* Cover preview */}
+                    <div className="mb-8">
+                        {coverUrl ? (
+                            <div className="relative inline-block">
+                                <img
+                                    src={coverUrl}
+                                    alt="Book Cover Preview"
+                                    className="w-48 h-64 object-cover rounded-lg shadow-2xl mx-auto"
+                                />
+                                <div className="absolute inset-0 rounded-lg ring-2 ring-primary/20" />
+                            </div>
+                        ) : (
+                            <div className="w-48 h-64 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg mx-auto flex items-center justify-center">
+                                <BookOpen className="w-12 h-12 text-primary/50" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* What's included */}
+                    <div className="bg-background rounded-xl p-6 text-left mb-6 max-w-md mx-auto">
+                        <h3 className="font-semibold text-foreground mb-3">What's included:</h3>
+                        <ul className="space-y-2 text-sm text-text-muted">
+                            <li className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-green-500" />
+                                Full illustrated storybook ({storyLengths.find(l => l.id === storyLength)?.pages})
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-green-500" />
+                                Custom AI-generated illustrations
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-green-500" />
+                                Personalized story with your characters
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <Check className="w-4 h-4 text-green-500" />
+                                Instant digital access
+                            </li>
+                        </ul>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm max-w-md mx-auto">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Payment button */}
+                    <button
+                        onClick={handlePayment}
+                        disabled={step4Phase === "paying"}
+                        className="inline-flex items-center gap-3 bg-gradient-to-r from-primary to-secondary text-white px-10 py-5 rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:shadow-xl hover:scale-105 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {step4Phase === "paying" ? (
+                            <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                Redirecting to checkout...
+                            </>
+                        ) : (
+                            <>
+                                <CreditCard className="w-6 h-6" />
+                                $7.99 - Generate My Book
+                            </>
+                        )}
+                    </button>
+
+                    <p className="text-xs text-text-muted mt-4">
+                        Secure checkout powered by Stripe
+                    </p>
+                </div>
+            );
+        }
+
+        // Generating phase - show progress
+        if (step4Phase === "generating") {
+            return (
+                <div className="text-center">
+                    <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                        <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto">
+                            <Sparkles className="w-10 h-10 text-primary" />
+                            <Loader2 className="absolute w-24 h-24 text-primary/30 animate-spin" />
+                        </div>
+                    </div>
+
+                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                        Creating Your Storybook
+                    </h2>
+                    <p className="text-lg text-primary font-medium mb-6">
+                        "{storyTitle}"
+                    </p>
+
+                    {/* Progress bar */}
+                    <div className="w-full max-w-md mx-auto mb-4">
+                        <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
+                                style={{ width: `${generationProgress}%` }}
+                            />
+                        </div>
+                        <p className="text-sm text-text-muted text-center mt-2">
+                            {generationProgress}% complete
+                        </p>
+                    </div>
+
+                    <p className="text-text-muted animate-pulse mb-8">
+                        {generationStep}
+                    </p>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm max-w-md mx-auto">
+                            {error}
+                        </div>
+                    )}
+
+                    <p className="text-xs text-text-muted max-w-sm mx-auto">
+                        This usually takes 2-5 minutes. Feel free to keep this tab open!
+                    </p>
+                </div>
+            );
+        }
+
+        // Complete phase
+        if (step4Phase === "complete") {
+            return (
+                <div className="text-center">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle2 className="w-10 h-10 text-green-600" />
+                    </div>
+                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                        Your Book is Ready!
+                    </h2>
+                    <p className="text-lg text-primary font-medium mb-6">
+                        "{storyTitle}"
+                    </p>
+
+                    {coverUrl && (
+                        <div className="mb-8">
+                            <img
+                                src={coverUrl}
+                                alt="Book Cover"
+                                className="w-40 h-56 object-cover rounded-lg shadow-xl mx-auto"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Link
+                            href={generatedStoryId ? `/story/${generatedStoryId}` : "/library"}
+                            className="inline-flex items-center justify-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
+                        >
+                            <BookOpen className="w-5 h-5" />
+                            Read Your Story
+                        </Link>
+                        <button
+                            onClick={() => {
+                                setStep4Phase("preview");
+                                setCurrentStep(1);
+                                setSelectedSetting("");
+                                setSelectedThemes([]);
+                                setGeneratedStoryId(null);
+                                setCoverUrl(null);
+                                setStoryTitle("");
+                                router.replace("/generate");
+                            }}
+                            className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-8 py-4 rounded-full font-semibold hover:bg-background transition-all cursor-pointer"
+                        >
+                            Create Another
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
+    };
+
+    const isStep4InProgress = step4Phase !== "preview" && step4Phase !== "complete";
 
     return (
         <main className="pt-24 pb-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Breadcrumb */}
                 <div className="flex items-center gap-2 text-sm text-text-muted mb-6">
-                    <Link href="/dashboard" className="hover:text-foreground cursor-pointer">
-                        Dashboard
+                    <Link href="/" className="hover:text-foreground cursor-pointer">
+                        Home
                     </Link>
                     <ChevronRight className="w-4 h-4" />
                     <span className="text-foreground">Story Generator</span>
@@ -440,11 +853,11 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                         <h3 className="text-lg font-semibold text-foreground mb-2">No characters yet</h3>
                                         <p className="text-text-muted mb-6">Create characters to add them to your stories.</p>
                                         <Link
-                                            href="/character-creator"
+                                            href="/create"
                                             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all"
                                         >
                                             <Plus className="w-5 h-5" />
-                                            Create Character
+                                            Create Book
                                         </Link>
                                     </div>
                                 ) : (
@@ -477,7 +890,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                             ))}
 
                                             <Link
-                                                href="/character-creator"
+                                                href="/create"
                                                 className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-border hover:border-primary hover:bg-surface-hover transition-all cursor-pointer min-h-[180px]"
                                             >
                                                 <div className="w-12 h-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center mb-3">
@@ -540,136 +953,21 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                             </>
                         )}
 
-                        {currentStep === 4 && !isGenerated && (
-                            <>
-                                <div className="text-center">
-                                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        {isGenerating ? (
-                                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                                        ) : (
-                                            <Sparkles className="w-10 h-10 text-primary" />
-                                        )}
-                                    </div>
-                                    <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                                        {isGenerating ? "Creating Your Story..." : "Ready to Generate!"}
-                                    </h2>
-                                    <p className="text-text-muted mb-8">
-                                        {isGenerating
-                                            ? generationStep
-                                            : "Your story will be created with these settings"}
-                                    </p>
-
-                                    <div className="bg-background rounded-xl p-6 text-left mb-8">
-                                        <div className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="text-text-muted">Setting</span>
-                                                <span className="text-foreground font-medium">
-                                                    {selectedSetting === "custom"
-                                                        ? "Custom Setting"
-                                                        : settings.find((s) => s.id === selectedSetting)?.name}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-text-muted">Themes</span>
-                                                <span className="text-foreground font-medium">
-                                                    {selectedThemes.join(", ") || "None selected"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-text-muted">Length</span>
-                                                <span className="text-foreground font-medium">
-                                                    {storyLengths.find((l) => l.id === storyLength)?.name}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={handleGenerate}
-                                        disabled={isGenerating}
-                                        className="inline-flex items-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer disabled:opacity-70"
-                                    >
-                                        {isGenerating ? (
-                                            <>
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                Generating...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Sparkles className="w-5 h-5" />
-                                                Generate My Story
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Success State */}
-                        {isGenerated && (
-                            <div className="text-center">
-                                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Check className="w-10 h-10 text-green-600" />
-                                </div>
-                                <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                                    Story Created!
-                                </h2>
-                                <p className="text-text-muted mb-8">
-                                    Your personalized storybook is ready to view
-                                </p>
-
-                                <div className="bg-background rounded-xl p-6 mb-8">
-                                    <div className="flex items-center justify-center gap-4">
-                                        <div className="w-16 h-20 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-lg flex items-center justify-center">
-                                            <BookOpen className="w-8 h-8 text-primary" />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="font-semibold text-foreground">
-                                                The {selectedSetting === "custom" ? "Custom" : settings.find((s) => s.id === selectedSetting)?.name} Adventure
-                                            </p>
-                                            <p className="text-sm text-text-muted">
-                                                {storyLengths.find((l) => l.id === storyLength)?.pages} • {selectedThemes.join(" & ") || "Adventure"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                    <Link
-                                        href={generatedStoryId ? `/story/${generatedStoryId}` : "/library"}
-                                        className="inline-flex items-center justify-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
-                                    >
-                                        <BookOpen className="w-5 h-5" />
-                                        Read Story
-                                    </Link>
-                                    <button
-                                        onClick={() => {
-                                            setIsGenerated(false);
-                                            setCurrentStep(1);
-                                            setSelectedSetting("");
-                                            setSelectedThemes([]);
-                                        }}
-                                        className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-8 py-4 rounded-full font-semibold hover:bg-background transition-all cursor-pointer"
-                                    >
-                                        Create Another
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {currentStep === 4 && renderStep4Content()}
                     </div>
 
                     {/* Navigation */}
                     <div className="flex justify-between items-center mt-6">
                         <button
                             onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
-                            disabled={currentStep === 1 || isGenerating || isGenerated}
+                            disabled={currentStep === 1 || isStep4InProgress}
                             className="flex items-center gap-2 text-text-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             <ChevronLeft className="w-5 h-5" />
                             Back
                         </button>
 
-                        {currentStep < 4 && !isGenerated && (
+                        {currentStep < 4 && (
                             <button
                                 onClick={() => setCurrentStep((s) => Math.min(4, s + 1))}
                                 disabled={

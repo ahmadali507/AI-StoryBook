@@ -82,9 +82,11 @@ export interface Storybook {
     targetChapters: number;
     status: StoryStatus;
     description?: string;
+    characterIds?: string[];
     characters?: Character[];
     chapters?: Chapter[];
     content?: any;
+    coverUrl?: string;
     coverImageUrl?: string;
     createdAt?: Date;
 }
@@ -136,3 +138,169 @@ export interface GenerateIllustrationRequest {
     artStyle: ArtStyle;
     seedNumber: number;
 }
+
+// ============================================
+// MVP SIMPLIFIED TYPES
+// ============================================
+
+// Gender and entity types for photo-based characters
+export type Gender = 'male' | 'female' | 'other';
+export type EntityType = 'human' | 'animal' | 'object';
+export type CharacterRole = 'main' | 'supporting';
+
+// Simplified character for MVP (photo-based)
+export interface SimpleCharacter {
+    id?: string;
+    name: string;
+    photoUrl: string;
+    aiAvatarUrl?: string;
+    gender: Gender;
+    entityType: EntityType;
+    role: CharacterRole;
+}
+
+// Age ranges for text complexity
+export type AgeRange = '0-2' | '2-4' | '5-8' | '9-12';
+
+export const AGE_RANGE_LABELS: Record<AgeRange, { label: string; emoji: string; description: string }> = {
+    '0-2': { label: 'Baby', emoji: '👶', description: 'Simple sounds & pictures' },
+    '2-4': { label: 'Toddler', emoji: '🧒', description: 'Short sentences' },
+    '5-8': { label: 'Kids', emoji: '🧑', description: 'Full story' },
+    '9-12': { label: 'Pre-teen', emoji: '📚', description: 'Rich storytelling' },
+};
+
+// Text complexity settings by age
+export const TEXT_COMPLEXITY: Record<AgeRange, {
+    wordsPerPage: number;
+    style: string;
+    vocabulary: string;
+    promptHint: string;
+}> = {
+    '0-2': {
+        wordsPerPage: 5,
+        style: 'Very simple words, sounds like "boom", "splash", "whoosh", repetition',
+        vocabulary: 'basic',
+        promptHint: 'Write like a board book for infants. 1-5 words max per page. Use sounds and simple words.',
+    },
+    '2-4': {
+        wordsPerPage: 15,
+        style: 'Simple sentences, rhyming optional, familiar concepts',
+        vocabulary: 'simple',
+        promptHint: 'Write like a picture book for toddlers. 10-20 words per page. Simple sentences.',
+    },
+    '5-8': {
+        wordsPerPage: 40,
+        style: 'Full sentences, basic plot, dialogue allowed',
+        vocabulary: 'standard',
+        promptHint: 'Write like a children\'s picture book. 30-50 words per page. Include dialogue.',
+    },
+    '9-12': {
+        wordsPerPage: 80,
+        style: 'Rich vocabulary, complex plot, character development',
+        vocabulary: 'advanced',
+        promptHint: 'Write like a chapter book. 60-100 words per page. Rich descriptions.',
+    },
+};
+
+// Theme options
+export type Theme =
+    | 'adventure'
+    | 'animals'
+    | 'bedtime'
+    | 'friendship'
+    | 'fantasy'
+    | 'learning'
+    | 'family'
+    | 'nature';
+
+export const THEME_OPTIONS: { id: Theme; name: string; emoji: string; description: string }[] = [
+    { id: 'adventure', name: 'Adventure', emoji: '🏔️', description: 'Exciting journeys and discoveries' },
+    { id: 'animals', name: 'Animals', emoji: '🐾', description: 'Furry and feathered friends' },
+    { id: 'bedtime', name: 'Bedtime', emoji: '🌙', description: 'Calming stories for sleep' },
+    { id: 'friendship', name: 'Friendship', emoji: '🤝', description: 'Making and keeping friends' },
+    { id: 'fantasy', name: 'Fantasy', emoji: '✨', description: 'Magic and wonder' },
+    { id: 'learning', name: 'Learning', emoji: '📖', description: 'Fun educational stories' },
+    { id: 'family', name: 'Family', emoji: '👨‍👩‍👧', description: 'Family love and togetherness' },
+    { id: 'nature', name: 'Nature', emoji: '🌿', description: 'Exploring the natural world' },
+];
+
+// Simplified art styles for MVP (4 options)
+export type MVPArtStyle = 'watercolor' | 'soft-illustration' | 'classic-storybook' | 'modern-cartoon';
+
+export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; prompt: string }[] = [
+    {
+        id: 'watercolor',
+        name: 'Soft Watercolor',
+        preview: '/art-styles/watercolor.png',
+        prompt: 'Beautiful watercolor painting, soft edges, pastel colors, artistic, gentle lighting, high quality, children\'s book illustration',
+    },
+    {
+        id: 'soft-illustration',
+        name: 'Soft Illustration',
+        preview: '/art-styles/soft-illustration.png',
+        prompt: 'Soft digital illustration, rounded shapes, warm colors, cozy atmosphere, professional children\'s book art, gentle and inviting',
+    },
+    {
+        id: 'classic-storybook',
+        name: 'Classic Storybook',
+        preview: '/art-styles/classic-storybook.png',
+        prompt: 'Classic storybook illustration style, detailed backgrounds, timeless feel, golden hour lighting, reminiscent of beloved children\'s books',
+    },
+    {
+        id: 'modern-cartoon',
+        name: 'Modern Cartoon',
+        preview: '/art-styles/modern-cartoon.png',
+        prompt: 'Modern cartoon style, clean lines, vibrant colors, expressive characters, smooth gradients, professional animation quality',
+    },
+];
+
+// Order status for MVP flow
+export type OrderStatus =
+    | 'draft'           // Form incomplete
+    | 'cover_preview'   // Cover generated, awaiting payment
+    | 'paid'            // Payment confirmed
+    | 'generating'      // Full book being generated
+    | 'complete'        // Book ready for download
+    | 'processing'      // Being printed (physical)
+    | 'shipped'         // In transit (physical)
+    | 'delivered';      // Delivered (physical)
+
+// Book order for MVP
+export interface BookOrder {
+    id?: string;
+    ageRange: AgeRange;
+    theme: Theme;
+    artStyle: MVPArtStyle;
+    characters: SimpleCharacter[];
+    title?: string;
+    coverUrl?: string;
+    pdfUrl?: string;
+    status: OrderStatus;
+    createdAt?: Date;
+    paidAt?: Date;
+    completedAt?: Date;
+}
+
+// Story template for pre-made stories
+export interface StoryTemplate {
+    id: string;
+    name: string;
+    description: string;
+    ageRange: AgeRange;
+    theme: Theme;
+    storyOutline: { scene: number; prompt: string }[];
+    isActive: boolean;
+}
+
+// Book format constants (24 pages)
+export const BOOK_FORMAT = {
+    totalPages: 24,
+    frontCover: 1,
+    titlePage: 1,
+    storyPages: 20,      // 10 spreads = 10 illustrations + 10 text pages
+    theEndPage: 1,
+    backCover: 1,
+    illustrationCount: 12, // Cover + 10 story + back cover
+    textPageCount: 12,     // Title + 10 text + The End
+};
+

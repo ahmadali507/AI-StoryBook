@@ -46,8 +46,8 @@ export default function OrderContent() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Breadcrumb */}
                 <div className="flex items-center gap-2 text-sm text-text-muted mb-6">
-                    <Link href="/library" className="hover:text-foreground cursor-pointer">
-                        Library
+                    <Link href="/" className="hover:text-foreground cursor-pointer">
+                        Home
                     </Link>
                     <ChevronRight className="w-4 h-4" />
                     <span className="text-foreground">Order Print</span>

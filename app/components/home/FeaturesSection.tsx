@@ -4,16 +4,16 @@ import { Wand2, MessageCircle, Sparkles, Truck, Users, CheckCircle } from "lucid
 const creationModes = [
     {
         icon: Wand2,
-        title: "Story Builder",
-        subtitle: "Step-by-Step Creation",
-        description: "Perfect for users who want full control over their story.",
-        href: "/character-creator",
+        title: "Create Your Book",
+        subtitle: "Quick & Personal",
+        description: "Upload photos and get a personalized storybook in minutes.",
+        href: "/create",
         gradient: "from-primary via-primary/90 to-primary/70",
         features: [
-            "Design custom characters with detailed appearance",
-            "Choose from 6 beautiful art styles",
-            "Select story setting and theme",
-            "Generate 5-15 illustrated chapters",
+            "Upload photos of your child or pet",
+            "Choose age-appropriate text style",
+            "Select from beautiful art styles",
+            "Get a personalized story in minutes",
         ],
     },
     {

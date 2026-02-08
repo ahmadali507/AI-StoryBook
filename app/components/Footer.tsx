@@ -60,8 +60,8 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/library" className="text-text-muted hover:text-foreground transition-colors cursor-pointer">
-                                    Examples
+                                <Link href="/create" className="text-text-muted hover:text-foreground transition-colors cursor-pointer">
+                                    Create
                                 </Link>
                             </li>
                         </ul>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BookOpen, Wand2, MessageCircle } from "lucide-react";
 import { getCurrentUser } from "@/actions/auth";
@@ -10,8 +13,23 @@ const navLinks = [
     { href: "/story-chat", label: "AI Chat", icon: "chat" },
 ];
 
-export default async function Navbar() {
-    const user = await getCurrentUser();
+export default function NavbarClient() {
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function loadUser() {
+            try {
+                const userData = await getCurrentUser();
+                setUser(userData);
+            } catch (error) {
+                console.error("Failed to load user:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadUser();
+    }, []);
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-sm border-b border-border">
@@ -44,7 +62,9 @@ export default async function Navbar() {
 
                     {/* Desktop CTA / Profile */}
                     <div className="hidden md:flex items-center gap-4">
-                        {user ? (
+                        {loading ? (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+                        ) : user ? (
                             <ProfileDropdown user={user} />
                         ) : (
                             <>

@@ -160,7 +160,7 @@ Your goal is to guide the user through a specific pipeline to create a complete 
                                     name: c!.name,
                                     imageUrl: c!.referenceImageUrl
                                 }))
-                            };
+                            }
                             
                             console.log('[selectPreMadeCharacters] Success! Returning:', result);
                             return result;

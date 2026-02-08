@@ -42,7 +42,7 @@ export async function signUp(data: {
     }
 
     revalidatePath("/", "layout");
-    return { success: true, redirectTo: "/dashboard" };
+    return { success: true, redirectTo: "/create" };
 }
 
 /**
@@ -64,7 +64,7 @@ export async function signIn(data: {
     }
 
     revalidatePath("/", "layout");
-    return { success: true, redirectTo: "/dashboard" };
+    return { success: true, redirectTo: "/create" };
 }
 
 /**

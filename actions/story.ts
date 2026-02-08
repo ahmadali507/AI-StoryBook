@@ -41,8 +41,7 @@ export async function generateStoryOutline(
         for (const charId of data.characterIds) {
             const char = await getCharacter(charId);
             if (char) {
-                characters.push(char);
-            }
+                characters.push(char);            }
         }
 
         if (characters.length === 0) {

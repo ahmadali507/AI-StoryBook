@@ -200,6 +200,63 @@ export async function getOrder(id: string): Promise<Order | null> {
 }
 
 /**
+ * Get order with joined storybook data (for order status page)
+ */
+export async function getOrderWithStorybook(id: string): Promise<{
+    id: string;
+    status: string;
+    storybookId: string;
+    storybook?: {
+        id: string;
+        title: string;
+        coverUrl: string | null;
+        artStyle: string;
+        theme: string;
+        ageRange: string;
+    };
+} | null> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from("orders")
+        .select(`
+            id,
+            status,
+            storybook_id,
+            storybooks (
+                id,
+                title,
+                cover_url,
+                art_style,
+                theme,
+                age_range
+            )
+        `)
+        .eq("id", id)
+        .single();
+
+    if (error || !data) {
+        return null;
+    }
+
+    const storybook = data.storybooks as any;
+
+    return {
+        id: data.id,
+        status: data.status,
+        storybookId: data.storybook_id,
+        storybook: storybook ? {
+            id: storybook.id,
+            title: storybook.title,
+            coverUrl: storybook.cover_url,
+            artStyle: storybook.art_style,
+            theme: storybook.theme,
+            ageRange: storybook.age_range,
+        } : undefined,
+    };
+}
+
+/**
  * Cancel an order (only if pending)
  */
 export async function cancelOrder(
@@ -259,3 +316,485 @@ export async function updateOrderPayment(
     revalidatePath("/orders");
     return { success: true };
 }
+
+// ============================================
+// MVP ORDER FLOW FUNCTIONS
+// ============================================
+
+import type {
+    SimpleCharacter,
+    AgeRange,
+    Theme,
+    MVPArtStyle,
+} from "@/types/storybook";
+
+interface CreateBookOrderInput {
+    ageRange: AgeRange;
+    theme: Theme;
+    artStyle: MVPArtStyle;
+    title?: string;
+}
+
+/**
+ * Create a book order for MVP flow (storybook + order in one step)
+ * Requires user authentication
+ */
+export async function createBookOrder(
+    data: CreateBookOrderInput
+): Promise<{ success: boolean; orderId?: string; storybookId?: string; error?: string }> {
+    const supabase = await createClient();
+
+    let user;
+    try {
+        const { data: authData, error: authError } = await supabase.auth.getUser();
+        if (authError) {
+            console.error("[createBookOrder] Auth error:", authError);
+            // Check for network issues specifically
+            if (authError.message?.includes("fetch") || authError.message?.includes("network")) {
+                return { success: false, error: "Network error - please check your internet connection" };
+            }
+            return { success: false, error: "Authentication failed. Please log in." };
+        }
+        user = authData.user;
+    } catch (error) {
+        console.error("[createBookOrder] Auth check failed:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes("timeout") || errorMessage.includes("fetch")) {
+            return { success: false, error: "Connection timeout - please check your internet connection and try again" };
+        }
+        return { success: false, error: "Unable to verify authentication. Please try again." };
+    }
+
+    if (!user) {
+        return { success: false, error: "Please log in to create a book order" };
+    }
+
+    try {
+        // Create storybook first
+        const { data: storybook, error: storybookError } = await supabase
+            .from("storybooks")
+            .insert({
+                user_id: user.id,
+                title: data.title || "My Personalized Story",
+                art_style: data.artStyle,
+                global_seed: Math.floor(Math.random() * 1000000),
+                setting: "fantasy",
+                theme: data.theme,
+                age_range: data.ageRange,
+                target_chapters: 12,
+                status: "draft",
+            })
+            .select()
+            .single();
+
+        if (storybookError) {
+            console.error("[createBookOrder] Storybook error:", storybookError);
+            return { success: false, error: storybookError.message };
+        }
+
+        // Create order linked to storybook
+        const { data: order, error: orderError } = await supabase
+            .from("orders")
+            .insert({
+                user_id: user.id,
+                storybook_id: storybook.id,
+                status: "draft",
+                product_type: "hardcover",
+                quantity: 1,
+                unit_price_cents: 2999,
+                shipping_cents: 0,
+                tax_cents: 0,
+                total_cents: 2999,
+                currency: "USD",
+            })
+            .select()
+            .single();
+
+        if (orderError) {
+            console.error("[createBookOrder] Order error:", orderError);
+            return { success: false, error: orderError.message };
+        }
+
+        return {
+            success: true,
+            orderId: order.id,
+            storybookId: storybook.id,
+        };
+    } catch (error) {
+        console.error("[createBookOrder] Unexpected error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to create order";
+        if (errorMessage.includes("timeout") || errorMessage.includes("fetch")) {
+            return { success: false, error: "Connection timeout - please check your internet connection" };
+        }
+        return { success: false, error: errorMessage };
+    }
+}
+
+// ============================================
+// CHARACTER MANAGEMENT (ORDER-BASED)
+// ============================================
+
+interface AddCharacterInput {
+    orderId: string;
+    name: string;
+    photoUrl: string;
+    gender: "male" | "female" | "other";
+    entityType: "human" | "animal" | "object";
+    role: "main" | "supporting";
+}
+
+export async function addCharacterToOrder(
+    data: AddCharacterInput
+): Promise<{ success: boolean; characterId?: string; error?: string }> {
+    const supabase = await createClient();
+
+    const { data: character, error } = await supabase
+        .from("order_characters")
+        .insert({
+            order_id: data.orderId,
+            name: data.name,
+            photo_url: data.photoUrl,
+            gender: data.gender,
+            entity_type: data.entityType,
+            role: data.role,
+        })
+        .select()
+        .single();
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true, characterId: character.id };
+}
+
+export async function updateCharacterAvatar(
+    characterId: string,
+    avatarUrl: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+        .from("order_characters")
+        .update({ ai_avatar_url: avatarUrl })
+        .eq("id", characterId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+export async function removeCharacterFromOrder(
+    characterId: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    const { error } = await supabase
+        .from("order_characters")
+        .delete()
+        .eq("id", characterId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    return { success: true };
+}
+
+export async function getOrderCharacters(
+    orderId: string
+): Promise<SimpleCharacter[]> {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from("order_characters")
+        .select("*")
+        .eq("order_id", orderId)
+        .order("created_at", { ascending: true });
+
+    if (error || !data) {
+        return [];
+    }
+
+    return data.map((char) => ({
+        id: char.id,
+        name: char.name,
+        photoUrl: char.photo_url,
+        aiAvatarUrl: char.ai_avatar_url,
+        gender: char.gender,
+        entityType: char.entity_type,
+        role: char.role,
+    }));
+}
+// ============================================
+// PHOTO UPLOAD (Data URL - no bucket needed)
+// ============================================
+
+export async function uploadCharacterPhoto(
+    formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
+    const file = formData.get("photo") as File;
+    if (!file) {
+        return { success: false, error: "No file provided" };
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+        return {
+            success: false,
+            error: "Invalid file type. Please upload a JPEG, PNG, or WebP image.",
+        };
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+        return { success: false, error: "File too large. Maximum size is 5MB." };
+    }
+
+    try {
+        // Convert file to base64 data URL
+        // This avoids needing a Supabase storage bucket
+        // The image will be passed to Seedream for processing
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString("base64");
+        const dataUrl = `data:${file.type};base64,${base64}`;
+
+        return { success: true, url: dataUrl };
+    } catch (error) {
+        console.error("[uploadCharacterPhoto] Error converting file:", error);
+        return { success: false, error: "Failed to process image" };
+    }
+}
+
+// ============================================
+// COVER GENERATION
+// ============================================
+
+export async function generateCoverPreview(
+    orderId: string
+): Promise<{ success: boolean; coverUrl?: string; error?: string }> {
+    const supabase = await createClient();
+
+    // Get order details
+    const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .select(
+            `
+            *,
+            storybooks (
+                id,
+                title,
+                art_style,
+                theme,
+                age_range,
+                global_seed
+            )
+        `
+        )
+        .eq("id", orderId)
+        .single();
+
+    if (orderError || !order) {
+        return { success: false, error: "Order not found" };
+    }
+
+    // Get characters
+    const characters = await getOrderCharacters(orderId);
+    if (characters.length === 0) {
+        return { success: false, error: "At least one character is required" };
+    }
+
+    try {
+        // Import Seedream
+        const { generateBookCover } = await import("@/lib/replicate");
+
+        // Build character descriptions for the prompt
+        const mainChar = characters.find(c => c.role === "main") || characters[0];
+        const charDescriptions = characters.map(c => {
+            const genderDesc = c.gender === "male" ? "boy" : c.gender === "female" ? "girl" : "child";
+            const typeDesc = c.entityType === "human" ? genderDesc : c.entityType;
+            return `${c.name} (a friendly ${typeDesc})`;
+        }).join(", ");
+
+        // Art style mapping
+        const artStylePrompts: Record<string, string> = {
+            "watercolor": "soft watercolor painting style, gentle colors, dreamy atmosphere",
+            "digital-art": "vibrant digital art style, rich colors, polished illustration",
+            "storybook": "classic children's book illustration style, warm and inviting",
+            "cartoon": "fun cartoon style, bold colors, expressive characters",
+            "realistic": "detailed realistic illustration, lifelike characters",
+            "anime": "anime-inspired illustration, expressive eyes, dynamic poses"
+        };
+
+        // Theme mapping
+        const themePrompts: Record<string, string> = {
+            "adventure": "exciting adventure scene, magical journey",
+            "friendship": "heartwarming friendship moment, connection",
+            "learning": "educational discovery, curious exploration",
+            "fantasy": "magical fantasy world, enchanted setting",
+            "nature": "beautiful natural scenery, outdoor adventure",
+            "bedtime": "peaceful nighttime scene, cozy atmosphere"
+        };
+
+        const artStyle = order.storybooks?.art_style || "storybook";
+        const theme = order.storybooks?.theme || "adventure";
+        const title = order.storybooks?.title || `${mainChar.name}'s Adventure`;
+        const seed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
+
+        // Build the cover prompt
+        const coverPrompt = `Children's book cover illustration featuring ${charDescriptions}. 
+Title: "${title}". 
+${themePrompts[theme] || "magical adventure"}. 
+${artStylePrompts[artStyle] || "classic children's book illustration style"}.
+Beautiful, colorful, engaging book cover for children, high quality illustration, 
+professional children's book art, suitable for ages ${order.storybooks?.age_range || "3-6"}.`;
+
+        const negativePrompt = "text, words, letters, typography, watermark, signature, scary, violent, dark themes, realistic human faces, photo-realistic, low quality, blurry";
+
+        console.log(`[generateCoverPreview] Generating cover for order ${orderId}...`);
+        console.log(`[generateCoverPreview] Prompt: ${coverPrompt.substring(0, 200)}...`);
+
+        // Generate the cover with Seedream
+        const coverUrl = await generateBookCover(coverPrompt, seed, negativePrompt);
+
+        console.log(`[generateCoverPreview] ✓ Cover generated: ${coverUrl.substring(0, 50)}...`);
+
+        // Update storybook with cover URL
+        await supabase
+            .from("storybooks")
+            .update({ cover_url: coverUrl })
+            .eq("id", order.storybooks.id);
+
+        // Update order status
+        await supabase
+            .from("orders")
+            .update({
+                status: "cover_preview",
+                cover_generated_at: new Date().toISOString(),
+            })
+            .eq("id", orderId);
+
+        revalidatePath(`/order/${orderId}`);
+
+        return { success: true, coverUrl };
+    } catch (error) {
+        console.error("[generateCoverPreview] Error generating cover:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to generate cover";
+        return { success: false, error: errorMessage };
+    }
+}
+
+// ============================================
+// BOOK GENERATION AFTER PAYMENT
+// ============================================
+
+export async function triggerBookGeneration(
+    orderId: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    // Update status to generating
+    const { error } = await supabase
+        .from("orders")
+        .update({
+            status: "generating",
+            book_generation_started_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    // Import and call the book generation pipeline
+    // Note: In production, this should be offloaded to a background job/edge function
+    // to avoid blocking the request
+    const { generateFullBook } = await import("@/actions/book-generation");
+
+    // Start generation asynchronously (don't await - let it run in background)
+    generateFullBook(orderId)
+        .then(result => {
+            if (!result.success) {
+                console.error(`Book generation failed for order ${orderId}:`, result.error);
+            } else {
+                console.log(`Book generation completed for order ${orderId}`);
+            }
+        })
+        .catch(err => {
+            console.error(`Book generation error for order ${orderId}:`, err);
+        });
+
+    console.log(`Book generation triggered for order: ${orderId}`);
+    return { success: true };
+}
+
+// ============================================
+// STORY TEMPLATES
+// ============================================
+
+export async function getStoryTemplates(
+    ageRange?: AgeRange,
+    theme?: Theme
+): Promise<any[]> {
+    const supabase = await createClient();
+
+    let query = supabase
+        .from("story_templates")
+        .select("*")
+        .eq("is_active", true);
+
+    if (ageRange) {
+        query = query.eq("age_range", ageRange);
+    }
+
+    if (theme) {
+        query = query.eq("theme", theme);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+        return [];
+    }
+
+    return data;
+}
+
+// ============================================
+// COMPLETE ORDER WITH PAYMENT
+// ============================================
+
+export async function completeOrderWithPayment(
+    orderId: string,
+    paymentIntentId: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    // Update order with payment info
+    const { error } = await supabase
+        .from("orders")
+        .update({
+            status: "paid",
+            payment_status: "paid",
+            payment_provider: "stripe",
+            payment_intent_id: paymentIntentId,
+            paid_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    // Trigger full book generation (async)
+    await triggerBookGeneration(orderId);
+
+    revalidatePath(`/order/${orderId}`);
+    return { success: true };
+}
+

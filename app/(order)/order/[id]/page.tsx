@@ -1,0 +1,240 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight } from "lucide-react";
+import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
+import { verifyOrderPayment } from "@/actions/stripe";
+import NavbarClient from "@/app/components/NavbarClient";
+
+export default function OrderStatusPage() {
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const orderId = params.id as string;
+
+    // Prevent duplicate initialization
+    const initialized = useRef(false);
+    const generationTriggered = useRef(false);
+
+    const [order, setOrder] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [generating, setGenerating] = useState(false);
+    const [statusMessage, setStatusMessage] = useState("Loading...");
+    const [error, setError] = useState<string | null>(null);
+
+    // Check for payment params
+    const sessionId = searchParams.get("session_id");
+    const isPaid = searchParams.get("paid") === "true";
+
+    // Load order data
+    const loadOrder = async () => {
+        const orderData = await getOrderWithStorybook(orderId);
+        setOrder(orderData);
+        return orderData;
+    };
+
+    // Initial load
+    useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
+        const init = async () => {
+            const orderData = await loadOrder();
+            setLoading(false);
+
+            if (!orderData) return;
+
+            console.log("[OrderPage] Order status:", orderData.status);
+
+            // Already complete? Redirect immediately
+            if (orderData.status === "complete") {
+                if (orderData.storybook?.id) {
+                    router.push(`/story/${orderData.storybook.id}`);
+                }
+                return;
+            }
+
+            // Already generating? Just set state and poll
+            if (orderData.status === "generating") {
+                setGenerating(true);
+                setStatusMessage("Generating your personalized storybook...");
+                return;
+            }
+
+            // Already paid but not generating yet? Start generation
+            if (orderData.status === "paid" && !generationTriggered.current) {
+                generationTriggered.current = true;
+                setStatusMessage("Starting book generation...");
+                const genResult = await triggerBookGeneration(orderId);
+                if (genResult.success) {
+                    setGenerating(true);
+                    setStatusMessage("Generating your personalized storybook...");
+                } else {
+                    setError(genResult.error || "Failed to start generation");
+                }
+                return;
+            }
+
+            // Need payment verification?
+            if (isPaid && sessionId && !generationTriggered.current &&
+                orderData.status !== "paid" &&
+                orderData.status !== "generating" &&
+                orderData.status !== "complete") {
+
+                generationTriggered.current = true;
+                setStatusMessage("Verifying payment...");
+
+                try {
+                    const result = await verifyOrderPayment(orderId, sessionId);
+                    if (result.success && result.paid) {
+                        setStatusMessage("Starting book generation...");
+                        const genResult = await triggerBookGeneration(orderId);
+                        if (genResult.success) {
+                            setGenerating(true);
+                            setStatusMessage("Generating your personalized storybook...");
+                        } else {
+                            setError(genResult.error || "Failed to start generation");
+                        }
+                    } else {
+                        setError("Payment verification failed");
+                    }
+                } catch (err) {
+                    console.error("[OrderPage] Payment verification error:", err);
+                    setError("Error verifying payment");
+                }
+            }
+        };
+
+        init();
+    }, [orderId, sessionId, isPaid, router]);
+
+    // Poll for completion
+    useEffect(() => {
+        // Poll if generating OR if order status is generating/paid
+        const shouldPoll = generating || order?.status === "generating" || order?.status === "paid";
+
+        if (!shouldPoll) return;
+
+        console.log("[OrderPage] Starting poll, current status:", order?.status);
+
+        const interval = setInterval(async () => {
+            try {
+                const orderData = await loadOrder();
+                console.log("[OrderPage] Poll - status:", orderData?.status);
+
+                if (orderData?.status === "complete") {
+                    console.log("[OrderPage] Generation complete! Redirecting...");
+                    setStatusMessage("Your book is ready!");
+                    setGenerating(false);
+                    clearInterval(interval);
+
+                    if (orderData.storybook?.id) {
+                        setTimeout(() => {
+                            router.push(`/story/${orderData?.storybook?.id}`);
+                        }, 1000);
+                    }
+                }
+            } catch (err) {
+                console.error("[OrderPage] Poll error:", err);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [generating, order?.status, orderId, router]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background">
+                <NavbarClient />
+                <div className="flex items-center justify-center min-h-[80vh]">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            </div>
+        );
+    }
+
+    if (!order) {
+        return (
+            <div className="min-h-screen bg-background">
+                <NavbarClient />
+                <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
+                    <p className="text-red-500 mb-4">Order not found</p>
+                    <Link href="/create" className="text-primary hover:underline">
+                        Create a new book
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    // Check both local state AND database status
+    const isGenerating = generating || order.status === "generating" || order.status === "paid";
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5">
+            <NavbarClient />
+            <main className="pt-24 pb-16">
+                <div className="max-w-xl mx-auto px-4">
+                    {error ? (
+                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                            <div className="text-red-500 mb-4">{error}</div>
+                            <Link href="/create" className="text-primary hover:underline">
+                                Try again
+                            </Link>
+                        </div>
+                    ) : isGenerating ? (
+                        /* Simple generating state */
+                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                            <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-6" />
+                            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+                                {statusMessage}
+                            </h1>
+                            <p className="text-gray-500">
+                                This may take a few minutes. You can close this page and come back later.
+                            </p>
+                        </div>
+                    ) : order.status === "complete" ? (
+                        /* Complete state */
+                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-6" />
+                            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+                                Your Book is Ready! 🎉
+                            </h1>
+                            {order.storybook && (
+                                <Link
+                                    href={`/story/${order.storybook.id}`}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors mt-4"
+                                >
+                                    <BookOpen className="w-5 h-5" />
+                                    Read Your Book
+                                </Link>
+                            )}
+                        </div>
+                    ) : (
+                        /* Default state */
+                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                                Order Status
+                            </h1>
+                            <p className="text-gray-500 capitalize mb-6">
+                                {order.status?.replace("_", " ") || "Pending"}
+                            </p>
+                            {order.status === "cover_preview" && (
+                                <Link
+                                    href="/create"
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                                >
+                                    Continue Order
+                                    <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
+}

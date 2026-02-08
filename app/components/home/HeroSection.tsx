@@ -18,6 +18,7 @@ export default function HeroSection() {
                             crafted with advanced artificial intelligence. Perfect for bedtime and gifts.
                         </p>
 
+
                         {/* Two Creation Options */}
                         <div className="mt-10 space-y-4">
                             <p className="text-sm font-medium text-text-muted uppercase tracking-wider">
@@ -25,17 +26,17 @@ export default function HeroSection() {
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                                {/* Standard Flow Option */}
+                                {/* Simple Form Flow - MVP Primary */}
                                 <Link
-                                    href="/character-creator"
+                                    href="/create"
                                     className="group bg-gradient-to-br from-primary to-primary/80 text-white px-6 py-4 rounded-2xl font-semibold hover:shadow-xl hover:shadow-primary/25 transition-all duration-300 flex flex-col items-center sm:items-start gap-2 cursor-pointer min-w-[200px]"
                                 >
                                     <div className="flex items-center gap-2">
                                         <Wand2 className="w-5 h-5" />
-                                        <span>Story Builder</span>
+                                        <span>Create Your Book</span>
                                     </div>
                                     <span className="text-xs font-normal text-white/80">
-                                        Create characters → Choose theme → Generate
+                                        Upload photos → Pick theme → Get your book
                                     </span>
                                 </Link>
 
@@ -54,6 +55,7 @@ export default function HeroSection() {
                                 </Link>
                             </div>
                         </div>
+
 
                         {/* Secondary Action */}
                         <div className="mt-6 flex justify-center lg:justify-start">
