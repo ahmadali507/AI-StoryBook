@@ -549,10 +549,10 @@ export async function uploadCharacterPhoto(
         };
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
-        return { success: false, error: "File too large. Maximum size is 5MB." };
+        return { success: false, error: "File too large. Maximum size is 50MB." };
     }
 
     try {
