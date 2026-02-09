@@ -183,22 +183,22 @@ export const TEXT_COMPLEXITY: Record<AgeRange, {
         promptHint: 'Write like a board book for infants. 1-5 words max per page. Use sounds and simple words.',
     },
     '2-4': {
-        wordsPerPage: 15,
+        wordsPerPage: 20,
         style: 'Simple sentences, rhyming optional, familiar concepts',
         vocabulary: 'simple',
-        promptHint: 'Write like a picture book for toddlers. 10-20 words per page. Simple sentences.',
+        promptHint: 'Write like a picture book for toddlers. 15-25 words per page. Simple sentences.',
     },
     '5-8': {
-        wordsPerPage: 40,
-        style: 'Full sentences, basic plot, dialogue allowed',
+        wordsPerPage: 100,
+        style: 'Rich sentences, engaging plot, dialogue, vivid descriptions',
         vocabulary: 'standard',
-        promptHint: 'Write like a children\'s picture book. 30-50 words per page. Include dialogue.',
+        promptHint: 'Write like a real children\'s book. 80-120 words per page. Include dialogue, action, and sensory details. Make the text substantial and immersive.',
     },
     '9-12': {
-        wordsPerPage: 80,
-        style: 'Rich vocabulary, complex plot, character development',
+        wordsPerPage: 180,
+        style: 'Rich vocabulary, complex plot, character introspection, immersive narrative',
         vocabulary: 'advanced',
-        promptHint: 'Write like a chapter book. 60-100 words per page. Rich descriptions.',
+        promptHint: 'Write like a young adult chapter book. 150-200 words per page. Rich descriptions, character thoughts, emotional depth, and immersive storytelling.',
     },
 };
 
@@ -224,10 +224,28 @@ export const THEME_OPTIONS: { id: Theme; name: string; emoji: string; descriptio
     { id: 'nature', name: 'Nature', emoji: '🌿', description: 'Exploring the natural world' },
 ];
 
-// Simplified art styles for MVP (4 options)
-export type MVPArtStyle = 'watercolor' | 'soft-illustration' | 'classic-storybook' | 'modern-cartoon';
+// Simplified art styles for MVP (5 options including Pixar 3D)
+export type MVPArtStyle = 'watercolor' | 'soft-illustration' | 'classic-storybook' | 'modern-cartoon' | 'pixar-3d';
 
 export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; prompt: string }[] = [
+    {
+        id: 'pixar-3d',
+        name: 'Pixar 3D Cinematic',
+        preview: '/art-styles/pixar-3d.png',
+        prompt: 'Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination, soft shadows, depth of field, warm tones, cinematic composition, volumetric lighting, subsurface scattering, professional Pixar/Disney quality animation, octane render, ray tracing',
+    },
+    {
+        id: 'soft-illustration',
+        name: 'Soft Illustration',
+        preview: '/art-styles/soft-illustration.png',
+        prompt: 'Pixar style 3D cinematic, soft digital illustration, rounded shapes, warm colors, cozy atmosphere, professional children\'s book art, gentle and inviting',
+    },
+    {
+        id: 'modern-cartoon',
+        name: 'Modern 3D Cartoon',
+        preview: '/art-styles/modern-cartoon.png',
+        prompt: 'Pixar style 3D cinematic, modern cartoon style, clean lines, vibrant colors, expressive characters, smooth gradients, professional animation quality, 3D render',
+    },
     {
         id: 'watercolor',
         name: 'Soft Watercolor',
@@ -235,22 +253,10 @@ export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; p
         prompt: 'Beautiful watercolor painting, soft edges, pastel colors, artistic, gentle lighting, high quality, children\'s book illustration',
     },
     {
-        id: 'soft-illustration',
-        name: 'Soft Illustration',
-        preview: '/art-styles/soft-illustration.png',
-        prompt: 'Soft digital illustration, rounded shapes, warm colors, cozy atmosphere, professional children\'s book art, gentle and inviting',
-    },
-    {
         id: 'classic-storybook',
         name: 'Classic Storybook',
         preview: '/art-styles/classic-storybook.png',
         prompt: 'Classic storybook illustration style, detailed backgrounds, timeless feel, golden hour lighting, reminiscent of beloved children\'s books',
-    },
-    {
-        id: 'modern-cartoon',
-        name: 'Modern Cartoon',
-        preview: '/art-styles/modern-cartoon.png',
-        prompt: 'Modern cartoon style, clean lines, vibrant colors, expressive characters, smooth gradients, professional animation quality',
     },
 ];
 

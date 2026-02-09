@@ -7,8 +7,11 @@ import {
     generateBackCoverSummary,
     generateIllustrationPromptForScene,
     generateCoverIllustrationPrompt,
+    generateCharacterVisualDescription,
+    getNegativePrompt,
     type StoryOutline,
-    type SceneOutline
+    type SceneOutline,
+    type CharacterVisualDescription
 } from "@/lib/text-generation";
 import { generateWithSeedream, generateBookCover } from "@/lib/replicate";
 import { getOrderCharacters } from "@/actions/order";
@@ -322,13 +325,26 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         const artStylePrompt = getArtStylePrompt(artStyle);
         const illustrations: { sceneNumber: number; url: string }[] = [];
 
-        // Track progress: Cover generation
+        // Track progress: Starting cover
         await updateGenerationProgress(orderId, {
             stage: 'cover',
             stageProgress: 0,
             message: 'Generating cover illustration...',
             startedAt
         });
+
+        // Generate character visual descriptions for consistency FIRST
+        // This is needed for both cover and scene illustrations
+        console.log(`[generateFullBook] Generating character descriptions for consistency...`);
+        const characterDescriptions: CharacterVisualDescription[] = [];
+        for (const char of characters) {
+            const desc = await generateCharacterVisualDescription(char);
+            characterDescriptions.push(desc);
+            console.log(`[generateFullBook] Character ${char.name}: ${desc.consistencyKeywords}`);
+        }
+
+        // Get appropriate negative prompt for the art style
+        const negativePrompt = getNegativePrompt(artStylePrompt);
 
         // Generate cover first (or use existing if already generated)
         let coverUrl = storybook.cover_url;
@@ -338,9 +354,10 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 storyOutline.title,
                 characters,
                 theme,
-                artStylePrompt
+                artStylePrompt,
+                characterDescriptions
             );
-            coverUrl = await generateBookCover(coverPrompt, globalSeed);
+            coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt);
         }
 
         await updateGenerationProgress(orderId, {
@@ -373,15 +390,17 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 stageProgress: Math.round((i / 12) * 100),
                 currentIllustration: i + 1,
                 totalIllustrations: 12,
-                message: `Painting illustration ${i + 1} of 12...`,
+                message: `Creating illustration ${i + 1} of 12...`,
                 startedAt
             });
 
+            // Use character descriptions for consistent appearance
             const illustrationPrompt = await generateIllustrationPromptForScene(
                 { ...scene, sceneDescription: pageText.visualPrompt },
                 characters,
                 artStylePrompt,
-                globalSeed
+                globalSeed,
+                characterDescriptions
             );
 
             // Use seed + scene number for consistency
@@ -390,7 +409,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 illustrationPrompt,
                 sceneSeed,
                 '4:3', // Landscape for scene illustrations
-                'blurry, bad quality, distorted, text, words, letters'
+                negativePrompt
             );
 
             illustrations.push({

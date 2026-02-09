@@ -3,23 +3,14 @@
 import React, { forwardRef, useCallback, useRef, useState, useEffect } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { BookPage, PageBasedStory } from "@/actions/library";
 
 interface BookReaderProps {
-    story: {
-        title: string;
-        author?: string;
-        coverImageUrl?: string;
-        chapters: {
-            title: string;
-            content: string;
-            illustrationUrl?: string;
-            illustrationPrompt?: string;
-        }[];
-    };
+    story: PageBasedStory;
     onPageChange?: (page: number) => void;
 }
 
-// Clean Modern Page Component
+// Base Page Component with consistent styling
 const Page = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
         <div
@@ -53,23 +44,11 @@ const Page = forwardRef<HTMLDivElement, any>((props, ref) => {
 });
 Page.displayName = "Page";
 
-// Text Page Component
+// Text Page Component - No chapter labels
 const TextPage = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
         <Page {...props} ref={ref}>
-            {/* Chapter header */}
-            {props.isChapterStart && (
-                <div className="mb-8 flex-shrink-0">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-1.5 h-8 bg-sky-600 rounded-sm"></div>
-                        <h2 className="font-sans text-2xl font-bold text-slate-900 uppercase tracking-tight leading-none">
-                            {props.chapterTitle}
-                        </h2>
-                    </div>
-                </div>
-            )}
-
-            {/* Body text */}
+            {/* Body text - clean, no chapter headers */}
             <div className="flex-1 text-justify font-sans text-sm leading-relaxed text-slate-700 overflow-hidden">
                 {props.content.split('\n\n').map((paragraph: string, pIndex: number) => (
                     <p key={pIndex} className="mb-4 last:mb-0">
@@ -82,12 +61,12 @@ const TextPage = forwardRef<HTMLDivElement, any>((props, ref) => {
 });
 TextPage.displayName = "TextPage";
 
-// Illustration Page Component
+// Illustration Page Component - No chapter labels
 const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
         <Page {...props} ref={ref}>
             <div className="h-full flex flex-col justify-center">
-                <div className="relative w-full aspect-[3/4] bg-slate-50 rounded-sm overflow-hidden border border-slate-100 shadow-inner">
+                <div className="relative w-full aspect-[4/3] bg-slate-50 rounded-sm overflow-hidden border border-slate-100 shadow-inner">
                     {props.illustrationUrl ? (
                         <img
                             src={props.illustrationUrl}
@@ -100,18 +79,34 @@ const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
                         </div>
                     )}
                 </div>
-                {props.chapterLabel && (
-                    <div className="mt-4 text-center">
-                        <span className="text-xs font-sans font-bold text-sky-600 uppercase tracking-widest">
-                            {props.chapterLabel}
-                        </span>
-                    </div>
-                )}
             </div>
         </Page>
     );
 });
 IllustrationPage.displayName = "IllustrationPage";
+
+// Title Page Component
+const TitlePage = forwardRef<HTMLDivElement, any>((props, ref) => {
+    const [title, dedication] = (props.text || "").split('\n\n');
+
+    return (
+        <Page {...props} ref={ref}>
+            <div className="h-full flex flex-col items-center justify-center text-center px-8">
+                <div className="w-16 h-1 bg-sky-500 mb-8"></div>
+                <h1 className="font-serif text-3xl md:text-4xl font-bold text-slate-900 mb-6 leading-tight">
+                    {title}
+                </h1>
+                {dedication && (
+                    <p className="font-serif text-lg text-slate-600 italic max-w-md">
+                        {dedication}
+                    </p>
+                )}
+                <div className="w-16 h-1 bg-sky-500 mt-8"></div>
+            </div>
+        </Page>
+    );
+});
+TitlePage.displayName = "TitlePage";
 
 // Cover Component
 const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
@@ -158,6 +153,22 @@ const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
 });
 Cover.displayName = "Cover";
 
+// End Page Component
+const EndPage = forwardRef<HTMLDivElement, any>((props, ref) => {
+    return (
+        <Page {...props} ref={ref}>
+            <div className="h-full flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-1 bg-sky-500 mb-8"></div>
+                <h2 className="font-serif text-4xl font-bold text-slate-900 mb-4">
+                    The End
+                </h2>
+                <p className="text-slate-500 text-sm">Thank you for reading!</p>
+            </div>
+        </Page>
+    );
+});
+EndPage.displayName = "EndPage";
+
 // Back Cover Component  
 const BackCover = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
@@ -166,10 +177,20 @@ const BackCover = forwardRef<HTMLDivElement, any>((props, ref) => {
             ref={ref}
             data-density="hard"
         >
-            <div className="h-full flex flex-col items-center justify-center px-16 text-center">
-                <div className="w-12 h-1 bg-sky-400 mb-8"></div>
-                <h3 className="font-sans text-3xl font-bold mb-4 tracking-tight">The End</h3>
-                <p className="font-sans text-sky-200 text-sm opacity-75">Created with AI Storybook</p>
+            <div className="h-full flex flex-col items-center justify-center px-12 text-center">
+                {props.text ? (
+                    <>
+                        <div className="w-12 h-1 bg-sky-400 mb-8"></div>
+                        <p className="font-sans text-lg text-sky-100 leading-relaxed max-w-md mb-8">
+                            {props.text}
+                        </p>
+                    </>
+                ) : null}
+                <div className="mt-auto mb-8">
+                    <p className="font-sans text-sky-200 text-sm opacity-75">
+                        Created with AI Storybook
+                    </p>
+                </div>
             </div>
         </div>
     );
@@ -196,129 +217,83 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
         if (onPageChange) onPageChange(e.data);
     }, [onPageChange]);
 
-    /**
-     * Improved text splitting that respects paragraph boundaries
-     * and ensures no text is cut off
-     */
-    const splitTextIntoPages = (content: string, isFirstPage: boolean = false) => {
-        const paragraphs = content.split('\n\n').filter(p => p.trim());
-        const pages: string[] = [];
-        let currentPage: string[] = [];
-
-        // Character limits (approximate based on page layout)
-        // First page has less space due to chapter header
-        const FIRST_PAGE_LIMIT = 1200;
-        const REGULAR_PAGE_LIMIT = 1800;
-
-        let currentCharCount = 0;
-        let isFirstPageOfChapter = isFirstPage;
-
-        for (const paragraph of paragraphs) {
-            const paragraphLength = paragraph.length;
-            const currentLimit = isFirstPageOfChapter ? FIRST_PAGE_LIMIT : REGULAR_PAGE_LIMIT;
-
-            // If adding this paragraph exceeds limit and we have content, create new page
-            if (currentCharCount + paragraphLength > currentLimit && currentPage.length > 0) {
-                // Save current page
-                pages.push(currentPage.join('\n\n'));
-                // Start new page with this paragraph
-                currentPage = [paragraph];
-                currentCharCount = paragraphLength;
-                isFirstPageOfChapter = false; // No longer first page
-            }
-            // If single paragraph is too long for one page, split it
-            else if (paragraphLength > currentLimit && currentPage.length === 0) {
-                // Split very long paragraph by sentences
-                const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
-                let tempPage: string[] = [];
-                let tempCount = 0;
-
-                for (const sentence of sentences) {
-                    const sentenceLength = sentence.length;
-
-                    if (tempCount + sentenceLength > currentLimit && tempPage.length > 0) {
-                        pages.push(tempPage.join(' '));
-                        tempPage = [sentence];
-                        tempCount = sentenceLength;
-                        isFirstPageOfChapter = false;
-                    } else {
-                        tempPage.push(sentence);
-                        tempCount += sentenceLength;
-                    }
-                }
-
-                if (tempPage.length > 0) {
-                    currentPage = [tempPage.join(' ')];
-                    currentCharCount = tempCount;
-                }
-            }
-            // Otherwise add paragraph to current page
-            else {
-                currentPage.push(paragraph);
-                currentCharCount += paragraphLength;
-            }
-        }
-
-        // Add remaining content as final page
-        if (currentPage.length > 0) {
-            pages.push(currentPage.join('\n\n'));
-        }
-
-        // Return at least one page
-        return pages.length > 0 ? pages : [''];
-    };
-
-    // Generate all pages for the book
+    // Generate all pages for the book from page-based structure
     const generatePages = () => {
-        const pages = [];
-        let pageNumber = 1;
+        const renderedPages: React.ReactElement[] = [];
+        let displayPageNumber = 1;
 
-        // Cover page
-        pages.push(
-            <Cover
-                key="cover"
-                title={story.title}
-                author={story.author}
-                coverUrl={story.coverImageUrl}
-            />
-        );
+        // Render each page based on its type
+        story.pages.forEach((page, index) => {
+            switch (page.type) {
+                case 'cover':
+                    renderedPages.push(
+                        <Cover
+                            key={`page-${index}`}
+                            title={story.title}
+                            author={story.author}
+                            coverUrl={page.illustrationUrl || story.coverImageUrl}
+                        />
+                    );
+                    break;
 
-        // Process each chapter
-        story.chapters.forEach((chapter, chapterIndex) => {
-            // Illustration page
-            pages.push(
-                <IllustrationPage
-                    key={`illust-${chapterIndex}`}
-                    number={pageNumber++}
-                    runningHeader={story.title}
-                    illustrationUrl={chapter.illustrationUrl}
-                    alt={`${chapter.title} illustration`}
-                    chapterLabel={`Chapter ${chapterIndex + 1}`}
-                />
-            );
+                case 'title':
+                    renderedPages.push(
+                        <TitlePage
+                            key={`page-${index}`}
+                            number={displayPageNumber++}
+                            runningHeader={story.title}
+                            text={page.text}
+                        />
+                    );
+                    break;
 
-            // Split chapter text into pages
-            const textPages = splitTextIntoPages(chapter.content, true);
+                case 'story':
+                    if (page.illustrationUrl) {
+                        // Illustration page
+                        renderedPages.push(
+                            <IllustrationPage
+                                key={`page-${index}`}
+                                number={displayPageNumber++}
+                                runningHeader={story.title}
+                                illustrationUrl={page.illustrationUrl}
+                                alt={`Scene ${page.sceneNumber} illustration`}
+                            />
+                        );
+                    } else if (page.text) {
+                        // Text page
+                        renderedPages.push(
+                            <TextPage
+                                key={`page-${index}`}
+                                number={displayPageNumber++}
+                                runningHeader={story.title}
+                                content={page.text}
+                            />
+                        );
+                    }
+                    break;
 
-            textPages.forEach((pageContent, pageIndex) => {
-                pages.push(
-                    <TextPage
-                        key={`text-${chapterIndex}-${pageIndex}-${pageNumber}`}
-                        number={pageNumber++}
-                        runningHeader={story.title}
-                        content={pageContent}
-                        isChapterStart={pageIndex === 0}
-                        chapterLabel={`Chapter ${chapterIndex + 1}`}
-                        chapterTitle={chapter.title}
-                    />
-                );
-            });
+                case 'end':
+                    renderedPages.push(
+                        <EndPage
+                            key={`page-${index}`}
+                            number={displayPageNumber++}
+                            runningHeader={story.title}
+                        />
+                    );
+                    break;
+
+                case 'back':
+                    renderedPages.push(
+                        <BackCover
+                            key={`page-${index}`}
+                            text={page.text}
+                        />
+                    );
+                    break;
+            }
         });
 
-        // Back cover
-        pages.push(<BackCover key="back-cover" />);
-
-        return pages;
+        return renderedPages;
     };
 
     // Memoize generated pages

@@ -10,10 +10,35 @@ import { Mail, Lock, Loader2 } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/schemas/auth";
 import { signIn } from "@/actions/auth";
 import { Input } from "@/app/components/common";
+import { useToast } from "@/providers/ToastProvider";
 import SocialLogin from "./SocialLogin";
+
+// Convert technical error messages to user-friendly ones
+function getFriendlyErrorMessage(error: string): string {
+    const errorLower = error.toLowerCase();
+
+    if (errorLower.includes("invalid login credentials") || errorLower.includes("invalid password")) {
+        return "The email or password you entered is incorrect. Please try again.";
+    }
+    if (errorLower.includes("email not confirmed")) {
+        return "Please check your email and confirm your account before signing in.";
+    }
+    if (errorLower.includes("user not found") || errorLower.includes("no user")) {
+        return "We couldn't find an account with that email. Would you like to sign up?";
+    }
+    if (errorLower.includes("rate limit") || errorLower.includes("too many")) {
+        return "Too many attempts. Please wait a moment and try again.";
+    }
+    if (errorLower.includes("network") || errorLower.includes("fetch")) {
+        return "Connection issue. Please check your internet and try again.";
+    }
+
+    return "Something went wrong. Please try again.";
+}
 
 export default function LoginForm() {
     const router = useRouter();
+    const toast = useToast();
     const [serverError, setServerError] = useState<string | null>(null);
 
     const {
@@ -32,13 +57,19 @@ export default function LoginForm() {
         mutationFn: signIn,
         onSuccess: (result) => {
             if (result.success && result.redirectTo) {
+                toast.success("Welcome back! 👋");
                 router.push(result.redirectTo);
             } else if (result.error) {
-                setServerError(result.error);
+                // Show user-friendly error messages
+                const friendlyMessage = getFriendlyErrorMessage(result.error);
+                toast.error(friendlyMessage);
+                setServerError(friendlyMessage);
             }
         },
-        onError: (error) => {
-            setServerError(error.message || "An unexpected error occurred");
+        onError: () => {
+            const message = "Something went wrong. Please try again.";
+            toast.error(message);
+            setServerError(message);
         },
     });
 

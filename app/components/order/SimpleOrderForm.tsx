@@ -7,6 +7,7 @@ import CharacterUploadList from "./CharacterUploadList";
 import AgeRangeSelector from "./AgeRangeSelector";
 import ThemeSelector from "./ThemeSelector";
 import ArtStyleSelector from "./ArtStyleSelector";
+import { useToast } from "@/providers/ToastProvider";
 import type {
     SimpleCharacter,
     AgeRange,
@@ -21,6 +22,26 @@ import {
 } from "@/actions/order";
 import { createOrderCheckoutSession } from "@/actions/stripe";
 
+// Convert technical errors to user-friendly messages
+function getFriendlyOrderErrorMessage(error: string): string {
+    const errorLower = error.toLowerCase();
+
+    if (errorLower.includes("upload") || errorLower.includes("photo")) {
+        return "We had trouble with your photo. Please try uploading again.";
+    }
+    if (errorLower.includes("cover") || errorLower.includes("generate") || errorLower.includes("image")) {
+        return "We couldn't create your cover right now. Please try again in a moment.";
+    }
+    if (errorLower.includes("checkout") || errorLower.includes("payment") || errorLower.includes("stripe")) {
+        return "There was an issue with checkout. Please try again.";
+    }
+    if (errorLower.includes("network") || errorLower.includes("fetch") || errorLower.includes("timeout")) {
+        return "Connection issue. Please check your internet and try again.";
+    }
+
+    return "Something went wrong. Please try again.";
+}
+
 const STEPS = [
     { id: 1, label: "Characters", description: "Add your characters" },
     { id: 2, label: "Settings", description: "Age, theme & style" },
@@ -29,6 +50,7 @@ const STEPS = [
 
 export default function SimpleOrderForm() {
     const router = useRouter();
+    const toast = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -122,8 +144,13 @@ export default function SimpleOrderForm() {
 
             setCoverUrl(coverResult.coverUrl);
             setCurrentStep(3);
+            toast.success("Your book cover looks amazing! 🎨");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Something went wrong");
+            const friendlyMessage = getFriendlyOrderErrorMessage(
+                err instanceof Error ? err.message : "Something went wrong"
+            );
+            toast.error(friendlyMessage);
+            setError(friendlyMessage);
         } finally {
             setIsLoading(false);
         }
@@ -146,7 +173,11 @@ export default function SimpleOrderForm() {
             // Redirect to Stripe Checkout
             window.location.href = result.checkoutUrl;
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to start checkout");
+            const friendlyMessage = getFriendlyOrderErrorMessage(
+                err instanceof Error ? err.message : "Failed to start checkout"
+            );
+            toast.error(friendlyMessage);
+            setError(friendlyMessage);
             setIsLoading(false);
         }
     };

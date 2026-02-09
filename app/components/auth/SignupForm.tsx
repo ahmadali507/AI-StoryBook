@@ -10,11 +10,36 @@ import { Mail, Lock, User, Loader2 } from "lucide-react";
 import { signupSchema, type SignupInput } from "@/schemas/auth";
 import { signUp } from "@/actions/auth";
 import { Input } from "@/app/components/common";
+import { useToast } from "@/providers/ToastProvider";
 import SocialLogin from "./SocialLogin";
 import PasswordStrength from "./PasswordStrength";
 
+// Convert technical error messages to user-friendly ones
+function getFriendlySignupErrorMessage(error: string): string {
+    const errorLower = error.toLowerCase();
+
+    if (errorLower.includes("already registered") || errorLower.includes("already exists")) {
+        return "This email is already registered. Try signing in instead.";
+    }
+    if (errorLower.includes("password") && errorLower.includes("weak")) {
+        return "Please choose a stronger password with letters, numbers, and symbols.";
+    }
+    if (errorLower.includes("invalid email") || errorLower.includes("email format")) {
+        return "Please enter a valid email address.";
+    }
+    if (errorLower.includes("rate limit") || errorLower.includes("too many")) {
+        return "Too many attempts. Please wait a moment and try again.";
+    }
+    if (errorLower.includes("network") || errorLower.includes("fetch")) {
+        return "Connection issue. Please check your internet and try again.";
+    }
+
+    return "Something went wrong. Please try again.";
+}
+
 export default function SignupForm() {
     const router = useRouter();
+    const toast = useToast();
     const [serverError, setServerError] = useState<string | null>(null);
 
     const {
@@ -38,13 +63,18 @@ export default function SignupForm() {
         mutationFn: signUp,
         onSuccess: (result) => {
             if (result.success && result.redirectTo) {
+                toast.success("Account created! Welcome to StoryMagic ✨");
                 router.push(result.redirectTo);
             } else if (result.error) {
-                setServerError(result.error);
+                const friendlyMessage = getFriendlySignupErrorMessage(result.error);
+                toast.error(friendlyMessage);
+                setServerError(friendlyMessage);
             }
         },
-        onError: (error) => {
-            setServerError(error.message || "An unexpected error occurred");
+        onError: () => {
+            const message = "Something went wrong. Please try again.";
+            toast.error(message);
+            setServerError(message);
         },
     });
 

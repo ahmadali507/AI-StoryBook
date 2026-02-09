@@ -7,11 +7,13 @@ import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle } fr
 import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
+import { useToast } from "@/providers/ToastProvider";
 
 export default function OrderStatusPage() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const toast = useToast();
     const orderId = params.id as string;
 
     // Use refs to track across re-renders (but these reset on page refresh - that's OK)
@@ -63,6 +65,7 @@ export default function OrderStatusPage() {
                         // Book is ready - redirect to story
                         setStatusMessage("Your book is ready!");
                         if (orderData.storybook?.id) {
+                            toast.success("Your book is ready! Enjoy reading! 📚");
                             router.push(`/story/${orderData.storybook.id}`);
                         }
                         break;
@@ -76,17 +79,25 @@ export default function OrderStatusPage() {
                     case "paid":
                         // Paid but generation not started yet - trigger it
                         setStatusMessage("Starting book generation...");
+                        // Only show this toast once if we just came from payment
+                        if (isPaidFromUrl) {
+                            toast.success("Payment verified! Starting generation... 🚀");
+                        }
+
                         const genResult = await triggerBookGeneration(orderId);
                         if (genResult.success) {
                             setStatusMessage("Generating your personalized storybook...");
                         } else {
-                            setError(genResult.error || "Failed to start generation");
+                            const errorMsg = "Failed to start generation";
+                            setError(genResult.error || errorMsg);
+                            toast.error("We couldn't start generating your book. Please contact support.");
                         }
                         break;
 
                     case "failed":
                         // Generation failed
                         setError("Generation failed. Please contact support.");
+                        toast.error("Something went wrong with generation. We're looking into it.");
                         break;
 
                     default:
@@ -97,20 +108,27 @@ export default function OrderStatusPage() {
                                 const result = await verifyOrderPayment(orderId, sessionId);
                                 if (result.success && result.paid) {
                                     setStatusMessage("Starting book generation...");
+                                    toast.success("Payment successful! Creating your book... ✨");
+
                                     const genResult = await triggerBookGeneration(orderId);
                                     if (genResult.success) {
                                         setStatusMessage("Generating your personalized storybook...");
                                         // Reload to get updated status
                                         await loadOrder();
                                     } else {
-                                        setError(genResult.error || "Failed to start generation");
+                                        const errorMsg = "Failed to start generation";
+                                        setError(genResult.error || errorMsg);
+                                        toast.error("Payment verified, but we couldn't start generation. Please contact support.");
                                     }
                                 } else {
-                                    setError(result.error || "Payment verification failed");
+                                    const errorMsg = result.error || "Payment verification failed";
+                                    setError(errorMsg);
+                                    toast.error("We couldn't verify your payment. Please contact support.");
                                 }
                             } catch (err) {
                                 console.error("[OrderPage] Payment verification error:", err);
                                 setError("Error verifying payment");
+                                toast.error("Something went wrong verifying your payment. Please try again.");
                             }
                         } else {
                             setStatusMessage(`Order status: ${orderData.status?.replace("_", " ") || "Pending"}`);
@@ -142,6 +160,7 @@ export default function OrderStatusPage() {
                 if (orderData?.status === "complete") {
                     console.log("[OrderPage] Generation complete! Redirecting...");
                     setStatusMessage("Your book is ready!");
+                    toast.success("Your book is ready! Enjoy reading! 📚");
                     clearInterval(interval);
 
                     if (orderData.storybook?.id) {

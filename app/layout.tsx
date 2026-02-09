@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, Inter, Cinzel_Decorative, Crimson_Text } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
+import { ToastProvider } from "@/providers/ToastProvider";
 import "./globals.css";
 
 const fredoka = Fredoka({
@@ -42,7 +43,9 @@ export default function RootLayout({
       <body
         className={`${fredoka.variable} ${inter.variable} ${cinzel.variable} ${crimson.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );

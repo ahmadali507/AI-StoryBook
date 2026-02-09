@@ -2,23 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-// Interfaces for BookReader
-interface BookChapter {
-    title: string;
-    content: string;
-    illustrationUrl?: string;
-    illustrationPrompt?: string;
-}
-
-interface ReaderStory {
-    title: string;
-    author?: string;
-    coverImageUrl?: string;
-    chapters: BookChapter[];
-}
-
 // Interface for stored content (matching book-generation.ts)
-interface BookPage {
+export interface BookPage {
     pageNumber: number;
     type: 'cover' | 'title' | 'story' | 'end' | 'back';
     text?: string;
@@ -26,11 +11,20 @@ interface BookPage {
     sceneNumber?: number;
 }
 
-interface GeneratedBook {
+export interface GeneratedBook {
     title: string;
     dedication: string;
     pages: BookPage[];
     pdfUrl?: string;
+}
+
+// New page-based reader interface
+export interface PageBasedStory {
+    title: string;
+    author?: string;
+    coverImageUrl?: string;
+    dedication?: string;
+    pages: BookPage[];
 }
 
 /**
@@ -67,9 +61,9 @@ export async function getUserOrders() {
 }
 
 /**
- * Get a specific storybook formatted for the BookReader
+ * Get a specific storybook formatted for the BookReader (page-based)
  */
-export async function getBookForReader(storyId: string): Promise<ReaderStory | null> {
+export async function getBookForReader(storyId: string): Promise<PageBasedStory | null> {
     const supabase = await createClient();
 
     // Fetch storybook with content
@@ -90,20 +84,13 @@ export async function getBookForReader(storyId: string): Promise<ReaderStory | n
         return null;
     }
 
-    // Transform pages into chapters for BookReader
-    const chapters: BookChapter[] = bookContent.pages
-        .filter(page => page.type === 'story')
-        .map((page, index) => ({
-            title: `Chapter ${index + 1}`, // Or use Scene Number
-            content: page.text || "",
-            illustrationUrl: page.illustrationUrl
-        }));
-
+    // Return pages directly for page-based rendering
     return {
-        title: storybook.title || "Untitled Story",
-        author: "AI Storybook", // Could be user's name if we had it
+        title: storybook.title || bookContent.title || "Untitled Story",
+        author: "AI Storybook",
         coverImageUrl: storybook.cover_url,
-        chapters
+        dedication: bookContent.dedication,
+        pages: bookContent.pages
     };
 }
 
