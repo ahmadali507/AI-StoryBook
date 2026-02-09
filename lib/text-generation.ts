@@ -155,11 +155,11 @@ ${ageRange === '9-12' ? `
 - Write 150-200 words - this is essential for a chapter book feel
 - Include rich, immersive descriptions of settings and atmosphere
 - Show character introspection - thoughts, doubts, hopes, fears
-- Use sophisticated vocabulary appropriate for pre-teens
+- Use clear, easy-to-understand vocabulary but complex sentence structures (avoid overly difficult words)
 - Create complex emotional moments and character development
 - Include dialogue that reveals character personality
 - Balance action with reflection and description
-- The text should feel like a proper young adult novel
+- The text should feel like a proper young adult novel but accessible
 ` : ''}
 
 Respond in JSON format:
@@ -256,6 +256,7 @@ export interface CharacterVisualDescription {
     name: string;
     description: string;
     consistencyKeywords: string;
+    visualPrompt: string;
 }
 
 /**
@@ -278,7 +279,8 @@ Focus on permanent visual features that should remain the same in every scene.
 Respond in JSON format:
 {
   "description": "A detailed 2-3 sentence description of the character's appearance including: approximate age (if human), hair color and style, eye color, skin tone, face shape, typical expression, distinctive features",
-  "consistencyKeywords": "comma-separated keywords for consistent generation: hair_color, eye_color, skin_tone, clothing_style, any_distinctive_features"
+  "consistencyKeywords": "comma-separated keywords for consistent generation: hair_color, eye_color, skin_tone, clothing_style, any_distinctive_features",
+  "visualPrompt": "A concise, comma-separated visual description string optimized for image generation prompts (e.g. 'cute boy, messy brown hair, blue hoodie, denim jeans, sneakers, happy expression')"
 }`;
 
     try {
@@ -290,7 +292,8 @@ Respond in JSON format:
             return {
                 name: character.name,
                 description: parsed.description,
-                consistencyKeywords: parsed.consistencyKeywords
+                consistencyKeywords: parsed.consistencyKeywords,
+                visualPrompt: parsed.visualPrompt || parsed.consistencyKeywords
             };
         }
     } catch (e) {
@@ -301,7 +304,8 @@ Respond in JSON format:
     return {
         name: character.name,
         description: `${character.name}, a ${genderDesc} character`,
-        consistencyKeywords: `${genderDesc}, friendly expression, natural look`
+        consistencyKeywords: `${genderDesc}, friendly expression, natural look`,
+        visualPrompt: `${genderDesc}, friendly expression, natural look`
     };
 }
 

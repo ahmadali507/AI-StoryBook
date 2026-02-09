@@ -159,20 +159,45 @@ interface GeneratedBook {
  */
 function getArtStylePrompt(artStyle: MVPArtStyle): string {
     const style = MVP_ART_STYLES.find(s => s.id === artStyle);
-    if (!style) return "children's book illustration style";
+    if (!style) return "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed";
 
     switch (artStyle) {
-        case 'watercolor':
-            return "soft watercolor children's book illustration, gentle color washes, dreamy atmosphere, delicate brushstrokes";
-        case 'soft-illustration':
-            return "warm cozy illustration with rounded shapes, soft colors, gentle shading, Pixar-style warmth";
-        case 'classic-storybook':
+        case 'pixar-3d':
+            return "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination. No text, no logos.";
+        case 'storybook':
             return "classic storybook illustration style, detailed linework, rich colors, timeless quality";
-        case 'modern-cartoon':
-            return "modern cartoon style, vibrant colors, clean lines, expressive characters, contemporary children's book";
         default:
             return "children's book illustration style";
     }
+}
+
+/**
+ * Build a structured prompt for Seedream 4.5 with character references
+ */
+function buildPixarPrompt(
+    sceneDescription: string,
+    characters: SimpleCharacter[],
+    characterDescriptions: CharacterVisualDescription[],
+    lighting: string = "Cinematic composition, soft shadows, depth of field, warm tones"
+): string {
+    // 1. Scene Setting
+    let prompt = `Pixar style 3D cinematic scene. ${sceneDescription}, ${lighting}.\n\n`;
+
+    // 2. Character Actions (Mapped to References)
+    characters.forEach((char, index) => {
+        // Find specific description for this character
+        const charDesc = characterDescriptions.find(d => d.name === char.name);
+        const appearance = charDesc ? charDesc.visualPrompt : char.appearance;
+
+        // This format explicitly tells Seedream "Character X" corresponds to "reference image X"
+        // provided in the `image_input` array
+        prompt += `Character ${index + 1}: [reference image ${index + 1}] – ${char.name}, ${appearance}\n`;
+    });
+
+    // 3. Style enforcement
+    prompt += `\nHigh quality 3D render, ultra detailed, global illumination. No text, no logos.`;
+
+    return prompt;
 }
 
 /**
@@ -196,7 +221,8 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                     art_style,
                     theme,
                     age_range,
-                    global_seed
+                    global_seed,
+                    cover_url
                 )
             `)
             .eq("id", orderId)
@@ -219,8 +245,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
 
         const ageRange = (storybook.age_range || '5-8') as AgeRange;
         const theme = (storybook.theme || 'adventure') as Theme;
-        const artStyle = (storybook.art_style || 'soft-illustration') as MVPArtStyle;
+        const artStyle = (storybook.art_style || 'pixar-3d') as MVPArtStyle;
         const globalSeed = storybook.global_seed || Math.floor(Math.random() * 1000000);
+        const referenceImages = characters.map(c => c.photoUrl).filter(url => !!url) as string[];
 
         console.log(`[generateFullBook] Generating story for age ${ageRange}, theme ${theme}`);
 
@@ -349,7 +376,13 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         // Generate cover first (or use existing if already generated)
         let coverUrl = storybook.cover_url;
         if (!coverUrl) {
-            console.log(`[generateFullBook] Generating cover illustration`);
+            console.log(`[generateFullBook] Generating cover illustration (no existing cover found)`);
+
+            // Prioritize AI avatar if available, otherwise use photo
+            const referenceImages = characters
+                .map(c => c.aiAvatarUrl || c.photoUrl)
+                .filter(url => !!url) as string[];
+
             const coverPrompt = await generateCoverIllustrationPrompt(
                 storyOutline.title,
                 characters,
@@ -357,7 +390,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 artStylePrompt,
                 characterDescriptions
             );
-            coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt);
+            coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
+        } else {
+            console.log(`[generateFullBook] Reusing existing cover illustration: ${coverUrl}`);
         }
 
         await updateGenerationProgress(orderId, {
@@ -394,12 +429,17 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 startedAt
             });
 
-            // Use character descriptions for consistent appearance
-            const illustrationPrompt = await generateIllustrationPromptForScene(
-                { ...scene, sceneDescription: pageText.visualPrompt },
+            // Prioritize AI avatar if available, otherwise use photo
+            const referenceImages = characters
+                .map(c => c.aiAvatarUrl || c.photoUrl)
+                .filter(url => !!url) as string[];
+
+            console.log(`[generateFullBook] Using ${referenceImages.length} reference images for scene ${i + 1}`);
+
+            // Construct specific prompt using the structured builder
+            const illustrationPrompt = buildPixarPrompt(
+                pageText.visualPrompt, // Use the visual prompt generated by LLM as scene description base
                 characters,
-                artStylePrompt,
-                globalSeed,
                 characterDescriptions
             );
 
@@ -409,7 +449,8 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 illustrationPrompt,
                 sceneSeed,
                 '4:3', // Landscape for scene illustrations
-                negativePrompt
+                negativePrompt,
+                referenceImages // Pass the array of image URLs!
             );
 
             illustrations.push({
@@ -598,21 +639,32 @@ export async function generateCoverForOrder(orderId: string): Promise<{ success:
             return { success: false, error: "Storybook not found" };
         }
 
-        // Get characters
-        const characters = await getOrderCharacters(orderId);
-        if (characters.length === 0) {
+        // Get characters and sort so Main character is first (crucial for [reference image 1])
+        const rawCharacters = await getOrderCharacters(orderId);
+        if (rawCharacters.length === 0) {
             return { success: false, error: "No characters found" };
         }
 
+        const characters = rawCharacters.sort((a, b) => {
+            if (a.role === 'main') return -1;
+            if (b.role === 'main') return 1;
+            return 0;
+        });
+
         const theme = (storybook.theme || 'adventure') as Theme;
-        const artStyle = (storybook.art_style || 'soft-illustration') as MVPArtStyle;
+        const artStyle = (storybook.art_style || 'pixar-3d') as MVPArtStyle;
         const globalSeed = storybook.global_seed || Math.floor(Math.random() * 1000000);
+
+        // Use AI Avatar if available, otherwise photo
+        const referenceImages = characters
+            .map(c => c.aiAvatarUrl || c.photoUrl)
+            .filter(url => !!url) as string[];
 
         // Generate title if not provided
         let title = storybook.title || "My Personalized Story";
         if (title === "My Personalized Story") {
             // Generate a better title based on theme and main character
-            const mainChar = characters.find(c => c.role === 'main') || characters[0];
+            const mainChar = characters[0]; // First one is main due to sort
             title = `${mainChar.name}'s ${theme.charAt(0).toUpperCase() + theme.slice(1)} Adventure`;
 
             await supabase
@@ -634,7 +686,8 @@ export async function generateCoverForOrder(orderId: string): Promise<{ success:
         const coverUrl = await generateBookCover(
             coverPrompt,
             globalSeed,
-            'blurry, bad quality, distorted, text, words, letters'
+            'blurry, bad quality, distorted, text, words, letters',
+            referenceImages
         );
 
         // Update storybook with cover

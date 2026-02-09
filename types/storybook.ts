@@ -1,4 +1,9 @@
 // Character types
+export interface CharacterVisualDescription {
+    name: string;
+    visualPrompt: string;
+}
+
 export interface CharacterAppearance {
     hairStyle: string;
     hairColor: string;
@@ -122,6 +127,7 @@ export interface GenerateCharacterSheetRequest {
     personality: string[];
     artStyle: ArtStyle;
     additionalDetails?: string;
+    referenceImageUrl?: string;
 }
 
 export interface GenerateStoryOutlineRequest {
@@ -154,6 +160,8 @@ export interface SimpleCharacter {
     name: string;
     photoUrl: string;
     aiAvatarUrl?: string;
+    referenceImageUrl?: string; // For consistency
+    appearance?: string; // Text description for prompt
     gender: Gender;
     entityType: EntityType;
     role: CharacterRole;
@@ -224,8 +232,8 @@ export const THEME_OPTIONS: { id: Theme; name: string; emoji: string; descriptio
     { id: 'nature', name: 'Nature', emoji: '🌿', description: 'Exploring the natural world' },
 ];
 
-// Simplified art styles for MVP (5 options including Pixar 3D)
-export type MVPArtStyle = 'watercolor' | 'soft-illustration' | 'classic-storybook' | 'modern-cartoon' | 'pixar-3d';
+// Simplified art styles for MVP (2 options)
+export type MVPArtStyle = 'pixar-3d' | 'storybook';
 
 export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; prompt: string }[] = [
     {
@@ -235,28 +243,10 @@ export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; p
         prompt: 'Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination, soft shadows, depth of field, warm tones, cinematic composition, volumetric lighting, subsurface scattering, professional Pixar/Disney quality animation, octane render, ray tracing',
     },
     {
-        id: 'soft-illustration',
-        name: 'Soft Illustration',
-        preview: '/art-styles/soft-illustration.png',
-        prompt: 'Pixar style 3D cinematic, soft digital illustration, rounded shapes, warm colors, cozy atmosphere, professional children\'s book art, gentle and inviting',
-    },
-    {
-        id: 'modern-cartoon',
-        name: 'Modern 3D Cartoon',
-        preview: '/art-styles/modern-cartoon.png',
-        prompt: 'Pixar style 3D cinematic, modern cartoon style, clean lines, vibrant colors, expressive characters, smooth gradients, professional animation quality, 3D render',
-    },
-    {
-        id: 'watercolor',
-        name: 'Soft Watercolor',
-        preview: '/art-styles/watercolor.png',
-        prompt: 'Beautiful watercolor painting, soft edges, pastel colors, artistic, gentle lighting, high quality, children\'s book illustration',
-    },
-    {
-        id: 'classic-storybook',
-        name: 'Classic Storybook',
+        id: 'storybook',
+        name: 'Storybook',
         preview: '/art-styles/classic-storybook.png',
-        prompt: 'Classic storybook illustration style, detailed backgrounds, timeless feel, golden hour lighting, reminiscent of beloved children\'s books',
+        prompt: 'Classic storybook illustration style, detailed backgrounds, timeless feel, golden hour lighting, reminiscent of beloved children\'s books, highly detailed, masterpiece',
     },
 ];
 

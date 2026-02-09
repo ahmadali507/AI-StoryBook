@@ -37,7 +37,10 @@ export async function generateCharacterSheet(
         data.additionalDetails
     );
 
-    const imageUrl = await generateSheet(sheetPrompt, seed);
+    // Pass the user uploaded image as a reference if available
+    const imageInput = data.referenceImageUrl ? [data.referenceImageUrl] : undefined;
+
+    const imageUrl = await generateSheet(sheetPrompt, seed, undefined, imageInput);
 
     return {
         imageUrl,
@@ -63,7 +66,7 @@ export async function saveCharacter(
         hasReferenceImageUrl: !!character.referenceImageUrl,
     });
     console.log('[saveCharacter] ========================================');
-    
+
     const supabase = await createClient();
 
     const {
@@ -74,7 +77,7 @@ export async function saveCharacter(
         console.error('[saveCharacter] Not authenticated');
         return { success: false, error: "Not authenticated" };
     }
-    
+
     console.log('[saveCharacter] User authenticated:', user.id);
 
     const characterId = randomUUID(); // Generate UUID for character
@@ -107,7 +110,7 @@ export async function saveCharacter(
         seed_number: character.seedNumber,
         reference_image_url: permReferenceUrl,
     };
-    
+
     console.log('[saveCharacter] Inserting into database with ID:', characterId);
     console.log('[saveCharacter] Full insert data:', JSON.stringify(characterInsertData, null, 2));
 
@@ -120,7 +123,7 @@ export async function saveCharacter(
         console.error('[saveCharacter] Failed to insert character with ID:', characterId);
         return { success: false, error: error.message };
     }
-    
+
     console.log('[saveCharacter] ========================================');
     console.log('[saveCharacter] ✓ Successfully saved character');
     console.log('[saveCharacter] Character ID:', characterId);
@@ -227,4 +230,37 @@ export async function deleteCharacter(
     }
 
     return { success: true };
+}
+
+/**
+ * Generate a specialized avatar from a photo for book consistency
+ */
+export async function generateAvatarFromPhoto(
+    photoUrl: string,
+    name: string,
+    gender: string,
+    entityType: string,
+    artStyle: string
+): Promise<string> {
+    const { generateWithSeedream } = await import("@/lib/replicate");
+
+    // Construct a specific prompt for the avatar
+    // We want a clean, neutral background character portrait that defines the style
+    const prompt = `Pixar style 3D render of ${name}, a cute ${gender} ${entityType}. 
+    Close-up character portrait, neutral expression, facing forward.
+    High quality, ultra detailed, global illumination.
+    [reference image 1]
+    `;
+
+    const seed = Math.floor(Math.random() * 1000000);
+
+    const avatarUrl = await generateWithSeedream(
+        prompt,
+        seed,
+        '1:1', // Square for avatar
+        'blurry, low quality, distorted, text, watermark',
+        [photoUrl] // Pass the original photo as reference
+    );
+
+    return avatarUrl;
 }

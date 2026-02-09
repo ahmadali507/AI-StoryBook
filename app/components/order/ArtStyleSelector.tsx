@@ -32,8 +32,8 @@ export default function ArtStyleSelector({
                         key={style.id}
                         onClick={() => onSelect(style.id)}
                         className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-200 group ${selected === style.id
-                                ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/20"
-                                : "border-gray-200 hover:border-primary/50"
+                            ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/20"
+                            : "border-gray-200 hover:border-primary/50"
                             }`}
                     >
                         {/* Selection indicator */}
@@ -59,23 +59,16 @@ export default function ArtStyleSelector({
                         <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
                             {/* Placeholder gradient based on style */}
                             <div
-                                className={`absolute inset-0 ${style.id === "watercolor"
-                                        ? "bg-gradient-to-br from-pink-100 via-blue-100 to-purple-100"
-                                        : style.id === "soft-illustration"
-                                            ? "bg-gradient-to-br from-orange-100 via-yellow-100 to-pink-100"
-                                            : style.id === "classic-storybook"
-                                                ? "bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100"
-                                                : "bg-gradient-to-br from-blue-100 via-green-100 to-teal-100"
+                                className={`absolute inset-0 ${style.id === "pixar-3d"
+                                    ? "bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100"
+                                    : "bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100"
                                     }`}
                             />
 
                             {/* Style icon */}
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <span className="text-5xl opacity-30">
-                                    {style.id === "watercolor" && "🖌️"}
-                                    {style.id === "soft-illustration" && "🎨"}
-                                    {style.id === "classic-storybook" && "📚"}
-                                    {style.id === "modern-cartoon" && "✏️"}
+                                    {style.id === "pixar-3d" ? "�" : "📚"}
                                 </span>
                             </div>
                         </div>
@@ -83,14 +76,14 @@ export default function ArtStyleSelector({
                         {/* Label */}
                         <div
                             className={`p-3 text-center ${selected === style.id
-                                    ? "bg-primary/5"
-                                    : "bg-white"
+                                ? "bg-primary/5"
+                                : "bg-white"
                                 }`}
                         >
                             <span
                                 className={`font-medium text-sm ${selected === style.id
-                                        ? "text-primary"
-                                        : "text-gray-700"
+                                    ? "text-primary"
+                                    : "text-gray-700"
                                     }`}
                             >
                                 {style.name}
@@ -107,14 +100,10 @@ export default function ArtStyleSelector({
                         <span className="font-semibold">
                             {MVP_ART_STYLES.find((s) => s.id === selected)?.name}:
                         </span>{" "}
-                        {selected === "watercolor" &&
-                            "Soft, dreamy illustrations with gentle color washes. Perfect for bedtime stories."}
-                        {selected === "soft-illustration" &&
-                            "Warm, cozy artwork with rounded shapes. Great for younger children."}
-                        {selected === "classic-storybook" &&
-                            "Timeless, detailed illustrations like beloved children's classics."}
-                        {selected === "modern-cartoon" &&
-                            "Vibrant, expressive characters with clean, modern lines."}
+                        {selected === "pixar-3d" &&
+                            "Cinematic 3D style like your favorite animated movies. Vibrant, detailed, and full of life."}
+                        {selected === "storybook" &&
+                            "Timeless, detailed illustrations like beloved children's classics. Perfect for bedtime stories."}
                     </p>
                 </div>
             )}

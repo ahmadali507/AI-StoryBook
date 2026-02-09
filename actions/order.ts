@@ -650,9 +650,11 @@ export async function generateCoverPreview(
 
         // Art style mapping
         const artStylePrompts: Record<string, string> = {
+            "pixar-3d": "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination",
+            "storybook": "classic children's book illustration style, warm and inviting",
+            // Legacy fallbacks
             "watercolor": "soft watercolor painting style, gentle colors, dreamy atmosphere",
             "digital-art": "vibrant digital art style, rich colors, polished illustration",
-            "storybook": "classic children's book illustration style, warm and inviting",
             "cartoon": "fun cartoon style, bold colors, expressive characters",
             "realistic": "detailed realistic illustration, lifelike characters",
             "anime": "anime-inspired illustration, expressive eyes, dynamic poses"
@@ -673,6 +675,42 @@ export async function generateCoverPreview(
         const title = order.storybooks?.title || `${mainChar.name}'s Adventure`;
         const seed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
 
+        // Generate AI Avatar if missing and photo is available
+        const referenceImages: string[] = [];
+
+        for (const char of characters) {
+            if (char.aiAvatarUrl) {
+                referenceImages.push(char.aiAvatarUrl);
+            } else if (char.photoUrl) {
+                console.log(`[generateCoverPreview] Generating avatar for ${char.name}...`);
+                try {
+                    // Import helper dynamically to avoid circular dependencies if any
+                    const { generateAvatarFromPhoto } = await import("@/actions/character");
+
+                    const avatarUrl = await generateAvatarFromPhoto(
+                        char.photoUrl,
+                        char.name,
+                        char.gender,
+                        char.entityType,
+                        artStyle
+                    );
+
+                    // Save to DB (using the imported function from this file or character file?)
+                    // Actually updateCharacterAvatar is exported from THIS file (actions/order.ts)
+                    await updateCharacterAvatar(char.id!, avatarUrl);
+
+                    // Update local object
+                    char.aiAvatarUrl = avatarUrl;
+                    referenceImages.push(avatarUrl);
+                    console.log(`[generateCoverPreview] ✓ Avatar generated for ${char.name}`);
+                } catch (err) {
+                    console.error(`[generateCoverPreview] Failed to generate avatar for ${char.name}:`, err);
+                    // Fallback to photo if avatar generation fails
+                    referenceImages.push(char.photoUrl);
+                }
+            }
+        }
+
         // Build the cover prompt
         const coverPrompt = `Children's book cover illustration featuring ${charDescriptions}. 
 Title: "${title}". 
@@ -685,9 +723,10 @@ professional children's book art, suitable for ages ${order.storybooks?.age_rang
 
         console.log(`[generateCoverPreview] Generating cover for order ${orderId}...`);
         console.log(`[generateCoverPreview] Prompt: ${coverPrompt.substring(0, 200)}...`);
+        console.log(`[generateCoverPreview] Using ${referenceImages.length} reference images`);
 
         // Generate the cover with Seedream
-        const coverUrl = await generateBookCover(coverPrompt, seed, negativePrompt);
+        const coverUrl = await generateBookCover(coverPrompt, seed, negativePrompt, referenceImages);
 
         console.log(`[generateCoverPreview] ✓ Cover generated: ${coverUrl.substring(0, 50)}...`);
 

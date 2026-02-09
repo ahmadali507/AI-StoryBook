@@ -11,6 +11,9 @@ interface SeedreamInput {
     output_format?: string;
     output_quality?: number;
     negative_prompt?: string;
+    image_input?: string[];
+    sequential_image_generation?: string;
+    max_images?: number;
 }
 
 /**
@@ -21,6 +24,7 @@ export async function generateWithSeedream(
     seed?: number,
     aspectRatio: string = '4:3',
     negativePrompt?: string,
+    imageInput?: string[],
     maxRetries: number = 3
 ): Promise<string> {
     const input: SeedreamInput = {
@@ -28,16 +32,19 @@ export async function generateWithSeedream(
         seed: seed ?? Math.floor(Math.random() * 999999) + 1,
         aspect_ratio: aspectRatio,
         output_format: 'webp',
-        output_quality: 90,
+        output_quality: 95,
         negative_prompt: negativePrompt,
+        image_input: imageInput,
+        sequential_image_generation: 'disabled',
+        max_images: 1
     };
 
     let lastError: Error | unknown;
-    
+
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             console.log(`[generateWithSeedream] Attempt ${attempt + 1}/${maxRetries} - Generating image...`);
-            
+
             const output = await replicate.run('bytedance/seedream-4.5', { input });
 
             // Seedream returns an array of image URLs or a single URL
@@ -58,26 +65,26 @@ export async function generateWithSeedream(
             }
 
             throw new Error('Unexpected output format from Seedream');
-            
+
         } catch (error) {
             lastError = error;
             const errorMessage = error instanceof Error ? error.message : String(error);
-            
+
             console.error(`[generateWithSeedream] ✗ Attempt ${attempt + 1}/${maxRetries} failed:`, errorMessage);
-            
+
             // If it's the last attempt, throw the error
             if (attempt === maxRetries - 1) {
                 console.error(`[generateWithSeedream] All ${maxRetries} attempts failed. Giving up.`);
                 throw error;
             }
-            
+
             // Wait before retrying (exponential backoff: 2s, 4s, 8s)
             const waitTime = Math.pow(2, attempt + 1) * 1000;
             console.log(`[generateWithSeedream] Retrying in ${waitTime / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
     }
-    
+
     throw lastError;
 }
 
@@ -87,9 +94,10 @@ export async function generateWithSeedream(
 export async function generateCharacterSheet(
     prompt: string,
     seed: number,
-    negativePrompt?: string
+    negativePrompt?: string,
+    imageInput?: string[]
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '16:9', negativePrompt);
+    return generateWithSeedream(prompt, seed, '16:9', negativePrompt, imageInput);
 }
 
 /**
@@ -98,9 +106,10 @@ export async function generateCharacterSheet(
 export async function generateSceneIllustration(
     prompt: string,
     seed: number,
-    negativePrompt?: string
+    negativePrompt?: string,
+    imageInput?: string[]
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '4:3', negativePrompt);
+    return generateWithSeedream(prompt, seed, '4:3', negativePrompt, imageInput);
 }
 
 /**
@@ -109,7 +118,8 @@ export async function generateSceneIllustration(
 export async function generateBookCover(
     prompt: string,
     seed: number,
-    negativePrompt?: string
+    negativePrompt?: string,
+    imageInput?: string[]
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '3:4', negativePrompt);
+    return generateWithSeedream(prompt, seed, '3:4', negativePrompt, imageInput);
 }

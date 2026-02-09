@@ -96,7 +96,7 @@ export async function* mvpChatConversation(history: ModelMessage[]) {
                     execute: async ({ mainCharacterName }) => {
                         try {
                             const result = await createBookOrder({
-                                artStyle: "soft-illustration", // Default
+                                artStyle: "pixar-3d", // Default
                                 theme: "adventure", // Default
                                 ageRange: "5-8", // Default
                             });
@@ -180,7 +180,7 @@ export async function* mvpChatConversation(history: ModelMessage[]) {
                             "fantasy", "learning", "family", "nature"
                         ]).describe("Story theme"),
                         artStyle: z.enum([
-                            "watercolor", "soft-illustration", "classic-storybook", "modern-cartoon"
+                            "pixar-3d", "storybook"
                         ]).optional().describe("Art style preference"),
                     }),
                     execute: async ({ orderId, storybookId, ageRange, theme, artStyle }) => {
@@ -193,7 +193,7 @@ export async function* mvpChatConversation(history: ModelMessage[]) {
                                 .update({
                                     age_range: ageRange,
                                     theme,
-                                    art_style: artStyle || "soft-illustration",
+                                    art_style: artStyle || "pixar-3d",
                                 })
                                 .eq("id", storybookId);
 
