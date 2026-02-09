@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight } from "lucide-react";
+import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle } from "lucide-react";
 import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
@@ -14,108 +14,123 @@ export default function OrderStatusPage() {
     const router = useRouter();
     const orderId = params.id as string;
 
-    // Prevent duplicate initialization
-    const initialized = useRef(false);
-    const generationTriggered = useRef(false);
+    // Use refs to track across re-renders (but these reset on page refresh - that's OK)
+    const isProcessing = useRef(false);
 
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [generating, setGenerating] = useState(false);
     const [statusMessage, setStatusMessage] = useState("Loading...");
     const [error, setError] = useState<string | null>(null);
 
-    // Check for payment params
+    // Check for payment params (from Stripe redirect)
     const sessionId = searchParams.get("session_id");
-    const isPaid = searchParams.get("paid") === "true";
+    const isPaidFromUrl = searchParams.get("paid") === "true";
 
     // Load order data
-    const loadOrder = async () => {
-        const orderData = await getOrderWithStorybook(orderId);
-        setOrder(orderData);
-        return orderData;
-    };
+    const loadOrder = useCallback(async () => {
+        try {
+            const orderData = await getOrderWithStorybook(orderId);
+            setOrder(orderData);
+            return orderData;
+        } catch (err) {
+            console.error("[OrderPage] Failed to load order:", err);
+            return null;
+        }
+    }, [orderId]);
 
-    // Initial load
+    // Initial load and payment verification
     useEffect(() => {
-        if (initialized.current) return;
-        initialized.current = true;
-
         const init = async () => {
-            const orderData = await loadOrder();
-            setLoading(false);
+            // Prevent concurrent processing
+            if (isProcessing.current) return;
+            isProcessing.current = true;
 
-            if (!orderData) return;
+            try {
+                const orderData = await loadOrder();
+                setLoading(false);
 
-            console.log("[OrderPage] Order status:", orderData.status);
-
-            // Already complete? Redirect immediately
-            if (orderData.status === "complete") {
-                if (orderData.storybook?.id) {
-                    router.push(`/story/${orderData.storybook.id}`);
+                if (!orderData) {
+                    setError("Order not found");
+                    isProcessing.current = false;
+                    return;
                 }
-                return;
-            }
 
-            // Already generating? Just set state and poll
-            if (orderData.status === "generating") {
-                setGenerating(true);
-                setStatusMessage("Generating your personalized storybook...");
-                return;
-            }
+                console.log("[OrderPage] Order status:", orderData.status);
 
-            // Already paid but not generating yet? Start generation
-            if (orderData.status === "paid" && !generationTriggered.current) {
-                generationTriggered.current = true;
-                setStatusMessage("Starting book generation...");
-                const genResult = await triggerBookGeneration(orderId);
-                if (genResult.success) {
-                    setGenerating(true);
-                    setStatusMessage("Generating your personalized storybook...");
-                } else {
-                    setError(genResult.error || "Failed to start generation");
-                }
-                return;
-            }
+                // Handle based on DATABASE status (source of truth)
+                switch (orderData.status) {
+                    case "complete":
+                        // Book is ready - redirect to story
+                        setStatusMessage("Your book is ready!");
+                        if (orderData.storybook?.id) {
+                            router.push(`/story/${orderData.storybook.id}`);
+                        }
+                        break;
 
-            // Need payment verification?
-            if (isPaid && sessionId && !generationTriggered.current &&
-                orderData.status !== "paid" &&
-                orderData.status !== "generating" &&
-                orderData.status !== "complete") {
+                    case "generating":
+                        // Already generating - just show status and poll
+                        // DO NOT trigger again - generation is already in progress
+                        setStatusMessage("Generating your personalized storybook...");
+                        break;
 
-                generationTriggered.current = true;
-                setStatusMessage("Verifying payment...");
-
-                try {
-                    const result = await verifyOrderPayment(orderId, sessionId);
-                    if (result.success && result.paid) {
+                    case "paid":
+                        // Paid but generation not started yet - trigger it
                         setStatusMessage("Starting book generation...");
                         const genResult = await triggerBookGeneration(orderId);
                         if (genResult.success) {
-                            setGenerating(true);
                             setStatusMessage("Generating your personalized storybook...");
                         } else {
                             setError(genResult.error || "Failed to start generation");
                         }
-                    } else {
-                        setError("Payment verification failed");
-                    }
-                } catch (err) {
-                    console.error("[OrderPage] Payment verification error:", err);
-                    setError("Error verifying payment");
+                        break;
+
+                    case "failed":
+                        // Generation failed
+                        setError("Generation failed. Please contact support.");
+                        break;
+
+                    default:
+                        // Other statuses (draft, cover_preview, pending) - check if we need to verify payment
+                        if (isPaidFromUrl && sessionId) {
+                            setStatusMessage("Verifying payment...");
+                            try {
+                                const result = await verifyOrderPayment(orderId, sessionId);
+                                if (result.success && result.paid) {
+                                    setStatusMessage("Starting book generation...");
+                                    const genResult = await triggerBookGeneration(orderId);
+                                    if (genResult.success) {
+                                        setStatusMessage("Generating your personalized storybook...");
+                                        // Reload to get updated status
+                                        await loadOrder();
+                                    } else {
+                                        setError(genResult.error || "Failed to start generation");
+                                    }
+                                } else {
+                                    setError(result.error || "Payment verification failed");
+                                }
+                            } catch (err) {
+                                console.error("[OrderPage] Payment verification error:", err);
+                                setError("Error verifying payment");
+                            }
+                        } else {
+                            setStatusMessage(`Order status: ${orderData.status?.replace("_", " ") || "Pending"}`);
+                        }
+                        break;
                 }
+            } finally {
+                isProcessing.current = false;
             }
         };
 
         init();
-    }, [orderId, sessionId, isPaid, router]);
+    }, [orderId, sessionId, isPaidFromUrl, router, loadOrder]);
 
-    // Poll for completion
+    // Poll for completion when generating
     useEffect(() => {
-        // Poll if generating OR if order status is generating/paid
-        const shouldPoll = generating || order?.status === "generating" || order?.status === "paid";
+        // Only poll if status is generating or paid
+        const shouldPoll = order?.status === "generating" || order?.status === "paid";
 
-        if (!shouldPoll) return;
+        if (!shouldPoll || loading) return;
 
         console.log("[OrderPage] Starting poll, current status:", order?.status);
 
@@ -127,14 +142,17 @@ export default function OrderStatusPage() {
                 if (orderData?.status === "complete") {
                     console.log("[OrderPage] Generation complete! Redirecting...");
                     setStatusMessage("Your book is ready!");
-                    setGenerating(false);
                     clearInterval(interval);
 
                     if (orderData.storybook?.id) {
                         setTimeout(() => {
-                            router.push(`/story/${orderData?.storybook?.id}`);
-                        }, 1000);
+                            router.push(`/story/${orderData.storybook?.id}`);
+                        }, 1500);
                     }
+                } else if (orderData?.status === "failed") {
+                    console.log("[OrderPage] Generation failed");
+                    setError("Generation failed. Please contact support.");
+                    clearInterval(interval);
                 }
             } catch (err) {
                 console.error("[OrderPage] Poll error:", err);
@@ -142,7 +160,7 @@ export default function OrderStatusPage() {
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [generating, order?.status, orderId, router]);
+    }, [order?.status, loading, loadOrder, router]);
 
     if (loading) {
         return (
@@ -169,8 +187,8 @@ export default function OrderStatusPage() {
         );
     }
 
-    // Check both local state AND database status
-    const isGenerating = generating || order.status === "generating" || order.status === "paid";
+    // Check if currently generating based on database status
+    const isGenerating = order.status === "generating" || order.status === "paid";
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5">

@@ -535,6 +535,14 @@ export async function getOrderCharacters(
 export async function uploadCharacterPhoto(
     formData: FormData
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+    const supabase = await createClient();
+
+    // Check authentication
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { success: false, error: "Please log in to upload photos" };
+    }
+
     const file = formData.get("photo") as File;
     if (!file) {
         return { success: false, error: "No file provided" };
@@ -556,18 +564,37 @@ export async function uploadCharacterPhoto(
     }
 
     try {
-        // Convert file to base64 data URL
-        // This avoids needing a Supabase storage bucket
-        // The image will be passed to Seedream for processing
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64 = buffer.toString("base64");
-        const dataUrl = `data:${file.type};base64,${base64}`;
+        // Generate unique file path
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 15);
+        const filePath = `${user.id}/characters/${timestamp}-${randomId}.${fileExt}`;
 
-        return { success: true, url: dataUrl };
+        // Convert File to ArrayBuffer for upload
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+            .from("characters")
+            .upload(filePath, arrayBuffer, {
+                contentType: file.type,
+                upsert: false,
+            });
+
+        if (uploadError) {
+            console.error("[uploadCharacterPhoto] Storage upload error:", uploadError);
+            return { success: false, error: `Upload failed: ${uploadError.message}` };
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from("characters")
+            .getPublicUrl(filePath);
+
+        return { success: true, url: publicUrl };
     } catch (error) {
-        console.error("[uploadCharacterPhoto] Error converting file:", error);
-        return { success: false, error: "Failed to process image" };
+        console.error("[uploadCharacterPhoto] Error uploading file:", error);
+        return { success: false, error: "Failed to upload image" };
     }
 }
 
@@ -698,6 +725,28 @@ export async function triggerBookGeneration(
 ): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
 
+    // First, check current status to prevent duplicate triggers
+    const { data: currentOrder, error: fetchError } = await supabase
+        .from("orders")
+        .select("status")
+        .eq("id", orderId)
+        .single();
+
+    if (fetchError) {
+        return { success: false, error: fetchError.message };
+    }
+
+    // If already generating or complete, don't trigger again
+    if (currentOrder?.status === "generating") {
+        console.log(`[triggerBookGeneration] Order ${orderId} is already generating, skipping duplicate trigger`);
+        return { success: true }; // Return success since generation is in progress
+    }
+
+    if (currentOrder?.status === "complete") {
+        console.log(`[triggerBookGeneration] Order ${orderId} is already complete`);
+        return { success: true };
+    }
+
     // Update status to generating
     const { error } = await supabase
         .from("orders")
@@ -705,7 +754,9 @@ export async function triggerBookGeneration(
             status: "generating",
             book_generation_started_at: new Date().toISOString(),
         })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        // Only update if status allows (prevents race condition)
+        .in("status", ["paid", "pending", "cover_preview"]);
 
     if (error) {
         return { success: false, error: error.message };

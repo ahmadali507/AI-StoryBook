@@ -6,6 +6,25 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'jhzkiwrzqpbzgtrfldup.supabase.co',
+        pathname: '/storage/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'replicate.delivery',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
