@@ -11,6 +11,27 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 // Price for book generation in cents
 const BOOK_GENERATION_PRICE_CENTS = 799; // $7.99
 
+/**
+ * Get the base URL for the application
+ * Prioritizes NEXT_PUBLIC_APP_URL, then specific production URL, then VERCEL_URL, then localhost
+ */
+function getBaseUrl(): string {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL;
+    }
+
+    // Hardcode production URL as requested to ensure it works in production
+    if (process.env.NODE_ENV === 'production') {
+        return 'https://ai-story-book-gray.vercel.app';
+    }
+
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+    }
+
+    return 'http://localhost:3000';
+}
+
 interface CreateCheckoutResult {
     success: boolean;
     checkoutUrl?: string;
@@ -52,8 +73,7 @@ export async function createCheckoutSession(
 
     try {
         // Determine base URL
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+        const baseUrl = getBaseUrl();
 
         // Create Stripe Checkout session
         const session = await stripe.checkout.sessions.create({
@@ -223,8 +243,7 @@ export async function createOrderCheckoutSession(
 
     try {
         // Determine base URL
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+        const baseUrl = getBaseUrl();
 
         // Create Stripe Checkout session
         const session = await stripe.checkout.sessions.create({
