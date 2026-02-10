@@ -33,7 +33,8 @@ export async function generateMVPStoryOutline(
     characters: SimpleCharacter[],
     ageRange: AgeRange,
     theme: Theme,
-    customTitle?: string
+    customTitle?: string,
+    description?: string // Added description parameter
 ): Promise<StoryOutline> {
     const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
     const supportingCharacters = characters.filter(c => c.role === 'supporting');
@@ -53,6 +54,7 @@ WORDS PER PAGE: Maximum ${complexity.wordsPerPage} words
 
 THEME: ${theme}
 MAIN CHARACTER: ${mainCharacter.name}
+${description ? `STORY PREMISE: "${description}"\nCRITICAL INSTRUCTION: You must base the story EXACTLY on the "STORY PREMISE" provided above. Do not invent a new random story. Expand on the user's specific idea.` : ''}
 
 CHARACTERS:
 ${characterList}

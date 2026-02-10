@@ -207,7 +207,8 @@ export async function generateChapter(
                 summary: chapterSummary,
                 sceneDescription,
             },
-            previousSummary
+            previousSummary,
+            storybook.description // Pass global story description
         );
 
         // Save chapter to database

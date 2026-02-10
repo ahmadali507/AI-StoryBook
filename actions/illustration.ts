@@ -35,7 +35,17 @@ export async function generateIllustration(
         );
     }
 
-    const imageUrl = await generateSceneIllustration(prompt, data.seedNumber, negativePrompt);
+    // Extract reference images from all characters to ensure multi-character consistency
+    const referenceImages = data.characters
+        .map(c => c.referenceImageUrl)
+        .filter((url): url is string => !!url && url.length > 0);
+
+    const imageUrl = await generateSceneIllustration(
+        prompt,
+        data.seedNumber,
+        negativePrompt,
+        referenceImages.length > 0 ? referenceImages : undefined
+    );
 
     return {
         imageUrl,

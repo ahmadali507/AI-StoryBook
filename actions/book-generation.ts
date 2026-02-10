@@ -222,7 +222,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                     theme,
                     age_range,
                     global_seed,
-                    cover_url
+                    global_seed,
+                    cover_url,
+                    description
                 )
             `)
             .eq("id", orderId)
@@ -266,7 +268,8 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             characters,
             ageRange,
             theme,
-            storybook.title
+            storybook.title,
+            storybook.description // Pass user description
         );
 
         console.log(`[generateFullBook] Story outline generated: "${storyOutline.title}"`);

@@ -78,6 +78,8 @@ Setting: ${settingName}
 ${theme ? `Theme: ${theme}` : ''}
 ${additionalDetails ? `Additional details: ${additionalDetails}` : ''}
 
+CRITICAL INSTRUCTION: You must base the story EXACTLY on the "Additional details" provided above. Do not invent a new random story. Expand on the user's specific idea. If the user provided a title, the story must match that title.
+
 Requirements:
 - Age-appropriate for children/adults.
 - Each chapter should be engaging and move the story forward
@@ -116,7 +118,8 @@ Respond in strict JSON format. IMPORTANT: Escape all newlines in string values (
 export async function generateChapterContent(
     characters: Character[],
     chapterOutline: ChapterOutline,
-    previousChapterSummary?: string
+    previousChapterSummary?: string,
+    storyContext?: string
 ): Promise<{ content: string; sceneDescription: string }> {
     const characterNames = characters.map(c => c.name).join(', ');
 
@@ -126,6 +129,7 @@ Characters: ${characterNames}
 Chapter ${chapterOutline.number}: ${chapterOutline.title}
 Summary: ${chapterOutline.summary}
 ${previousChapterSummary ? `Previous chapter: ${previousChapterSummary}` : ''}
+${storyContext ? `Story Context (Strictly adhere to this): ${storyContext}` : ''}
 
 Requirements:
 - Write 150-250 words
