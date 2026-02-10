@@ -333,6 +333,7 @@ interface CreateBookOrderInput {
     theme: Theme;
     artStyle: MVPArtStyle;
     title?: string;
+    description?: string;
 }
 
 /**
@@ -376,6 +377,7 @@ export async function createBookOrder(
             .insert({
                 user_id: user.id,
                 title: data.title || "My Personalized Story",
+                description: data.description,
                 art_style: data.artStyle,
                 global_seed: Math.floor(Math.random() * 1000000),
                 setting: "fantasy",
@@ -526,6 +528,8 @@ export async function getOrderCharacters(
         gender: char.gender,
         entityType: char.entity_type,
         role: char.role,
+        clothingStyle: char.clothing_style,
+        description: char.description,
     }));
 }
 // ============================================
@@ -619,7 +623,8 @@ export async function generateCoverPreview(
                 art_style,
                 theme,
                 age_range,
-                global_seed
+                global_seed,
+                description
             )
         `
         )
@@ -645,7 +650,17 @@ export async function generateCoverPreview(
         const charDescriptions = characters.map(c => {
             const genderDesc = c.gender === "male" ? "boy" : c.gender === "female" ? "girl" : "child";
             const typeDesc = c.entityType === "human" ? genderDesc : c.entityType;
-            return `${c.name} (a friendly ${typeDesc})`;
+
+            let desc = `${c.name} (a friendly ${typeDesc}`;
+
+            if (c.clothingStyle) {
+                desc += `, wearing ${c.clothingStyle}`;
+            }
+            if (c.description) {
+                desc += `, ${c.description}`;
+            }
+
+            return desc + ")";
         }).join(", ");
 
         // Art style mapping
@@ -674,6 +689,7 @@ export async function generateCoverPreview(
         const theme = order.storybooks?.theme || "adventure";
         const title = order.storybooks?.title || `${mainChar.name}'s Adventure`;
         const seed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
+        const storyDescription = order.storybooks?.description ? `Scenery context: ${order.storybooks.description}` : "";
 
         // Generate AI Avatar if missing and photo is available
         const referenceImages: string[] = [];
@@ -715,6 +731,7 @@ export async function generateCoverPreview(
         const coverPrompt = `Children's book cover illustration featuring ${charDescriptions}. 
 Title: "${title}". 
 ${themePrompts[theme] || "magical adventure"}. 
+${storyDescription}
 ${artStylePrompts[artStyle] || "classic children's book illustration style"}.
 Beautiful, colorful, engaging book cover for children, high quality illustration, 
 professional children's book art, suitable for ages ${order.storybooks?.age_range || "3-6"}.`;

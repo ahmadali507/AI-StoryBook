@@ -13,6 +13,7 @@ export interface CharacterAppearance {
     accessories?: string[];
     distinctiveFeatures?: string[];
     age?: string;
+    description?: string;
 }
 
 export interface Character {
@@ -136,6 +137,7 @@ export interface GenerateStoryOutlineRequest {
     theme?: string;
     targetChapters: number;
     additionalDetails?: string;
+    title?: string;
 }
 
 export interface GenerateIllustrationRequest {
@@ -165,6 +167,9 @@ export interface SimpleCharacter {
     gender: Gender;
     entityType: EntityType;
     role: CharacterRole;
+    age?: string;
+    clothingStyle?: string;
+    description?: string;
 }
 
 // Age ranges for text complexity

@@ -4,9 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import CharacterUploadList from "./CharacterUploadList";
-import AgeRangeSelector from "./AgeRangeSelector";
-import ThemeSelector from "./ThemeSelector";
-import ArtStyleSelector from "./ArtStyleSelector";
+import StorySettingsForm from "./StorySettingsForm";
 import { useToast } from "@/providers/ToastProvider";
 import type {
     SimpleCharacter,
@@ -69,6 +67,7 @@ export default function SimpleOrderForm() {
     const [theme, setTheme] = useState<Theme | null>(null);
     const [artStyle, setArtStyle] = useState<MVPArtStyle | null>(null);
     const [bookTitle, setBookTitle] = useState("");
+    const [description, setDescription] = useState("");
 
     // Order state
     const [orderId, setOrderId] = useState<string | null>(null);
@@ -114,6 +113,7 @@ export default function SimpleOrderForm() {
                 theme,
                 artStyle,
                 title: bookTitle || undefined,
+                description: description || undefined,
             });
 
             if (!orderResult.success || !orderResult.orderId) {
@@ -282,54 +282,18 @@ export default function SimpleOrderForm() {
 
                     {/* Step 2: Settings */}
                     {currentStep === 2 && (
-                        <div className="space-y-10">
-                            <AgeRangeSelector
-                                selected={ageRange}
-                                onSelect={setAgeRange}
-                            />
-
-                            <div className="border-t border-gray-100 pt-10">
-                                <ThemeSelector
-                                    selected={theme}
-                                    onSelect={setTheme}
-                                />
-                            </div>
-
-                            <div className="border-t border-gray-100 pt-10">
-                                <ArtStyleSelector
-                                    selected={artStyle}
-                                    onSelect={setArtStyle}
-                                />
-                            </div>
-
-                            {/* Optional title */}
-                            <div className="border-t border-gray-100 pt-10">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                                        <span className="text-lg">📖</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-gray-900">
-                                            Book Title{" "}
-                                            <span className="text-gray-400 font-normal">
-                                                (optional)
-                                            </span>
-                                        </h3>
-                                        <p className="text-sm text-gray-500">
-                                            We&apos;ll create a magical title if you
-                                            leave this blank
-                                        </p>
-                                    </div>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={bookTitle}
-                                    onChange={(e) => setBookTitle(e.target.value)}
-                                    placeholder="e.g., Emma's Amazing Adventure"
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                />
-                            </div>
-                        </div>
+                        <StorySettingsForm
+                            ageRange={ageRange}
+                            setAgeRange={setAgeRange}
+                            theme={theme}
+                            setTheme={setTheme}
+                            artStyle={artStyle}
+                            setArtStyle={setArtStyle}
+                            title={bookTitle}
+                            setTitle={setBookTitle}
+                            description={description}
+                            setDescription={setDescription}
+                        />
                     )}
 
                     {/* Step 3: Preview & Purchase */}

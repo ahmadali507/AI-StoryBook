@@ -59,7 +59,8 @@ export async function generateStoryOutline(
     setting: StorySetting,
     targetChapters: number,
     theme?: string,
-    additionalDetails?: string
+    additionalDetails?: string,
+    title?: string
 ): Promise<StoryOutline> {
     const characterDescriptions = characters.map(c =>
         `${c.name}: ${c.personality.join(', ')}`
@@ -72,6 +73,7 @@ export async function generateStoryOutline(
 Characters:
 ${characterDescriptions}
 
+${title ? `Story Title: "${title}" (Use this exact title)` : ''}
 Setting: ${settingName}
 ${theme ? `Theme: ${theme}` : ''}
 ${additionalDetails ? `Additional details: ${additionalDetails}` : ''}
@@ -81,10 +83,11 @@ Requirements:
 - Each chapter should be engaging and move the story forward
 - Include clear scene descriptions for illustrations
 - End with a positive, heartwarming conclusion
+- ${title ? `The story must be about "${title}"` : 'Create a catchy title'}
 
 Respond in strict JSON format. IMPORTANT: Escape all newlines in string values (use \\n). Do not use control characters.
 {
-  "title": "Story title",
+  "title": "${title || 'Story title'}",
   "chapters": [
     {
       "number": 1,
@@ -97,7 +100,14 @@ Respond in strict JSON format. IMPORTANT: Escape all newlines in string values (
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
-    return parseAIResponse(text) as StoryOutline;
+    const parsed = parseAIResponse(text) as StoryOutline;
+
+    // Force strict title adherence if provided
+    if (title) {
+        parsed.title = title;
+    }
+
+    return parsed;
 }
 
 /**

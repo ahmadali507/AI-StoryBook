@@ -36,8 +36,11 @@ export function getNegativePrompt(artStyle: ArtStyle): string {
             break;
     }
 
-    return `${BASE_NEGATIVE_PROMPT}, ${styleNegatives}`;
+    return `${BASE_NEGATIVE_PROMPT}, ${styleNegatives}, young, old, aging, wrinkles, beard, mustache, different hair, different clothes, changing face, morphing, deformed, bad hands, missing fingers`;
 }
+
+// Strict consistency instruction to append to prompts
+const STRICT_CONSISTENCY = "STRICT ADHERENCE TO CHARACTER DESIGN. Do not change age. Do not change clothing. Character must look exactly like the reference description. Maintain consistent facial features and proportions.";
 
 /**
  * Generates a unique seed number for character consistency
@@ -59,6 +62,11 @@ export function buildVisualPrompt(
 
     // Basic description
     parts.push(`A character named ${name}`);
+
+    // [NEW] Description from user (high priority)
+    if (appearance.description) {
+        parts.push(appearance.description);
+    }
 
     // Additional User Details (Prioritize this for uniqueness)
     if (additionalDetails) {
@@ -131,6 +139,7 @@ Character: ${character.visualPrompt}
 Scene: ${sceneDescription}
 
 Maintain exact character appearance throughout. Consistent proportions and features.
+${STRICT_CONSISTENCY}
 ${QUALITY_BOOSTERS}`;
 }
 
@@ -157,6 +166,7 @@ ${characterDescriptions}
 They are ${sceneDescription}
 
 All characters interacting naturally. Maintain consistent art style and character proportions throughout.
+${STRICT_CONSISTENCY}
 ${QUALITY_BOOSTERS}`;
 }
 

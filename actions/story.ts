@@ -41,7 +41,8 @@ export async function generateStoryOutline(
         for (const charId of data.characterIds) {
             const char = await getCharacter(charId);
             if (char) {
-                characters.push(char);            }
+                characters.push(char);
+            }
         }
 
         if (characters.length === 0) {
@@ -53,7 +54,8 @@ export async function generateStoryOutline(
             data.setting,
             data.targetChapters,
             data.theme,
-            data.additionalDetails
+            data.additionalDetails,
+            data.title
         );
 
         return { success: true, outline };
@@ -288,7 +290,7 @@ export async function getStorybookWithChapters(
     try {
         console.log('[getStorybookWithChapters] Fetching:', id);
         const supabase = providedClient || await createClient();
-        
+
         // Query storybook
         const { data, error } = await supabase
             .from("storybooks")
@@ -331,7 +333,7 @@ export async function getStorybookWithChapters(
                         cache: 'no-store'
                     }
                 );
-                
+
                 if (response.ok) {
                     const rawData = await response.json();
                     console.log('[getStorybookWithChapters] Raw HTTP found:', rawData.length, 'chapters');
@@ -345,7 +347,7 @@ export async function getStorybookWithChapters(
         }
 
         console.log('[getStorybookWithChapters] FINAL chapters count:', finalChaptersData?.length || 0);
-        
+
         // Query illustrations for all chapters
         let illustrationsData: any[] = [];
         if (finalChaptersData && finalChaptersData.length > 0) {
@@ -354,7 +356,7 @@ export async function getStorybookWithChapters(
                 .from("illustrations")
                 .select("*")
                 .in("chapter_id", chapterIds);
-            
+
             illustrationsData = illustrations || [];
         }
 
@@ -372,7 +374,7 @@ export async function getStorybookWithChapters(
                 .from("characters")
                 .select("*")
                 .in("id", characterIds);
-            
+
             if (charsData) {
                 characters = charsData.map((c: any) => ({
                     id: c.id,
@@ -388,7 +390,7 @@ export async function getStorybookWithChapters(
                 }));
             }
         }
-    
+
         const chapters: Chapter[] = (finalChaptersData || []).map((ch: any) => ({
             id: ch.id,
             storybookId: ch.storybook_id,
@@ -496,25 +498,25 @@ export async function syncStoryContent(
     try {
         // Use provided client (same connection) or create new one
         const supabase = providedClient || await createClient();
-        
+
         // Query chapters directly using the same client connection
         const { data: directChapters, error: directError } = await supabase
             .from("chapters")
             .select("id, chapter_number, title, content")
             .eq("storybook_id", storybookId)
-            .order("chapter_number", { ascending: true});
-        
+            .order("chapter_number", { ascending: true });
+
         console.log('[syncStoryContent] Found', directChapters?.length || 0, 'chapters via direct query');
-        
+
         // If direct query fails, try getStorybookWithChapters
         if (!directChapters || directChapters.length === 0) {
             console.log('[syncStoryContent] Direct query failed, trying getStorybookWithChapters...');
             const storybook = await getStorybookWithChapters(storybookId, supabase);
-            
+
             if (!storybook) {
                 return { success: false, error: "Storybook not found" };
             }
-            
+
             const content = {
                 title: storybook.title,
                 author: "AI Storybook",
@@ -524,9 +526,9 @@ export async function syncStoryContent(
                     illustrationUrl: ch.illustrations?.[0]?.imageUrl
                 })) || []
             };
-            
+
             console.log('[syncStoryContent] Synced', content.chapters.length, 'chapters (from getStorybookWithChapters)');
-            
+
             const { error } = await supabase
                 .from("storybooks")
                 .update({ content })
@@ -536,17 +538,17 @@ export async function syncStoryContent(
                 console.error('[syncStoryContent] Error:', error.message);
                 return { success: false, error: error.message };
             }
-            
+
             return { success: true, chaptersCount: content.chapters.length };
         }
-        
+
         // Get storybook info
         const { data: storybookData } = await supabase
             .from("storybooks")
             .select("title")
             .eq("id", storybookId)
             .single();
-        
+
         // Fetch illustrations for all chapters
         const chapterIds = directChapters.map(ch => ch.id);
         const { data: illustrations } = await supabase
@@ -554,7 +556,7 @@ export async function syncStoryContent(
             .select("chapter_id, image_url, position")
             .in("chapter_id", chapterIds)
             .order("position", { ascending: true });
-        
+
         // Create a map of chapter_id to illustration URL
         const illustrationMap = new Map<string, string>();
         if (illustrations) {
@@ -565,7 +567,7 @@ export async function syncStoryContent(
                 }
             });
         }
-        
+
         // Build content from direct query results with illustrations
         const content = {
             title: storybookData?.title || "Untitled",
@@ -576,9 +578,9 @@ export async function syncStoryContent(
                 illustrationUrl: illustrationMap.get(ch.id) || undefined
             }))
         };
-        
+
         console.log('[syncStoryContent] ✓ Synced', content.chapters.length, 'chapters with', illustrationMap.size, 'illustrations (from direct query)');
-        
+
         const { error } = await supabase
             .from("storybooks")
             .update({ content })
@@ -588,7 +590,7 @@ export async function syncStoryContent(
             console.error('[syncStoryContent] Error:', error.message);
             return { success: false, error: error.message };
         }
-        
+
         return { success: true, chaptersCount: content.chapters.length };
     } catch (error) {
         console.error('[syncStoryContent] Exception:', error);
