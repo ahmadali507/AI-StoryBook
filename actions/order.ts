@@ -677,12 +677,14 @@ export async function generateCoverPreview(
 
         // Theme mapping
         const themePrompts: Record<string, string> = {
+            "educational": "educational setting, classroom or learning environment, bright and cheerful",
+            "fairy-tales": "magical fairy tale world, enchanted castle, whimsical atmosphere",
             "adventure": "exciting adventure scene, magical journey",
-            "friendship": "heartwarming friendship moment, connection",
-            "learning": "educational discovery, curious exploration",
-            "fantasy": "magical fantasy world, enchanted setting",
-            "nature": "beautiful natural scenery, outdoor adventure",
-            "bedtime": "peaceful nighttime scene, cozy atmosphere"
+            "activities": "playful scene, playground or activity center, energetic and fun",
+            "worlds": "fantastic new world, alien landscape or magical realm, breathtaking scenery",
+            "stories": "classic storybook setting, library or reading nook, cozy and imaginative",
+            "holidays": "festive holiday scene, decorations, celebration, joy and warmth",
+            "family": "warm family home setting, togetherness, love and happiness"
         };
 
         const artStyle = order.storybooks?.art_style || "storybook";

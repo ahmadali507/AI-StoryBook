@@ -501,7 +501,7 @@ export async function generateCoverIllustrationPrompt(
 Theme: ${theme} adventure
 Setting: A magical, inviting scene that captures the spirit of ${theme}
 
-Main Character: [reference image 1]${mainCharDesc ? ` (${mainCharDesc.consistencyKeywords})` : ''} – standing prominently in the center, ${theme === 'adventure' ? 'looking excited and ready for adventure' : theme === 'bedtime' ? 'peaceful and cozy' : 'happy and curious'}
+Main Character: [reference image 1]${mainCharDesc ? ` (${mainCharDesc.consistencyKeywords})` : ''} – standing prominently in the center, ${theme === 'adventure' ? 'looking excited and ready for adventure' : 'happy and curious'}
 
 Background: Beautiful, atmospheric environment matching the ${theme} theme
 Lighting: Warm golden hour light, soft and inviting, volumetric rays

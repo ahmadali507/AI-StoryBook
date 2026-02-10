@@ -65,6 +65,7 @@ export default function SimpleOrderForm() {
     ]);
     const [ageRange, setAgeRange] = useState<AgeRange | null>(null);
     const [theme, setTheme] = useState<Theme | null>(null);
+    const [subject, setSubject] = useState<string | null>(null);
     const [artStyle, setArtStyle] = useState<MVPArtStyle | null>(null);
     const [bookTitle, setBookTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -77,7 +78,7 @@ export default function SimpleOrderForm() {
     const isStep1Valid = characters.every(
         (c) => c.name && c.photoUrl && c.gender && c.entityType
     );
-    const isStep2Valid = ageRange && theme && artStyle;
+    const isStep2Valid = ageRange && theme && subject && artStyle;
     const isStep3Valid = coverUrl !== null;
 
     const canProceed = () => {
@@ -107,13 +108,18 @@ export default function SimpleOrderForm() {
         setError(null);
 
         try {
+            // Combine subject and description if provided
+            const fullDescription = subject && subject !== 'custom'
+                ? `Subject: ${subject}. ${description}`
+                : description;
+
             // Create order first
             const orderResult = await createBookOrder({
                 ageRange,
                 theme,
                 artStyle,
                 title: bookTitle || undefined,
-                description: description || undefined,
+                description: fullDescription || undefined,
             });
 
             if (!orderResult.success || !orderResult.orderId) {
@@ -287,6 +293,8 @@ export default function SimpleOrderForm() {
                             setAgeRange={setAgeRange}
                             theme={theme}
                             setTheme={setTheme}
+                            subject={subject}
+                            setSubject={setSubject}
                             artStyle={artStyle}
                             setArtStyle={setArtStyle}
                             title={bookTitle}

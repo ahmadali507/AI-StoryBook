@@ -136,9 +136,9 @@ export default function CharacterUploadList({
                         )}
                         {characters.length < maxCharacters && (
                             <Button
-                                variant="outline"
+                                variant="default"
                                 onClick={addNewCharacter}
-                                className="gap-2 rounded-full border-dashed border-2 font-semibold text-primary border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+                                className="gap-2 rounded-full font-semibold bg-primary text-white hover:bg-primary/90 shadow-md transform transition-all hover:scale-105 active:scale-95"
                             >
                                 <Plus className="w-4 h-4" />
                                 Add New

@@ -216,26 +216,159 @@ export const TEXT_COMPLEXITY: Record<AgeRange, {
 };
 
 // Theme options
+// Based on the user's request
 export type Theme =
+    | 'educational'
+    | 'fairy-tales'
     | 'adventure'
-    | 'animals'
-    | 'bedtime'
-    | 'friendship'
-    | 'fantasy'
-    | 'learning'
-    | 'family'
-    | 'nature';
+    | 'activities'
+    | 'worlds'
+    | 'stories'
+    | 'holidays'
+    | 'family';
 
 export const THEME_OPTIONS: { id: Theme; name: string; emoji: string; description: string }[] = [
-    { id: 'adventure', name: 'Adventure', emoji: '🏔️', description: 'Exciting journeys and discoveries' },
-    { id: 'animals', name: 'Animals', emoji: '🐾', description: 'Furry and feathered friends' },
-    { id: 'bedtime', name: 'Bedtime', emoji: '🌙', description: 'Calming stories for sleep' },
-    { id: 'friendship', name: 'Friendship', emoji: '🤝', description: 'Making and keeping friends' },
-    { id: 'fantasy', name: 'Fantasy', emoji: '✨', description: 'Magic and wonder' },
-    { id: 'learning', name: 'Learning', emoji: '📖', description: 'Fun educational stories' },
-    { id: 'family', name: 'Family', emoji: '👨‍👩‍👧', description: 'Family love and togetherness' },
-    { id: 'nature', name: 'Nature', emoji: '🌿', description: 'Exploring the natural world' },
+    { id: 'educational', name: 'Educational', emoji: '📚', description: 'Fun learning moments' },
+    { id: 'fairy-tales', name: 'Fairy Tales', emoji: '🦄', description: 'Magical kingdoms & creatures' },
+    { id: 'adventure', name: 'Adventure', emoji: '🗺️', description: 'Exciting journeys & quests' },
+    { id: 'activities', name: 'Activities', emoji: '🛝', description: 'Fun games & play' },
+    { id: 'worlds', name: 'Worlds', emoji: '🌍', description: 'Exploring new places' },
+    { id: 'stories', name: 'Stories', emoji: '📜', description: 'Classic storytelling' },
+    { id: 'holidays', name: 'Holidays', emoji: '🎄', description: 'Festive celebrations' },
+    { id: 'family', name: 'Family', emoji: '👨‍👩‍👧‍👦', description: 'Heartwarming family moments' },
 ];
+
+// Story Subjects
+export interface Subject {
+    id: string;
+    name: string;
+    emoji: string;
+    prompt?: string;
+}
+
+export const THEME_SUBJECTS: Record<Theme, Subject[]> = {
+    educational: [
+        { id: 'walking', name: 'Learning to walk', emoji: '👣' },
+        { id: 'first-words', name: 'First Words', emoji: '🗣️' },
+        { id: 'body-parts', name: 'Body Parts', emoji: '🦶' },
+        { id: 'pacifier', name: 'Weaning off the pacifier', emoji: '👶' },
+        { id: 'thumb-sucking', name: 'Stop thumb sucking', emoji: '👍' },
+        { id: 'brushing-teeth', name: 'Brushing teeth', emoji: '🪥' },
+        { id: 'potty-training', name: 'Potty Training', emoji: '🚽' },
+        { id: 'shapes-colours', name: 'Shapes and colours', emoji: '🔺' },
+        { id: 'counting', name: 'Learning to Count', emoji: '🔢' },
+        { id: 'seasons', name: 'Seasons and Weather', emoji: '🌦️' },
+        { id: 'bike', name: 'Learning to Ride a Bike', emoji: '🚲' },
+        { id: 'alphabet', name: 'Alphabet', emoji: '🔤' },
+        { id: 'shoelaces', name: 'Tying shoelaces', emoji: '👟' },
+        { id: 'time', name: 'Telling the time', emoji: '⏰' },
+    ],
+    'fairy-tales': [
+        { id: 'unicorns', name: 'Unicorns', emoji: '🦄' },
+        { id: 'princess', name: 'Princes and Princesses', emoji: '👑' },
+        { id: 'knights', name: 'Knights and Dragons', emoji: '⚔️' },
+        { id: 'wizard', name: 'Wizard School', emoji: '🪄' },
+        { id: 'forest', name: 'The Magic Forest', emoji: '🌳' },
+        { id: 'mermaids', name: 'Mermaids', emoji: '🧜‍♀️' },
+        { id: 'gnomes', name: 'Gnomes', emoji: '🍄' },
+        { id: 'fairies', name: 'Fairies and Elves', emoji: '🧚‍♀️' },
+    ],
+    adventure: [
+        { id: 'garbage-truck', name: 'Garbage truck', emoji: '🚛' },
+        { id: 'construction', name: 'Construction machinery', emoji: '🏗️' },
+        { id: 'airplane', name: 'Airplane', emoji: '✈️' },
+        { id: 'racing', name: 'Racing', emoji: '🏎️' },
+        { id: 'fire-dept', name: 'Fire Department', emoji: '🚒' },
+        { id: 'police', name: 'Police', emoji: '🚓' },
+        { id: 'dinosaurs', name: 'Dinosaurs', emoji: '🦖' },
+        { id: 'pirates', name: 'Pirates', emoji: '🏴‍☠️' },
+        { id: 'superhero', name: 'Superhero', emoji: '🦸' },
+        { id: 'camping', name: 'Camping', emoji: '⛺' },
+        { id: 'travel', name: 'Travel', emoji: '🧳' },
+        { id: 'treasure', name: 'Treasure Hunts', emoji: '💎' },
+        { id: 'secret-mission', name: 'Secret Missions', emoji: '🕵️' },
+        { id: 'haunted-house', name: 'Haunted House', emoji: '👻' },
+        { id: 'time-travel', name: 'Time Travel', emoji: '⏳' },
+    ],
+    activities: [
+        { id: 'outdoor', name: 'Outdoor Play', emoji: '🛝' },
+        { id: 'dancing', name: 'Dancing', emoji: '💃' },
+        { id: 'music', name: 'Making Music', emoji: '🥁' },
+        { id: 'farm', name: 'To the Farm', emoji: '🚜' },
+        { id: 'forest-trip', name: 'To the forest', emoji: '🌲' },
+        { id: 'beach', name: 'Go to the beach', emoji: '🏖️' },
+        { id: 'crafts', name: 'Arts and crafts', emoji: '✂️' },
+        { id: 'painting', name: 'Painting', emoji: '🎨' },
+        { id: 'cooking', name: 'Cooking and Baking', emoji: '🍳' },
+        { id: 'gardening', name: 'Gardening', emoji: '🌻' },
+        { id: 'school', name: 'To school', emoji: '🎒' },
+        { id: 'library', name: 'To the library', emoji: '📚' },
+        { id: 'doctor', name: 'Visit the Doctor', emoji: '🩺' },
+        { id: 'dentist', name: 'Visit the Dentist', emoji: '🦷' },
+        { id: 'train', name: 'Train travel', emoji: '🚂' },
+        { id: 'zoo', name: 'Visit the zoo', emoji: '🦁' },
+        { id: 'circus', name: 'To the Circus', emoji: '🎪' },
+        { id: 'amusement', name: 'Visiting Amusement Parks', emoji: '🎡' },
+        { id: 'sports', name: 'Sports', emoji: '⚽' },
+        { id: 'animals', name: 'Caring for Animals', emoji: '🐕' },
+        { id: 'treehouse', name: 'Building a Treehouse', emoji: '🪵' },
+        { id: 'gaming', name: 'Gaming', emoji: '🎮' },
+    ],
+    worlds: [
+        { id: 'jungle', name: 'In the Jungle', emoji: '🌿' },
+        { id: 'savanna', name: 'The Savanna', emoji: '🦁' },
+        { id: 'ocean', name: 'Deep in the Ocean', emoji: '🌊' },
+        { id: 'north-pole', name: 'At the North Pole', emoji: '🐻‍❄️' },
+        { id: 'candyland', name: 'Candy Land', emoji: '🍭' },
+        { id: 'middle-ages', name: 'The Middle Ages', emoji: '🏰' },
+        { id: 'space', name: 'In Space', emoji: '👩‍🚀' },
+        { id: 'future', name: 'In the Future', emoji: '🤖' },
+        { id: 'prehistoric', name: 'The Prehistoric Age', emoji: '🦣' },
+        { id: 'wild-west', name: 'The Wild West', emoji: '🤠' },
+        { id: 'vikings', name: 'The Vikings', emoji: '🛡️' },
+        { id: '1001-nights', name: '1001 Nights', emoji: '🧞' },
+        { id: 'ancient-egypt', name: 'Ancient Egypt', emoji: '🔺' },
+        { id: 'ancient-greece', name: 'Ancient Greece', emoji: '🏛️' },
+    ],
+    stories: [
+        { id: 'bedtime', name: 'Bedtime story', emoji: '😴' },
+        { id: 'humorous', name: 'Humorous story', emoji: '🤡' },
+    ],
+    holidays: [
+        { id: 'birthday', name: 'Birthday', emoji: '🎂' },
+        { id: 'christmas', name: 'Christmas', emoji: '🎄' },
+        { id: 'mothers-day', name: 'Mother\'s Day', emoji: '👩‍👧' },
+        { id: 'fathers-day', name: 'Father\'s Day', emoji: '👨‍👦' },
+        { id: 'grandparents-day', name: 'Grandparents Day', emoji: '👵' },
+        { id: 'childrens-day', name: 'Children\'s Day', emoji: '🎈' },
+        { id: 'valentines', name: 'Valentine\'s Day', emoji: '💝' },
+        { id: 'easter', name: 'Easter', emoji: '🥚' },
+        { id: 'three-kings', name: 'Three Kings Day', emoji: '👑' },
+        { id: 'communion', name: 'First Holy Communion', emoji: '🕯️' },
+        { id: 'eid-al-fitr', name: 'Eid al-Fitr', emoji: '🕌' },
+        { id: 'eid-al-adha', name: 'Eid al-Adha', emoji: '🐑' },
+        { id: 'hanukkah', name: 'Hanukkah', emoji: '🕎' },
+        { id: 'independence', name: 'Independence Day', emoji: '🎆' },
+        { id: 'thanksgiving', name: 'Thanksgiving', emoji: '🦃' },
+        { id: 'carnival', name: 'Carnival', emoji: '🎭' },
+        { id: 'halloween', name: 'Halloween', emoji: '👻' },
+        { id: 'st-patricks', name: 'St. Patrick\'s Day', emoji: '☘️' },
+        { id: 'new-years', name: 'New Years Eve', emoji: '🎉' },
+        { id: 'animal-day', name: 'World Animal Day', emoji: '🐾' },
+    ],
+    family: [
+        { id: 'new-baby', name: 'New baby', emoji: '👶' },
+        { id: 'little-sister', name: 'Gets a little sister', emoji: '👧' },
+        { id: 'little-brother', name: 'Gets a little brother', emoji: '👦' },
+        { id: 'moving', name: 'Moving', emoji: '📦' },
+        { id: 'vacation', name: 'Vacation', emoji: '🏖️' },
+        { id: 'sleepover', name: 'Sleepover', emoji: '🛌' },
+        { id: 'marriage', name: 'Marriage', emoji: '👰' },
+        { id: 'separation', name: 'Parents\' separation', emoji: '💔' },
+        { id: 'blended-family', name: 'Blended family', emoji: '👨‍👩‍👧‍👦' },
+        { id: 'goodbye', name: 'Saying goodbye', emoji: '🪦' },
+    ],
+};
 
 // Simplified art styles for MVP (2 options)
 export type MVPArtStyle = 'pixar-3d' | 'storybook';
