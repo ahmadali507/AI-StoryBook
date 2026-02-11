@@ -377,13 +377,13 @@ export const MVP_ART_STYLES: { id: MVPArtStyle; name: string; preview: string; p
     {
         id: 'pixar-3d',
         name: 'Pixar 3D Cinematic',
-        preview: '/art-styles/pixar-3d.png',
+        preview: '/images/art-styles/pixar-3d.png',
         prompt: 'Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination, soft shadows, depth of field, warm tones, cinematic composition, volumetric lighting, subsurface scattering, professional Pixar/Disney quality animation, octane render, ray tracing',
     },
     {
         id: 'storybook',
-        name: 'Storybook',
-        preview: '/art-styles/classic-storybook.png',
+        name: 'Classic Storybook',
+        preview: '/images/art-styles/storybook.webp',
         prompt: 'Classic storybook illustration style, detailed backgrounds, timeless feel, golden hour lighting, reminiscent of beloved children\'s books, highly detailed, masterpiece',
     },
 ];

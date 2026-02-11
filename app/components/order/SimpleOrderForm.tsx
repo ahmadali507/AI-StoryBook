@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles, Check } from "lucide-react";
 import CharacterUploadList from "./CharacterUploadList";
 import StorySettingsForm from "./StorySettingsForm";
 import { useToast } from "@/providers/ToastProvider";
@@ -41,9 +41,9 @@ function getFriendlyOrderErrorMessage(error: string): string {
 }
 
 const STEPS = [
-    { id: 1, label: "Characters", description: "Add your characters" },
-    { id: 2, label: "Settings", description: "Age, theme & style" },
-    { id: 3, label: "Preview", description: "Review & purchase" },
+    { id: 1, label: "Characters", description: "Add your stars" },
+    { id: 2, label: "Story Details", description: "Theme & Style" },
+    { id: 3, label: "Review", description: "Ready to print" },
 ];
 
 export default function SimpleOrderForm() {
@@ -204,52 +204,36 @@ export default function SimpleOrderForm() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5">
-            <div className="max-w-4xl mx-auto px-4 py-8">
+        // Replaced outer container div with Fragment since layout handles the background
+        <>
+            <div className="max-w-5xl mx-auto px-4">
                 {/* Progress Steps */}
-                <div className="mb-12">
-                    <div className="flex items-center justify-center">
+                <div className="mb-8 lg:mb-12">
+                    <div className="flex items-center justify-center relative">
                         {STEPS.map((step, index) => (
-                            <div key={step.id} className="flex items-center">
+                            <div key={step.id} className="flex items-center relative z-10">
                                 {/* Step circle */}
                                 <div className="flex flex-col items-center">
                                     <div
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${currentStep > step.id
-                                            ? "bg-primary text-white"
-                                            : currentStep === step.id
-                                                ? "bg-primary text-white shadow-lg shadow-primary/30"
-                                                : "bg-gray-200 text-gray-400"
+                                        className={`w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 shadow-md ${currentStep >= step.id
+                                            ? "bg-gradient-to-r from-primary to-primary-light text-white ring-4 ring-primary/20"
+                                            : "bg-white text-gray-300 border-2 border-gray-100"
                                             }`}
                                     >
                                         {currentStep > step.id ? (
-                                            <svg
-                                                className="w-6 h-6"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={3}
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
+                                            <Check className="w-6 h-6" />
                                         ) : (
-                                            step.id
+                                            <span>{step.id}</span>
                                         )}
                                     </div>
-                                    <div className="mt-2 text-center">
+                                    <div className="mt-3 text-center">
                                         <div
-                                            className={`text-sm font-medium ${currentStep >= step.id
-                                                ? "text-gray-900"
+                                            className={`text-sm font-semibold transition-colors duration-300 ${currentStep >= step.id
+                                                ? "text-primary-dark"
                                                 : "text-gray-400"
                                                 }`}
                                         >
                                             {step.label}
-                                        </div>
-                                        <div className="text-xs text-gray-400 hidden sm:block">
-                                            {step.description}
                                         </div>
                                     </div>
                                 </div>
@@ -257,9 +241,9 @@ export default function SimpleOrderForm() {
                                 {/* Connector line */}
                                 {index < STEPS.length - 1 && (
                                     <div
-                                        className={`w-16 sm:w-24 h-1 mx-4 rounded-full transition-colors duration-300 ${currentStep > step.id
-                                            ? "bg-primary"
-                                            : "bg-gray-200"
+                                        className={`w-16 sm:w-24 lg:w-32 h-[3px] mx-2 -mt-6 rounded-full transition-all duration-500 relative ${currentStep > step.id
+                                            ? "bg-primary-light"
+                                            : "bg-gray-100"
                                             }`}
                                     />
                                 )}
@@ -268,148 +252,168 @@ export default function SimpleOrderForm() {
                     </div>
                 </div>
 
-                {/* Error message */}
-                {error && (
-                    <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600">
-                        {error}
-                    </div>
-                )}
+                {/* Main Content Area */}
+                <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl shadow-indigo-500/10 border border-white/50 p-6 sm:p-10 lg:p-12 overflow-hidden relative">
+                    {/* Decorative top gradient line */}
+                    <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary via-purple-400 to-pink-400 opacity-80" />
 
-                {/* Step Content */}
-                <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-10">
-                    {/* Step 1: Characters */}
-                    {currentStep === 1 && (
-                        <CharacterUploadList
-                            characters={characters}
-                            onCharactersChange={setCharacters}
-                            onPhotoUpload={handlePhotoUpload}
-                        />
+                    {/* Error message */}
+                    {error && (
+                        <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-2">
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            {error}
+                        </div>
                     )}
 
-                    {/* Step 2: Settings */}
-                    {currentStep === 2 && (
-                        <StorySettingsForm
-                            ageRange={ageRange}
-                            setAgeRange={setAgeRange}
-                            theme={theme}
-                            setTheme={setTheme}
-                            subject={subject}
-                            setSubject={setSubject}
-                            artStyle={artStyle}
-                            setArtStyle={setArtStyle}
-                            title={bookTitle}
-                            setTitle={setBookTitle}
-                            description={description}
-                            setDescription={setDescription}
-                        />
-                    )}
-
-                    {/* Step 3: Preview & Purchase */}
-                    {currentStep === 3 && (
-                        <div className="text-center">
-                            <div className="mb-8">
-                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                                    Your Book Cover is Ready! 🎉
-                                </h2>
-                                <p className="text-gray-500">
-                                    Review your personalized cover and complete
-                                    your purchase
-                                </p>
-                            </div>
-
-                            {/* Cover preview */}
-                            <div className="max-w-sm mx-auto mb-8">
-                                <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                                    {coverUrl ? (
-                                        <img
-                                            src={coverUrl}
-                                            alt="Book Cover"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="text-gray-400">
-                                            Cover Preview
-                                        </div>
-                                    )}
+                    {/* Step Content */}
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        {/* Step 1: Characters */}
+                        {currentStep === 1 && (
+                            <div className="space-y-6">
+                                <div className="text-center mb-8">
+                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                                        Who is this story for?
+                                    </h2>
+                                    <p className="text-gray-500 text-lg">
+                                        Upload a photo to transform them into a character.
+                                    </p>
                                 </div>
+                                <CharacterUploadList
+                                    characters={characters}
+                                    onCharactersChange={setCharacters}
+                                    onPhotoUpload={handlePhotoUpload}
+                                />
                             </div>
+                        )}
 
-                            {/* Order summary */}
-                            <div className="bg-gray-50 rounded-2xl p-6 max-w-md mx-auto mb-8">
-                                <h3 className="font-semibold text-gray-900 mb-4">
-                                    Order Summary
-                                </h3>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">
-                                            Characters
-                                        </span>
-                                        <span className="text-gray-900">
-                                            {characters.filter((c) => c.name).length}
-                                        </span>
+                        {/* Step 2: Settings */}
+                        {currentStep === 2 && (
+                            <div className="space-y-6">
+                                <div className="text-center mb-8">
+                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                                        Craft your world
+                                    </h2>
+                                    <p className="text-gray-500 text-lg">
+                                        Choose the perfect theme and style for your adventure.
+                                    </p>
+                                </div>
+                                <StorySettingsForm
+                                    ageRange={ageRange}
+                                    setAgeRange={setAgeRange}
+                                    theme={theme}
+                                    setTheme={setTheme}
+                                    subject={subject}
+                                    setSubject={setSubject}
+                                    artStyle={artStyle}
+                                    setArtStyle={setArtStyle}
+                                    title={bookTitle}
+                                    setTitle={setBookTitle}
+                                    description={description}
+                                    setDescription={setDescription}
+                                />
+                            </div>
+                        )}
+
+                        {/* Step 3: Preview & Purchase */}
+                        {currentStep === 3 && (
+                            <div className="text-center max-w-2xl mx-auto">
+                                <div className="mb-8">
+                                    <div className="inline-flex items-center justify-center p-3 bg-green-100 text-green-600 rounded-full mb-4">
+                                        <Sparkles className="w-6 h-6" />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">
-                                            Age Range
-                                        </span>
-                                        <span className="text-gray-900">
-                                            {ageRange}
-                                        </span>
+                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                                        Your Book Cover is Ready!
+                                    </h2>
+                                    <p className="text-gray-500 text-lg">
+                                        This is just a preview. The full story will be generated magically after purchase.
+                                    </p>
+                                </div>
+
+                                {/* Cover preview */}
+                                <div className="relative group mx-auto mb-10 w-full max-w-sm perspective-1000">
+                                    <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-gray-100 relative transform transition-transform duration-500 group-hover:rotate-y-12 preserve-3d">
+                                        {coverUrl ? (
+                                            <img
+                                                src={coverUrl}
+                                                alt="Book Cover"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-slate-50">
+                                                <div className="w-16 h-16 mb-4 rounded-full bg-slate-100" />
+                                                <p>Cover Preview</p>
+                                            </div>
+                                        )}
+                                        {/* Shine effect */}
+                                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Theme</span>
-                                        <span className="text-gray-900 capitalize">
-                                            {theme}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">
-                                            Art Style
-                                        </span>
-                                        <span className="text-gray-900">
-                                            {artStyle?.replace("-", " ")}
-                                        </span>
-                                    </div>
-                                    <div className="border-t border-gray-200 pt-2 mt-2">
-                                        <div className="flex justify-between font-bold">
-                                            <span>Total</span>
-                                            <span className="text-primary">
+                                </div>
+
+                                {/* Order summary card */}
+                                <div className="bg-gray-50/80 rounded-2xl p-6 border border-gray-100 mb-8 backdrop-blur-sm">
+                                    <h3 className="font-heading font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
+                                        Order Summary
+                                    </h3>
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                            <span className="text-gray-500">Characters</span>
+                                            <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">
+                                                {characters.filter((c) => c.name).length}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                            <span className="text-gray-500">Age Group</span>
+                                            <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">{ageRange}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                            <span className="text-gray-500">Theme</span>
+                                            <span className="font-medium text-gray-900 capitalize bg-white px-2 py-1 rounded shadow-sm">
+                                                {theme}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2">
+                                            <span className="font-bold text-gray-900 text-lg">Total</span>
+                                            <span className="font-heading font-bold text-2xl text-primary">
                                                 $7.99
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <button
-                                onClick={handlePurchase}
-                                disabled={isLoading}
-                                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-primary to-secondary text-white rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:shadow-xl hover:scale-105 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Redirecting to checkout...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="w-5 h-5" />
-                                        Pay $7.99 - Generate My Book
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    )}
+                                <button
+                                    onClick={handlePurchase}
+                                    disabled={isLoading}
+                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full font-bold text-lg shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Redirecting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                                            Pay $7.99 & Generate Book
+                                        </>
+                                    )}
+                                </button>
+                                <p className="mt-4 text-xs text-gray-400 flex items-center justify-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                                    Secure checkout powered by Stripe
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Navigation buttons */}
-                <div className="mt-8 flex justify-between">
+                <div className="mt-8 flex justify-between items-center px-2">
                     <button
                         onClick={handleBack}
                         disabled={currentStep === 1}
                         className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all ${currentStep === 1
                             ? "opacity-0 pointer-events-none"
-                            : "text-gray-600 hover:bg-gray-100"
+                            : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
                             }`}
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -420,36 +424,31 @@ export default function SimpleOrderForm() {
                         <button
                             onClick={handleNext}
                             disabled={!canProceed() || isLoading}
-                            className={`flex items-center gap-2 px-8 py-3 rounded-full font-semibold transition-all ${canProceed() && !isLoading
-                                ? "bg-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl"
-                                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                            className={`flex items-center gap-2 px-8 py-3 rounded-full font-bold transition-all shadow-lg ${canProceed() && !isLoading
+                                ? "bg-gray-900 text-white hover:bg-gray-800 hover:shadow-xl hover:-translate-y-0.5"
+                                : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                                 }`}
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                    Generating...
+                                    Processing...
                                 </>
                             ) : currentStep === 2 ? (
                                 <>
-                                    <Sparkles className="w-5 h-5" />
+                                    <Sparkles className="w-5 h-5 text-purple-300" />
                                     Generate Cover
                                 </>
                             ) : (
                                 <>
-                                    Next
+                                    Next Step
                                     <ChevronRight className="w-5 h-5" />
                                 </>
                             )}
                         </button>
                     )}
                 </div>
-
-                {/* Mobile-friendly note */}
-                <p className="mt-8 text-center text-xs text-gray-400">
-                    🔒 Secure checkout powered by Stripe
-                </p>
             </div>
-        </div>
+        </>
     );
 }

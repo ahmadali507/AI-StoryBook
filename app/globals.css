@@ -1,27 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  /* Design System Colors */
-  --primary: #4F46E5;
-  --primary-light: #818CF8;
-  --secondary: #F97316;
+  /* Design System Colors - Updated from MASTER.md */
+  --primary: #8B5CF6; /* Vibrant Purple */
+  --primary-light: #A78BFA;
+  --primary-dark: #7C3AED;
+  --secondary: #F59E0B; /* Warm Amber */
+  --secondary-light: #FBBF24;
+  --accent-pink: #EC4899; /* Pink for gradients */
+  --accent-rose: #F43F5E; /* Rose for gradients */
+  
   --background: #FAFAFA;
   --surface: #FFFFFF;
-  --foreground: #1E293B;
-  --text-muted: #64748B;
-  --border: #E2E8F0;
+  --foreground: #1F2937; /* Dark Gray */
+  --text-muted: #6B7280; /* Medium Gray */
+  --border: #E5E7EB;
   
   /* Status Colors */
-  --success: #10B981;
-  --warning: #F59E0B;
-  --error: #EF4444;
-  --info: #3B82F6;
+  --success: #10B981; /* Emerald Green */
+  --warning: #F59E0B; /* Amber */
+  --error: #EF4444; /* Red */
+  --info: #3B82F6; /* Blue */
 }
 
 @theme inline {
   --color-primary: var(--primary);
   --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
   --color-secondary: var(--secondary);
+  --color-secondary-light: var(--secondary-light);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-rose: var(--accent-rose);
+  
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
@@ -33,7 +43,7 @@
   --color-info: var(--info);
   
   --font-sans: var(--font-inter);
-  --font-heading: var(--font-fredoka);
+  --font-heading: var(--font-outfit);
 }
 
 body {
@@ -44,7 +54,7 @@ body {
 
 /* Heading font utility */
 .font-heading {
-  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-family: var(--font-outfit), system-ui, sans-serif;
 }
 
 /* Custom button styles */

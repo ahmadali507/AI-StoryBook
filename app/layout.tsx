@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Fredoka, Inter, Cinzel_Decorative, Crimson_Text } from "next/font/google";
+import { Outfit, Inter, Cinzel_Decorative, Crimson_Text } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import "./globals.css";
 
-const fredoka = Fredoka({
-  variable: "--font-fredoka",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const inter = Inter({
@@ -41,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${fredoka.variable} ${inter.variable} ${cinzel.variable} ${crimson.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${outfit.variable} ${inter.variable} ${cinzel.variable} ${crimson.variable} font-sans antialiased bg-background text-foreground`}
       >
         <QueryProvider>
           <ToastProvider>{children}</ToastProvider>

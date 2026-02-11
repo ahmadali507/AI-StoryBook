@@ -237,46 +237,47 @@ export default function StorySettingsForm({
                             key={style.id}
                             onClick={() => setArtStyle(style.id)}
                             className={cn(
-                                "relative group overflow-hidden rounded-2xl border-2 transition-all duration-300 hover:shadow-xl text-left bg-white",
+                                "relative group overflow-hidden rounded-2xl border-2 transition-all duration-300 hover:shadow-xl text-left bg-white h-64",
                                 artStyle === style.id
                                     ? "border-amber-500 shadow-lg shadow-amber-500/10 ring-2 ring-amber-500/20"
                                     : "border-slate-200 hover:border-amber-300"
                             )}
                         >
+                            {/* Background Image */}
                             <div className={cn(
-                                "aspect-[16/9] w-full bg-slate-100 relative overflow-hidden transition-transform duration-500",
+                                "absolute inset-0 w-full h-full transition-transform duration-700",
                                 artStyle === style.id ? "scale-105" : "group-hover:scale-105"
                             )}>
-                                {/* If we had real images, we'd use Next/Image here. Using placeholders/gradients for now. */}
+                                <img
+                                    src={style.preview}
+                                    alt={style.name}
+                                    className="w-full h-full object-cover"
+                                />
+                                {/* Gradient Overlay for text readability */}
                                 <div className={cn(
-                                    "absolute inset-0 bg-gradient-to-br opacity-80",
-                                    style.id === "pixar-3d"
-                                        ? "from-blue-400 via-purple-400 to-pink-400"
-                                        : "from-amber-200 via-orange-100 to-yellow-200"
+                                    "absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300",
+                                    artStyle === style.id ? "opacity-90" : "opacity-70 group-hover:opacity-80"
                                 )} />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-6xl drop-shadow-lg filter">{style.id === 'pixar-3d' ? '🎬' : '🎨'}</span>
-                                </div>
                             </div>
 
-                            <div className="p-5">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className={cn(
-                                        "text-lg font-bold",
-                                        artStyle === style.id ? "text-amber-700" : "text-slate-800"
-                                    )}>
+                            {/* Content Overlay */}
+                            <div className="absolute inset-0 p-5 flex flex-col justify-end text-white pb-6 px-6">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-2xl font-bold font-heading shadow-black/50 drop-shadow-md">
                                         {style.name}
                                     </span>
                                     {artStyle === style.id && (
-                                        <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-white">
-                                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white shadow-lg animate-in zoom-in duration-300">
+                                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                 <polyline points="20 6 9 17 4 12" />
                                             </svg>
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-sm text-slate-500 line-clamp-2">
-                                    {style.prompt.split(',')[0]}...
+                                <p className="text-sm text-white/90 font-medium line-clamp-2 shadow-black/50 drop-shadow-sm">
+                                    {style.id === 'pixar-3d'
+                                        ? "Cinematic 3D animation style"
+                                        : "Hand-drawn classic illustration"}
                                 </p>
                             </div>
                         </button>
