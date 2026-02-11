@@ -4,6 +4,8 @@ import { Navbar, Footer } from "@/app/components/layout";
 import { Wand2, ArrowRight, Star, Sparkles, CheckCircle2 } from "lucide-react";
 import AnimatedStep from "@/app/components/home/AnimatedStep";
 import HeroCarousel from "@/app/components/home/HeroCarousel";
+import ScrollReveal from "@/components/ui/ScrollReveal";
+import CharacterCarousel from "@/components/home/CharacterCarousel";
 
 export default function Home() {
   return (
@@ -201,22 +203,68 @@ export default function Home() {
               </div>
 
               {/* Visuals */}
-              <div className="relative h-[500px] w-full">
-                <div className="absolute top-10 left-10 w-64 h-80 bg-white p-2 rounded-2xl shadow-xl transform -rotate-6 z-10 hover:z-20 hover:scale-105 transition-all duration-300">
-                  <div className="w-full h-full bg-gradient-to-b from-blue-100 to-indigo-50 rounded-xl overflow-hidden relative">
-                    {/* Placeholder for Snow Scene */}
-                    <div className="absolute inset-0 flex items-center justify-center text-6xl">☃️</div>
-                    <div className="absolute bottom-4 left-4 right-4 bg-white/90 p-2 rounded-lg text-xs font-bold text-center">Winter Wonderland</div>
-                  </div>
-                </div>
 
-                <div className="absolute top-20 right-10 w-72 h-80 bg-white p-2 rounded-2xl shadow-xl transform rotate-6 z-0 hover:z-20 hover:scale-105 transition-all duration-300 border-4 border-white">
-                  <div className="w-full h-full bg-gradient-to-b from-orange-100 to-red-50 rounded-xl overflow-hidden relative">
-                    {/* Placeholder for Firefighter Scene */}
-                    <div className="absolute inset-0 flex items-center justify-center text-6xl">👨‍🚒</div>
-                    <div className="absolute bottom-4 left-4 right-4 bg-white/90 p-2 rounded-lg text-xs font-bold text-center">Brave Firefighter</div>
+              <div className="relative h-[500px] w-full">
+                <ScrollReveal
+                  className="absolute top-0 left-4 lg:left-0 z-10 hover:z-30 transition-all duration-300"
+                  delay={0}
+                  duration={700}
+                >
+                  <div className="w-64 h-80 bg-white p-2 rounded-2xl shadow-xl transform -rotate-6 hover:rotate-0 hover:scale-105 transition-all duration-300">
+                    <div className="w-full h-full relative rounded-xl overflow-hidden">
+                      <Image
+                        src="/images/hero-section/hero_snow_pixar.png"
+                        alt="Winter Wonderland Storybook"
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <p className="text-white text-xs font-bold text-center">Winter Wonderland</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </ScrollReveal>
+
+                <ScrollReveal
+                  className="absolute top-12 right-4 lg:right-0 z-0 hover:z-30 transition-all duration-300"
+                  delay={200}
+                  duration={700}
+                >
+                  <div className="w-64 h-80 bg-white p-2 rounded-2xl shadow-xl transform rotate-6 hover:rotate-0 hover:scale-105 transition-all duration-300">
+                    <div className="w-full h-full relative rounded-xl overflow-hidden">
+
+                      <Image
+                        src="/images/hero-section/hero_firefighter_pixar.png"
+                        alt="Brave Firefighter Storybook"
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <p className="text-white text-xs font-bold text-center">Brave Firefighter</p>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+                <ScrollReveal
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 hover:z-30 transition-all duration-300"
+                  delay={400}
+                  duration={700}
+                >
+                  <div className="w-72 h-64 bg-white p-2 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
+                    <div className="w-full h-full relative rounded-xl overflow-hidden">
+                      <Image
+                        src="/images/hero-section/hero_space_pixar.png"
+                        alt="Space Adventure Storybook"
+                        fill
+                        className="object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <p className="text-white text-xs font-bold text-center">Space Explorer</p>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
               </div>
 
             </div>
@@ -229,29 +277,8 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-16 items-center">
 
               {/* Visuals: Transformation */}
-              <div className="relative bg-indigo-50 rounded-3xl p-8 lg:p-12 order-2 lg:order-1 border border-indigo-100">
-                <div className="flex items-center justify-center gap-4 lg:gap-8">
-                  <div className="w-40 h-40 lg:w-48 lg:h-48 rounded-2xl bg-white shadow-lg p-2 transform -rotate-2">
-                    {/* Placeholder Real Photo */}
-                    <div className="w-full h-full bg-slate-100 rounded-xl flex items-center justify-center overflow-hidden">
-                      <span className="text-4xl">📸</span>
-                    </div>
-                  </div>
-
-                  <div className="text-indigo-400">
-                    <ArrowRight className="w-8 h-8 lg:w-12 lg:h-12 animate-pulse" />
-                  </div>
-
-                  <div className="w-40 h-40 lg:w-48 lg:h-48 rounded-2xl bg-white shadow-xl p-2 transform rotate-2 border-4 border-indigo-200">
-                    {/* Placeholder AI Char */}
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center overflow-hidden text-white">
-                      <span className="text-4xl">🏴‍☠️</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-center mt-8 text-sm font-medium text-indigo-800 bg-indigo-100/50 inline-block px-4 py-2 rounded-full mx-auto w-full">
-                  Same face. Consistent style. Every page.
-                </div>
+              <div className="order-2 lg:order-1 w-full">
+                <CharacterCarousel />
               </div>
 
               {/* Text Content */}
@@ -271,6 +298,103 @@ export default function Home() {
                     Get Started For Free
                   </Link>
                 </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* 6. High-Quality Printed Storybooks */}
+        <section className="py-24 bg-indigo-50/30 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+              {/* Text Content */}
+              <div className="space-y-8 order-2 lg:order-1">
+                 <ScrollReveal
+                  className="relative"
+                  delay={200}
+                  direction="left"
+                >
+
+                <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight">
+                  High-Quality <br />
+                  <span className="relative inline-block text-indigo-600">
+                    Printed Storybooks
+                    <svg className="absolute w-full h-3 -bottom-1 left-0 text-orange-400 opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none">
+                      <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
+                    </svg>
+                  </span>
+                </h2>
+                </ScrollReveal>
+
+               
+                <ScrollReveal
+                  className="relative"
+                  delay={200}
+                  direction="left"
+                >   
+                <p className="text-xl text-slate-600 leading-relaxed">
+                  Order a premium printed version of your story to create a memorable keepsake or thoughtful gift.
+                </p>
+                </ScrollReveal>
+                <ul className="space-y-4">
+                  {[
+                    "Create a one-of-a-kind hardcover storybook your child will treasure forever.",
+                    "24-28 pages filled with stunning illustrations that bring their story to life.",
+                    "A perfect blend of pictures and text, crafted to captivate young imaginations.",
+                    "Delivered globally, with flexible shipping options to suit your needs.",
+                    "The perfect gift to make your child's dreams come true and keep them close to your heart."
+                  ].map((item, index) => (
+                     <ScrollReveal
+                     key={index}
+                  className="relative"
+                  delay={400}
+                  direction="left"
+                >   
+                    <li key={index} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-700">{item}</span>
+                    </li>
+                    </ScrollReveal>
+                    ))}
+                </ul>
+
+                <div className="pt-4">
+                  <Link
+                    href="/create"
+                    className="inline-flex items-center gap-2 bg-pink-600 text-white px-8 py-4 rounded-full font-bold hover:bg-pink-700 transition-colors shadow-lg shadow-pink-200 hover:-translate-y-1 transform duration-200"
+                    >
+                    <Wand2 className="w-5 h-5" />
+                    Create your Storybook
+                  </Link>
+                </div>
+              </div>
+
+              {/* Visuals */}
+              <div className="order-1 lg:order-2">
+                <ScrollReveal
+                  className="relative"
+                  delay={200}
+                >
+                  <div className="relative z-10 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <div className="bg-white p-4 rounded-3xl shadow-2xl border-4 border-white/50">
+                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100">
+                        {/* Fallback or Placeholder until generation succeeds */}
+                        <Image
+                          src="/images/home/printed-book-showcase.jpg"
+                          alt="Printed Storybook Preview"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Decorative Elements */}
+                  <div className="absolute -top-12 -right-12 w-64 h-64 bg-yellow-100 rounded-full blur-3xl opacity-60 -z-10 animate-pulse"></div>
+                  <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-blue-100 rounded-full blur-3xl opacity-60 -z-10 animate-pulse delay-700"></div>
+                </ScrollReveal>
               </div>
 
             </div>

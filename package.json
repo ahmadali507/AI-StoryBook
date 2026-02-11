@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.93.3",
     "@tanstack/react-query": "^5.90.20",
     "ai": "^6.0.67",
+    "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
