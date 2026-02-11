@@ -152,7 +152,7 @@ export default function StorySettingsForm({
             {theme && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
                             <Sparkles className="w-4 h-4" />
                         </div>
                         <Label className="text-xl font-bold text-slate-800">Choose a Subject</Label>

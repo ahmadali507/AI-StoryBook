@@ -436,7 +436,7 @@ export default function SimpleOrderForm() {
                                 </>
                             ) : currentStep === 2 ? (
                                 <>
-                                    <Sparkles className="w-5 h-5 text-purple-300" />
+                                    <Sparkles className="w-5 h-5 text-indigo-300" />
                                     Generate Cover
                                 </>
                             ) : (

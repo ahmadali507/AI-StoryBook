@@ -28,7 +28,7 @@ import {
 
 const settings = [
     { id: "forest", name: "Enchanted Forest", icon: Trees, color: "text-green-600" },
-    { id: "castle", name: "Castle Kingdom", icon: Castle, color: "text-purple-600" },
+    { id: "castle", name: "Castle Kingdom", icon: Castle, color: "text-indigo-600" },
     { id: "ocean", name: "Under the Sea", icon: Waves, color: "text-blue-600" },
     { id: "space", name: "Outer Space", icon: Rocket, color: "text-indigo-600" },
     { id: "home", name: "Cozy Home", icon: Home, color: "text-orange-600" },

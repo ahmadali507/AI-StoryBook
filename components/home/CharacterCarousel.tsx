@@ -44,7 +44,7 @@ export default function CharacterCarousel() {
                 {/* Background Decorations */}
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                     <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-50" />
-                    <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-purple-100 rounded-full blur-3xl opacity-50" />
+                    <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-indigo-100 rounded-full blur-3xl opacity-50" />
                 </div>
 
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-8 lg:gap-16 min-h-[400px]">

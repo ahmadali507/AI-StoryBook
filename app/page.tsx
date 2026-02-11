@@ -30,7 +30,7 @@ export default function Home() {
                   Running on Seedream 4.5 AI
                 </div>
 
-                <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.1] animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <h1 className="text-3xl lg:text-5xl font-bold tracking-tight text-slate-900 leading-[1.1] animate-in fade-in slide-in-from-bottom-6 duration-700">
                   Create magical personalized children <span className="relative inline-block text-indigo-600">
                     Storybooks
                     <svg className="absolute w-full h-3 -bottom-1 left-0 text-orange-400 opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -115,10 +115,10 @@ export default function Home() {
         </section>
 
         {/* 3. How it Works */}
-        <section className="py-24 bg-purple-50/50">
+        <section className="py-24 bg-indigo-50/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-20">
-              <h2 className="text-4xl lg:text-5xl font-bold text-purple-900 mb-6">Start Creating</h2>
+              <h2 className="text-4xl lg:text-5xl font-bold text-indigo-600 mb-6">Start Creating</h2>
               <p className="text-xl text-slate-600 max-w-2xl mx-auto">
                 Turn your child's imagination into a beautifully illustrated book in just three magical steps.
               </p>
@@ -381,7 +381,7 @@ export default function Home() {
                 <div className="pt-4">
                   <Link
                     href="/create"
-                    className="inline-flex items-center gap-2 bg-violet-600 text-white px-8 py-4 rounded-full font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 hover:-translate-y-1 transform duration-200"
+                    className="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-full font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-violet-200 hover:-translate-y-1 transform duration-200"
                   >
                     <Wand2 className="w-5 h-5" />
                     Create your Storybook

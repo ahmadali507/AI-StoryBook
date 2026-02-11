@@ -26,7 +26,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
     const isUser = message.role === 'user';
     const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     // Debug logging for pre-made characters
     if (message.preMadeCharacters) {
         console.log('[ChatMessage] Rendering with preMadeCharacters:', {
@@ -35,10 +35,10 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
             messageContent: message.content.substring(0, 50)
         });
     }
-    
+
     const handleCharacterClick = (characterId: string) => {
         if (isSubmitting || isLoading) return;
-        
+
         setSelectedCharacterIds(prev => {
             // Toggle selection
             if (prev.includes(characterId)) {
@@ -51,7 +51,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
             return [...prev, characterId];
         });
     };
-    
+
     const handleConfirmSelection = () => {
         if (selectedCharacterIds.length > 0 && onCharacterSelect && !isSubmitting) {
             console.log('[ChatMessage] Confirming selection:', selectedCharacterIds);
@@ -94,11 +94,10 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                     Click to select up to 2 characters
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                                        selectedCharacterIds.length === 0 
-                                            ? 'bg-slate-100 text-slate-500' 
-                                            : 'bg-fuchsia-100 text-fuchsia-700 animate-pulse-glow'
-                                    }`}>
+                                    <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${selectedCharacterIds.length === 0
+                                        ? 'bg-slate-100 text-slate-500'
+                                        : 'bg-fuchsia-100 text-fuchsia-700 animate-pulse-glow'
+                                        }`}>
                                         {selectedCharacterIds.length}/2
                                     </div>
                                 </div>
@@ -117,8 +116,8 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                             {char.imageUrl && (
                                                 <div className={`
                                                     aspect-square rounded-lg overflow-hidden border-2 transition-all duration-300
-                                                    ${isSelected 
-                                                        ? 'border-fuchsia-500 ring-4 ring-fuchsia-200 scale-95 shadow-lg' 
+                                                    ${isSelected
+                                                        ? 'border-fuchsia-500 ring-4 ring-fuchsia-200 scale-95 shadow-lg'
                                                         : 'border-slate-200 hover:border-fuchsia-400 hover:scale-105 hover:shadow-md'
                                                     }
                                                     ${isSubmitting || isLoading ? 'opacity-50 cursor-not-allowed' : ''}
@@ -153,7 +152,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                     );
                                 })}
                             </div>
-                            
+
                             {/* Action Buttons */}
                             <div className="flex gap-2 pt-2">
                                 <button
@@ -173,7 +172,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                         </>
                                     )}
                                 </button>
-                                
+
                                 {message.preMadeCharactersMetadata?.hasMore && !message.preMadeCharactersMetadata?.showingAll && !isSubmitting && (
                                     <button
                                         onClick={onShowAllCharacters}
@@ -184,7 +183,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                     </button>
                                 )}
                             </div>
-                            
+
                             {isSubmitting && (
                                 <div className="mt-2 p-3 bg-fuchsia-50 border border-fuchsia-200 rounded-lg flex items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin text-fuchsia-600" />
@@ -231,8 +230,8 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                     {char.success && char.imageUrl ? (
                                         <>
                                             <div className="aspect-square bg-slate-100 overflow-hidden">
-                                                <img 
-                                                    src={char.imageUrl} 
+                                                <img
+                                                    src={char.imageUrl}
                                                     alt={char.name}
                                                     className="w-full h-full object-cover"
                                                 />
@@ -266,17 +265,17 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                         <div className="mt-4 p-5 bg-gradient-to-br from-purple-50 via-fuchsia-50 to-pink-50 rounded-xl border-2 border-purple-300 shadow-lg animate-slide-up">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center animate-pulse-glow">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center animate-pulse-glow">
                                         <Loader2 className="w-6 h-6 animate-spin text-white" />
                                     </div>
-                                    <div className="absolute inset-0 w-10 h-10 rounded-full bg-purple-400 animate-ping opacity-20" />
+                                    <div className="absolute inset-0 w-10 h-10 rounded-full bg-indigo-400 animate-ping opacity-20" />
                                 </div>
                                 <div className="flex-1">
-                                    <span className="text-base font-bold text-purple-900 block">
+                                    <span className="text-base font-bold text-indigo-900 block">
                                         {message.storyProgress.message}
                                     </span>
-                                    <span className="text-xs text-purple-600 font-medium flex items-center gap-1 mt-1">
-                                        <span className="w-1.5 h-1.5 bg-purple-600 rounded-full animate-bounce" />
+                                    <span className="text-xs text-indigo-600 font-medium flex items-center gap-1 mt-1">
+                                        <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" />
                                         {message.storyProgress.phase === 'outline' && 'Creating story structure...'}
                                         {message.storyProgress.phase === 'chapters' && 'Writing chapters...'}
                                         {message.storyProgress.phase === 'illustrations' && 'Generating illustrations...'}
@@ -284,39 +283,39 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
                                     </span>
                                 </div>
                             </div>
-                            
+
                             {/* Progress Bar with Enhanced Animation */}
-                            <div className="relative h-4 bg-purple-200 rounded-full overflow-hidden mb-3 shadow-inner">
-                                <div 
+                            <div className="relative h-4 bg-indigo-200 rounded-full overflow-hidden mb-3 shadow-inner">
+                                <div
                                     className="absolute inset-0 h-full bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 transition-all duration-700 ease-out rounded-full"
-                                    style={{ 
-                                        width: `${Math.max(5, (message.storyProgress.current / message.storyProgress.total) * 100)}%` 
+                                    style={{
+                                        width: `${Math.max(5, (message.storyProgress.current / message.storyProgress.total) * 100)}%`
                                     }}
                                 >
                                     {/* Progress shimmer */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-progress-shimmer" />
                                 </div>
                                 {/* Pulse effect at progress end */}
-                                <div 
+                                <div
                                     className="absolute top-0 h-full w-1 bg-white shadow-lg transition-all duration-700 ease-out animate-pulse"
-                                    style={{ 
-                                        left: `${Math.max(5, (message.storyProgress.current / message.storyProgress.total) * 100)}%` 
+                                    style={{
+                                        left: `${Math.max(5, (message.storyProgress.current / message.storyProgress.total) * 100)}%`
                                     }}
                                 />
                             </div>
-                            
+
                             <div className="flex items-center justify-between text-xs">
-                                <span className="text-purple-800 font-bold bg-white/60 px-2 py-1 rounded-full">
+                                <span className="text-indigo-800 font-bold bg-white/60 px-2 py-1 rounded-full">
                                     {Math.round((message.storyProgress.current / message.storyProgress.total) * 100)}% complete
                                 </span>
-                                <span className="text-purple-600 font-medium">
+                                <span className="text-indigo-600 font-medium">
                                     ⏱️ This may take 3-5 minutes...
                                 </span>
                             </div>
-                            
+
                             {/* Additional info */}
                             <div className="mt-3 pt-3 border-t border-purple-200">
-                                <p className="text-xs text-purple-700 text-center font-medium">
+                                <p className="text-xs text-indigo-700 text-center font-medium">
                                     ✨ We're crafting your story with care - generating chapters and beautiful illustrations
                                 </p>
                             </div>
@@ -325,7 +324,7 @@ export function ChatMessage({ message, onCharacterSelect, onShowAllCharacters, o
 
                     {/* Storybook Link */}
                     {message.storybookId && (
-                        <Link 
+                        <Link
                             href={`/story/${message.storybookId}`}
                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded-full font-medium transition-colors"
                         >

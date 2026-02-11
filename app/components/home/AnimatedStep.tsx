@@ -41,7 +41,7 @@ export default function AnimatedStep({ step, title, description, delay = 0, isLa
                 <div className="absolute left-6 top-14 bottom-0 w-0.5 -ml-px bg-slate-100 h-[calc(100%+2rem)]">
                     <div
                         className={cn(
-                            "absolute top-0 left-0 w-full bg-purple-600 transition-all duration-1000 ease-in-out",
+                            "absolute top-0 left-0 w-full bg-indigo-300 transition-all duration-1000 ease-in-out",
                             isVisible ? "h-full" : "h-0"
                         )}
                     />
@@ -52,7 +52,7 @@ export default function AnimatedStep({ step, title, description, delay = 0, isLa
             <div className={cn(
                 "relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold border-2 transition-all duration-500",
                 isVisible
-                    ? "bg-purple-600 border-purple-600 text-white scale-110 shadow-lg shadow-purple-500/30"
+                    ? "bg-indigo-600 border-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/30"
                     : "bg-white border-slate-200 text-slate-300"
             )}>
                 {step}
@@ -67,12 +67,12 @@ export default function AnimatedStep({ step, title, description, delay = 0, isLa
             )} style={{ transitionDelay: `${delay}ms` }}>
                 <h3 className={cn(
                     "text-2xl font-bold mb-3 transition-colors duration-500",
-                    isVisible ? "text-purple-900" : "text-slate-400"
+                    isVisible ? "text-indigo-400" : "text-slate-400"
                 )}>
                     {title}
                 </h3>
-                <p className="text-lg text-slate-600 leading-relaxed font-medium">
-                    {description}
+                <p className="text-lg text-slate-400 leading-relaxed font-medium">
+                    {description}4
                 </p>
             </div>
         </div>
