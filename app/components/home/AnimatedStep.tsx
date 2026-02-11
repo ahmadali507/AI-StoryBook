@@ -10,7 +10,7 @@ interface AnimatedStepProps {
     delay?: number;
 }
 
-export default function AnimatedStep({ step, title, description, delay = 0 }: AnimatedStepProps) {
+export default function AnimatedStep({ step, title, description, delay = 0, isLast = false }: { step: number; title: string; description: string; delay?: number; isLast?: boolean }) {
     const [isVisible, setIsVisible] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -19,12 +19,11 @@ export default function AnimatedStep({ step, title, description, delay = 0 }: An
             ([entry]) => {
                 if (entry.isIntersecting) {
                     setIsVisible(true);
-                    observer.disconnect(); // Only animate once
                 }
             },
             {
-                threshold: 0.2, // Trigger when 20% visible
-                rootMargin: "0px 0px -50px 0px" // Slightly before bottom of screen
+                threshold: 0.5, // Trigger when 50% visible
+                rootMargin: "0px 0px -20% 0px" // Trigger slightly before center
             }
         );
 
@@ -36,22 +35,45 @@ export default function AnimatedStep({ step, title, description, delay = 0 }: An
     }, []);
 
     return (
-        <div
-            ref={ref}
-            className={cn(
-                "flex gap-6 group transition-all duration-1000 ease-out transform",
-                isVisible
-                    ? "opacity-100 translate-x-0"
-                    : "opacity-0 translate-x-20"
+        <div ref={ref} className="relative flex gap-8 group">
+            {/* Connecting Line */}
+            {!isLast && (
+                <div className="absolute left-6 top-14 bottom-0 w-0.5 -ml-px bg-slate-100 h-[calc(100%+2rem)]">
+                    <div
+                        className={cn(
+                            "absolute top-0 left-0 w-full bg-purple-600 transition-all duration-1000 ease-in-out",
+                            isVisible ? "h-full" : "h-0"
+                        )}
+                    />
+                </div>
             )}
-            style={{ transitionDelay: `${delay}ms` }}
-        >
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-600 border border-indigo-100 shadow-sm group-hover:scale-110 transition-transform duration-300">
+
+            {/* Step Circle */}
+            <div className={cn(
+                "relative z-10 flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold border-2 transition-all duration-500",
+                isVisible
+                    ? "bg-purple-600 border-purple-600 text-white scale-110 shadow-lg shadow-purple-500/30"
+                    : "bg-white border-slate-200 text-slate-300"
+            )}>
                 {step}
             </div>
-            <div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">{title}</h3>
-                <p className="text-lg text-slate-600 leading-relaxed">{description}</p>
+
+            {/* Content */}
+            <div className={cn(
+                "pb-12 transition-all duration-700 transform",
+                isVisible
+                    ? "opacity-100 translate-x-0"
+                    : "opacity-30 translate-x-10"
+            )} style={{ transitionDelay: `${delay}ms` }}>
+                <h3 className={cn(
+                    "text-2xl font-bold mb-3 transition-colors duration-500",
+                    isVisible ? "text-purple-900" : "text-slate-400"
+                )}>
+                    {title}
+                </h3>
+                <p className="text-lg text-slate-600 leading-relaxed font-medium">
+                    {description}
+                </p>
             </div>
         </div>
     );

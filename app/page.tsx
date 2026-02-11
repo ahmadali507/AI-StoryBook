@@ -115,10 +115,10 @@ export default function Home() {
         </section>
 
         {/* 3. How it Works */}
-        <section className="py-24 bg-white">
+        <section className="py-24 bg-purple-50/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-20">
-              <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6">Start Creating</h2>
+              <h2 className="text-4xl lg:text-5xl font-bold text-purple-900 mb-6">Start Creating</h2>
               <p className="text-xl text-slate-600 max-w-2xl mx-auto">
                 Turn your child's imagination into a beautifully illustrated book in just three magical steps.
               </p>
@@ -126,29 +126,46 @@ export default function Home() {
 
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               {/* Visual: Laptop Mockup */}
-              <div className="relative order-2 lg:order-1">
-                <div className="relative bg-slate-900 rounded-[2rem] p-4 shadow-2xl border-[8px] border-slate-800">
-                  <div className="bg-white rounded-xl overflow-hidden aspect-[16/10] relative">
-                    {/* Inner Screen Content Placeholder */}
-                    <div className="absolute inset-0 bg-slate-50 flex items-center justify-center text-slate-200">
-                      <div className="text-center">
-                        <Sparkles className="w-16 h-16 mx-auto mb-4 text-indigo-200" />
-                        <p className="font-semibold text-slate-400">Story Creating Interface...</p>
-                      </div>
+              <div className="relative order-2 lg:order-1 perspective-1000">
+                {/* Background Glows - Refined for warmth and theme */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-indigo-200/30 rounded-full blur-[80px] -z-10 animate-pulse-glow"></div>
+                <div className="absolute -top-10 -right-10 w-72 h-72 bg-pink-200/40 rounded-full blur-[60px] -z-10 animate-float" style={{ animationDelay: '1s' }}></div>
+                <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-amber-200/30 rounded-full blur-[60px] -z-10 animate-float" style={{ animationDelay: '2s' }}></div>
+
+                {/* Floating Card Container */}
+                <div className="relative transform transition-transform duration-500 hover:scale-[1.02] animate-float">
+                  <div className="relative bg-gradient-to-br from-white via-white to-purple-50/50 backdrop-blur-sm rounded-[2.5rem] p-6 shadow-[0_20px_50px_-12px_rgba(124,58,237,0.2)] ring-1 ring-white/60 border border-white/40">
+
+                    {/* Glass Reflection Highlight */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/60 to-transparent rounded-[2.5rem] pointer-events-none z-20"></div>
+
+                    {/* Image Content */}
+                    <div className="bg-white rounded-[2rem] overflow-hidden aspect-[16/10] relative shadow-sm ring-1 ring-slate-100">
+                      <Image
+                        src="/images/home/creation-ui-preview.png"
+                        alt="Story Creation Interface"
+                        fill
+                        className="object-cover"
+                      />
+
+                      {/* Subtle Overlay Gradient for Depth */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-purple-900/5 to-transparent opacity-40"></div>
                     </div>
 
-                    {/* Fake UI Elements */}
-                    <div className="absolute top-4 left-4 right-4 h-8 bg-slate-100 rounded w-3/4"></div>
-                    <div className="absolute top-16 left-4 right-4 bg-slate-100 rounded h-32"></div>
-                    <div className="absolute bottom-4 right-4 w-24 h-8 bg-indigo-500 rounded-full"></div>
+                    {/* Floating Elements / Decorators - Styled as Badges */}
+                    <div className="absolute -right-6 top-16 bg-white p-4 rounded-2xl shadow-[0_10px_20px_-5px_rgba(0,0,0,0.1)] animate-bounce duration-[3000ms] z-30 ring-1 ring-slate-50 flex items-center justify-center">
+                      <Sparkles className="w-8 h-8 text-amber-500 fill-amber-500/20" />
+                    </div>
+                    <div className="absolute -left-6 bottom-20 bg-white p-4 rounded-2xl shadow-[0_10px_20px_-5px_rgba(0,0,0,0.1)] animate-bounce duration-[3500ms] delay-700 z-30 ring-1 ring-slate-50 flex items-center justify-center">
+                      <span className="text-3xl filter drop-shadow-sm">🎨</span>
+                    </div>
+
                   </div>
                 </div>
-                {/* Decorative Elements */}
-                <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-indigo-50/50 rounded-full blur-3xl"></div>
               </div>
 
               {/* Steps List */}
-              <div className="space-y-12 order-1 lg:order-2">
+              <div className="space-y-4 order-1 lg:order-2 pl-4">
                 {[
                   {
                     step: 1,
@@ -172,6 +189,7 @@ export default function Home() {
                     title={item.title}
                     description={item.description}
                     delay={index * 200} // Stagger delay
+                    isLast={index === 2}
                   />
                 ))}
               </div>
@@ -311,32 +329,32 @@ export default function Home() {
 
               {/* Text Content */}
               <div className="space-y-8 order-2 lg:order-1">
-                 <ScrollReveal
+                <ScrollReveal
                   className="relative"
                   delay={200}
                   direction="left"
                 >
 
-                <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight">
-                  High-Quality <br />
-                  <span className="relative inline-block text-indigo-600">
-                    Printed Storybooks
-                    <svg className="absolute w-full h-3 -bottom-1 left-0 text-orange-400 opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none">
-                      <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
-                    </svg>
-                  </span>
-                </h2>
+                  <h2 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight">
+                    High-Quality <br />
+                    <span className="relative inline-block text-indigo-600">
+                      Printed Storybooks
+                      <svg className="absolute w-full h-3 -bottom-1 left-0 text-orange-400 opacity-60" viewBox="0 0 100 10" preserveAspectRatio="none">
+                        <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="none" />
+                      </svg>
+                    </span>
+                  </h2>
                 </ScrollReveal>
 
-               
+
                 <ScrollReveal
                   className="relative"
                   delay={200}
                   direction="left"
-                >   
-                <p className="text-xl text-slate-600 leading-relaxed">
-                  Order a premium printed version of your story to create a memorable keepsake or thoughtful gift.
-                </p>
+                >
+                  <p className="text-xl text-slate-600 leading-relaxed">
+                    Order a premium printed version of your story to create a memorable keepsake or thoughtful gift.
+                  </p>
                 </ScrollReveal>
                 <ul className="space-y-4">
                   {[
@@ -346,25 +364,25 @@ export default function Home() {
                     "Delivered globally, with flexible shipping options to suit your needs.",
                     "The perfect gift to make your child's dreams come true and keep them close to your heart."
                   ].map((item, index) => (
-                     <ScrollReveal
-                     key={index}
-                  className="relative"
-                  delay={400}
-                  direction="left"
-                >   
-                    <li key={index} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-slate-700">{item}</span>
-                    </li>
+                    <ScrollReveal
+                      key={index}
+                      className="relative"
+                      delay={400}
+                      direction="left"
+                    >
+                      <li key={index} className="flex items-start gap-3">
+                        <CheckCircle2 className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-slate-700">{item}</span>
+                      </li>
                     </ScrollReveal>
-                    ))}
+                  ))}
                 </ul>
 
                 <div className="pt-4">
                   <Link
                     href="/create"
                     className="inline-flex items-center gap-2 bg-pink-600 text-white px-8 py-4 rounded-full font-bold hover:bg-pink-700 transition-colors shadow-lg shadow-pink-200 hover:-translate-y-1 transform duration-200"
-                    >
+                  >
                     <Wand2 className="w-5 h-5" />
                     Create your Storybook
                   </Link>

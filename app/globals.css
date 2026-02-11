@@ -2,25 +2,35 @@
 
 :root {
   /* Design System Colors - Updated from MASTER.md */
-  --primary: #8B5CF6; /* Vibrant Purple */
+  --primary: #8B5CF6;
+  /* Vibrant Purple */
   --primary-light: #A78BFA;
   --primary-dark: #7C3AED;
-  --secondary: #F59E0B; /* Warm Amber */
+  --secondary: #F59E0B;
+  /* Warm Amber */
   --secondary-light: #FBBF24;
-  --accent-pink: #EC4899; /* Pink for gradients */
-  --accent-rose: #F43F5E; /* Rose for gradients */
-  
+  --accent-pink: #EC4899;
+  /* Pink for gradients */
+  --accent-rose: #F43F5E;
+  /* Rose for gradients */
+
   --background: #FAFAFA;
   --surface: #FFFFFF;
-  --foreground: #1F2937; /* Dark Gray */
-  --text-muted: #6B7280; /* Medium Gray */
+  --foreground: #1F2937;
+  /* Dark Gray */
+  --text-muted: #6B7280;
+  /* Medium Gray */
   --border: #E5E7EB;
-  
+
   /* Status Colors */
-  --success: #10B981; /* Emerald Green */
-  --warning: #F59E0B; /* Amber */
-  --error: #EF4444; /* Red */
-  --info: #3B82F6; /* Blue */
+  --success: #10B981;
+  /* Emerald Green */
+  --warning: #F59E0B;
+  /* Amber */
+  --error: #EF4444;
+  /* Red */
+  --info: #3B82F6;
+  /* Blue */
 }
 
 @theme inline {
@@ -31,7 +41,7 @@
   --color-secondary-light: var(--secondary-light);
   --color-accent-pink: var(--accent-pink);
   --color-accent-rose: var(--accent-rose);
-  
+
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
@@ -41,7 +51,7 @@
   --color-warning: var(--warning);
   --color-error: var(--error);
   --color-info: var(--info);
-  
+
   --font-sans: var(--font-inter);
   --font-heading: var(--font-outfit);
 }
@@ -116,6 +126,7 @@ textarea:focus-visible {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(400%);
   }
@@ -126,10 +137,13 @@ textarea:focus-visible {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     box-shadow: 0 0 0 0 rgba(192, 38, 211, 0.4);
   }
+
   50% {
     opacity: 0.8;
     box-shadow: 0 0 20px 10px rgba(192, 38, 211, 0.2);
@@ -140,11 +154,44 @@ textarea:focus-visible {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes tilt {
+
+  0%,
+  100% {
+    transform: rotate(-1deg);
+  }
+
+  50% {
+    transform: rotate(1deg);
+  }
+}
+
+.animate-tilt {
+  animation: tilt 5s ease-in-out infinite;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -160,6 +207,7 @@ textarea:focus-visible {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -174,6 +222,7 @@ textarea:focus-visible {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -185,6 +234,7 @@ textarea:focus-visible {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
