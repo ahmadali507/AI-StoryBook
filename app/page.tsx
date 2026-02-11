@@ -205,7 +205,7 @@ export default function Home() {
               {/* Text Content */}
               <div className="space-y-6">
                 <h2 className="text-4xl lg:text-5xl font-bold text-slate-900">
-                  Be the <span className="text-indigo-600 underline decoration-orange-400 decoration-wavy">Hero</span> in Your Story
+                  Be the <span className="text-indigo-600">Hero</span> in Your Story
                 </h2>
                 <p className="text-xl text-slate-600 leading-relaxed">
                   Upload a photo and become the central character! Our AI transforms you into the star of your very own adventure, ensuring you look like yourself, but in a magical new world.
@@ -381,7 +381,7 @@ export default function Home() {
                 <div className="pt-4">
                   <Link
                     href="/create"
-                    className="inline-flex items-center gap-2 bg-pink-600 text-white px-8 py-4 rounded-full font-bold hover:bg-pink-700 transition-colors shadow-lg shadow-pink-200 hover:-translate-y-1 transform duration-200"
+                    className="inline-flex items-center gap-2 bg-violet-600 text-white px-8 py-4 rounded-full font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200 hover:-translate-y-1 transform duration-200"
                   >
                     <Wand2 className="w-5 h-5" />
                     Create your Storybook
