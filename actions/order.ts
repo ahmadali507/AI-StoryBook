@@ -443,12 +443,20 @@ interface AddCharacterInput {
     gender: "male" | "female" | "other";
     entityType: "human" | "animal" | "object";
     role: "main" | "supporting";
+    clothingStyle?: string;
+    description?: string;
+    useFixedClothing?: boolean;
 }
 
 export async function addCharacterToOrder(
     data: AddCharacterInput
 ): Promise<{ success: boolean; characterId?: string; error?: string }> {
     const supabase = await createClient();
+
+    // Hack used to store boolean without DB migration: Prepend [FIXED] to clothing_style
+    const clothingStyleToSave = data.useFixedClothing
+        ? `[FIXED] ${data.clothingStyle || ''}`
+        : data.clothingStyle;
 
     const { data: character, error } = await supabase
         .from("order_characters")
@@ -459,6 +467,8 @@ export async function addCharacterToOrder(
             gender: data.gender,
             entity_type: data.entityType,
             role: data.role,
+            clothing_style: clothingStyleToSave,
+            description: data.description,
         })
         .select()
         .single();
@@ -520,17 +530,24 @@ export async function getOrderCharacters(
         return [];
     }
 
-    return data.map((char) => ({
-        id: char.id,
-        name: char.name,
-        photoUrl: char.photo_url,
-        aiAvatarUrl: char.ai_avatar_url,
-        gender: char.gender,
-        entityType: char.entity_type,
-        role: char.role,
-        clothingStyle: char.clothing_style,
-        description: char.description,
-    }));
+    return data.map((char) => {
+        const rawStyle = char.clothing_style || '';
+        const isFixed = rawStyle.startsWith('[FIXED] ');
+        const cleanStyle = isFixed ? rawStyle.replace('[FIXED] ', '') : rawStyle;
+
+        return {
+            id: char.id,
+            name: char.name,
+            photoUrl: char.photo_url,
+            aiAvatarUrl: char.ai_avatar_url,
+            gender: char.gender,
+            entityType: char.entity_type,
+            role: char.role,
+            clothingStyle: cleanStyle,
+            useFixedClothing: isFixed,
+            description: char.description,
+        };
+    });
 }
 // ============================================
 // PHOTO UPLOAD (Data URL - no bucket needed)
@@ -667,12 +684,6 @@ export async function generateCoverPreview(
         const artStylePrompts: Record<string, string> = {
             "pixar-3d": "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination",
             "storybook": "classic children's book illustration style, warm and inviting",
-            // Legacy fallbacks
-            "watercolor": "soft watercolor painting style, gentle colors, dreamy atmosphere",
-            "digital-art": "vibrant digital art style, rich colors, polished illustration",
-            "cartoon": "fun cartoon style, bold colors, expressive characters",
-            "realistic": "detailed realistic illustration, lifelike characters",
-            "anime": "anime-inspired illustration, expressive eyes, dynamic poses"
         };
 
         // Theme mapping
@@ -698,31 +709,50 @@ export async function generateCoverPreview(
 
         for (const char of characters) {
             if (char.aiAvatarUrl) {
-                referenceImages.push(char.aiAvatarUrl);
-            } else if (char.photoUrl) {
-                console.log(`[generateCoverPreview] Generating avatar for ${char.name}...`);
+                // Try to parse if it's a JSON array of URLs
                 try {
-                    // Import helper dynamically to avoid circular dependencies if any
-                    const { generateAvatarFromPhoto } = await import("@/actions/character");
+                    const parsed = JSON.parse(char.aiAvatarUrl);
+                    if (Array.isArray(parsed)) {
+                        referenceImages.push(...parsed);
+                    } else {
+                        referenceImages.push(char.aiAvatarUrl);
+                    }
+                } catch (e) {
+                    // Not JSON, assume single URL
+                    referenceImages.push(char.aiAvatarUrl);
+                }
+            } else if (char.photoUrl) {
+                console.log(`[generateCoverPreview] Generating avatars for ${char.name}...`);
+                try {
+                    console.log(`[generateCoverPreview] Importing character generator...`);
+                    const { generateMultiAngleAvatars } = await import("@/actions/character");
+                    console.log(`[generateCoverPreview] Calling generateMultiAngleAvatars (Single Mode)...`);
 
-                    const avatarUrl = await generateAvatarFromPhoto(
+                    const avatarUrls = await generateMultiAngleAvatars(
                         char.photoUrl,
                         char.name,
                         char.gender,
                         char.entityType,
-                        artStyle
+                        artStyle,
+                        char.age,
+                        // Only use specific clothing style if the user checked "Fixed Clothing"
+                        // Otherwise generate a neutral base avatar so scenes can dictate clothing
+                        char.useFixedClothing ? char.clothingStyle : "neutral casual clothing",
+                        char.description
                     );
 
-                    // Save to DB (using the imported function from this file or character file?)
-                    // Actually updateCharacterAvatar is exported from THIS file (actions/order.ts)
-                    await updateCharacterAvatar(char.id!, avatarUrl);
+                    // Save to DB as JSON string
+                    await updateCharacterAvatar(char.id!, JSON.stringify(avatarUrls));
 
                     // Update local object
-                    char.aiAvatarUrl = avatarUrl;
-                    referenceImages.push(avatarUrl);
-                    console.log(`[generateCoverPreview] ✓ Avatar generated for ${char.name}`);
+                    // We keep the first one as the "main" url for simple displays if needed, 
+                    // but for generation we add all of them
+                    char.aiAvatarUrl = avatarUrls[0];
+                    referenceImages.push(...avatarUrls);
+
+                    console.log(`[generateCoverPreview] ✓ Generated ${avatarUrls.length} avatars for ${char.name}`);
                 } catch (err) {
-                    console.error(`[generateCoverPreview] Failed to generate avatar for ${char.name}:`, err);
+                    console.error(`[generateCoverPreview] Failed to generate avatars for ${char.name}:`, err);
                     // Fallback to photo if avatar generation fails
                     referenceImages.push(char.photoUrl);
                 }

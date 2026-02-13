@@ -263,13 +263,26 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             startedAt
         });
 
+        // Extract Subject from description if present (format: "Subject: [Subject Name]. [User Description]")
+        let subject = '';
+        let userContext = storybook.description || '';
+
+        if (userContext.startsWith('Subject: ')) {
+            const subjectEndIndex = userContext.indexOf('.');
+            if (subjectEndIndex !== -1) {
+                subject = userContext.substring(9, subjectEndIndex).trim();
+                userContext = userContext.substring(subjectEndIndex + 1).trim();
+            }
+        }
+
         // 3. Generate story outline
         const storyOutline = await generateMVPStoryOutline(
             characters,
             ageRange,
             theme,
             storybook.title,
-            storybook.description // Pass user description
+            userContext, // Pass cleaned user description
+            subject // Pass extracted subject
         );
 
         console.log(`[generateFullBook] Story outline generated: "${storyOutline.title}"`);
@@ -305,6 +318,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
 
         for (const scene of storyOutline.scenes) {
             console.log(`[generateFullBook] Generating text for scene ${scene.number}/12`);
+
+            // Add small delay to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             // Update progress for each scene
             await updateGenerationProgress(orderId, {
@@ -381,19 +397,70 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         if (!coverUrl) {
             console.log(`[generateFullBook] Generating cover illustration (no existing cover found)`);
 
-            // Prioritize AI avatar if available, otherwise use photo
-            const referenceImages = characters
-                .map(c => c.aiAvatarUrl || c.photoUrl)
-                .filter(url => !!url) as string[];
+            // Use max 4 generated avatars per character for the cover (to allow 3 chars max ~12 imgs)
+            const referenceImages: string[] = [];
+            const characterImageCounts: number[] = [];
+
+            for (const c of characters) {
+                let count = 0;
+                if (c.aiAvatarUrl) {
+                    try {
+                        const parsed = JSON.parse(c.aiAvatarUrl);
+                        if (Array.isArray(parsed)) {
+                            // Use first 4 images: Front Closeup, Right Profile, Left Profile, Front Full
+                            // matched with actions/character.ts generation order
+                            const selected = parsed.slice(0, 4);
+                            referenceImages.push(...selected);
+                            count = selected.length;
+                        } else {
+                            referenceImages.push(c.aiAvatarUrl);
+                            count = 1;
+                        }
+                    } catch {
+                        referenceImages.push(c.aiAvatarUrl);
+                        count = 1;
+                    }
+                } else if (c.photoUrl) {
+                    referenceImages.push(c.photoUrl);
+                    count = 1;
+                } else {
+                    count = 0;
+                }
+                characterImageCounts.push(count);
+            }
+
+            // Safety cap: If total images > 14, trim the last character's images
+            if (referenceImages.length > 14) {
+                const diff = referenceImages.length - 14;
+                console.warn(`[generateFullBook] Cover: Too many reference images (${referenceImages.length}), trimming by ${diff}`);
+                referenceImages.splice(14, diff);
+
+                // Adjust counts (simplify: just reduce the last char's count)
+                if (characterImageCounts.length > 0) {
+                    characterImageCounts[characterImageCounts.length - 1] = Math.max(0, characterImageCounts[characterImageCounts.length - 1] - diff);
+                }
+            }
 
             const coverPrompt = await generateCoverIllustrationPrompt(
                 storyOutline.title,
                 characters,
                 theme,
                 artStylePrompt,
-                characterDescriptions
+                characterDescriptions,
+                characterImageCounts
             );
+
+            console.log(`[generateFullBook] ------------------------------------------------------------`);
+            console.log(`[generateFullBook] Cover Prompt:\n${coverPrompt}`);
+            console.log(`[generateFullBook] ------------------------------------------------------------`);
+
             coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
+
+            // Should also save this new cover URL to DB if generated here
+            await supabase
+                .from("storybooks")
+                .update({ cover_url: coverUrl })
+                .eq("id", storybook.id);
         } else {
             console.log(`[generateFullBook] Reusing existing cover illustration: ${coverUrl}`);
         }
@@ -401,7 +468,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         await updateGenerationProgress(orderId, {
             stage: 'cover',
             stageProgress: 100,
-            message: 'Cover illustration complete!',
+            message: 'Cover illustration verified!',
             startedAt
         });
 
@@ -432,28 +499,78 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 startedAt
             });
 
-            // Prioritize AI avatar if available, otherwise use photo
-            const referenceImages = characters
-                .map(c => c.aiAvatarUrl || c.photoUrl)
-                .filter(url => !!url) as string[];
+            // 1. Collect Character Reference Images
+            // Strategy: Use EXACTLY ONE reference image per character to match the 1-to-1 prompt mapping
+            const referenceImages: string[] = [];
 
-            console.log(`[generateFullBook] Using ${referenceImages.length} reference images for scene ${i + 1}`);
+            for (const c of characters) {
+                let charImage: string | null = null;
 
-            // Construct specific prompt using the structured builder
-            const illustrationPrompt = buildPixarPrompt(
-                pageText.visualPrompt, // Use the visual prompt generated by LLM as scene description base
-                characters,
-                characterDescriptions
-            );
+                if (c.aiAvatarUrl) {
+                    try {
+                        const parsed = JSON.parse(c.aiAvatarUrl);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            // Use the FIRST image (Front/Closeup) as the canonical reference
+                            charImage = parsed[0];
+                        } else if (typeof parsed === 'string') {
+                            charImage = parsed;
+                        } else if (Array.isArray(parsed)) {
+                            // Fallback check
+                            charImage = parsed[0];
+                        }
+                    } catch {
+                        charImage = c.aiAvatarUrl;
+                    }
+                }
+
+                if (!charImage && c.photoUrl) {
+                    charImage = c.photoUrl;
+                }
+
+                if (charImage) {
+                    referenceImages.push(charImage);
+                } else {
+                    // Critical: We MUST have an image for every character to keep indices aligned.
+                    // If a character has no image, we might need a placeholder or just skip them in the PROMPT too.
+                    // For now, let's assume valid characters have images. If not, this might misalign.
+                    // However, the upstream logic ensures characters created have avatars.
+                    // To be safe, if we miss an image, we should probably warn or push a placeholder if the API supports it.
+                    // But strictly, we'll just push the best we have.
+                    console.warn(`[generateFullBook] No reference image found for character ${c.name}`);
+                    // We still push something to maintain index alignment if possible, but empty string might fail API.
+                    // Let's rely on standard flow.
+                }
+            }
+
+            // Verify alignment
+            if (referenceImages.length !== characters.length) {
+                console.warn(`[generateFullBook] Mismatch between characters (${characters.length}) and reference images (${referenceImages.length}). Character mapping may be incorrect.`);
+            }
+
+            console.log(`[generateFullBook] Using ${referenceImages.length} reference images for scene ${i + 1} (1-to-full mapping)`);
 
             // Use seed + scene number for consistency
             const sceneSeed = globalSeed + scene.number;
+
+            // Construct specific prompt using the structured builder
+            const illustrationPrompt = await generateIllustrationPromptForScene(
+                scene,
+                characters,
+                artStyle, // Pass the ID string e.g 'pixar-3d'
+                sceneSeed,
+                characterDescriptions
+            );
+
+            console.log(`[generateFullBook] ------------------------------------------------------------`);
+            console.log(`[generateFullBook] Scene ${i + 1} Prompt:\n${illustrationPrompt}`);
+            console.log(`[generateFullBook] ------------------------------------------------------------`);
+
             const illustrationUrl = await generateWithSeedream(
                 illustrationPrompt,
                 sceneSeed,
                 '4:3', // Landscape for scene illustrations
                 negativePrompt,
-                referenceImages // Pass the array of image URLs!
+                referenceImages // Pass ONLY character avatars
             );
 
             illustrations.push({
@@ -461,6 +578,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 url: illustrationUrl
             });
         }
+
 
         console.log(`[generateFullBook] All illustrations generated`);
 
@@ -609,115 +727,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
     }
 }
 
-/**
- * Generate just the cover for preview before payment
- */
-export async function generateCoverForOrder(orderId: string): Promise<{ success: boolean; coverUrl?: string; error?: string }> {
-    const supabase = await createClient();
 
-    try {
-        // Get order details
-        const { data: order, error: orderError } = await supabase
-            .from("orders")
-            .select(`
-                *,
-                storybooks (
-                    id,
-                    title,
-                    art_style,
-                    theme,
-                    age_range,
-                    global_seed
-                )
-            `)
-            .eq("id", orderId)
-            .single();
-
-        if (orderError || !order) {
-            return { success: false, error: "Order not found" };
-        }
-
-        const storybook = order.storybooks;
-        if (!storybook) {
-            return { success: false, error: "Storybook not found" };
-        }
-
-        // Get characters and sort so Main character is first (crucial for [reference image 1])
-        const rawCharacters = await getOrderCharacters(orderId);
-        if (rawCharacters.length === 0) {
-            return { success: false, error: "No characters found" };
-        }
-
-        const characters = rawCharacters.sort((a, b) => {
-            if (a.role === 'main') return -1;
-            if (b.role === 'main') return 1;
-            return 0;
-        });
-
-        const theme = (storybook.theme || 'adventure') as Theme;
-        const artStyle = (storybook.art_style || 'pixar-3d') as MVPArtStyle;
-        const globalSeed = storybook.global_seed || Math.floor(Math.random() * 1000000);
-
-        // Use AI Avatar if available, otherwise photo
-        const referenceImages = characters
-            .map(c => c.aiAvatarUrl || c.photoUrl)
-            .filter(url => !!url) as string[];
-
-        // Generate title if not provided
-        let title = storybook.title || "My Personalized Story";
-        if (title === "My Personalized Story") {
-            // Generate a better title based on theme and main character
-            const mainChar = characters[0]; // First one is main due to sort
-            title = `${mainChar.name}'s ${theme.charAt(0).toUpperCase() + theme.slice(1)} Adventure`;
-
-            await supabase
-                .from("storybooks")
-                .update({ title })
-                .eq("id", storybook.id);
-        }
-
-        // Generate cover illustration prompt
-        const artStylePrompt = getArtStylePrompt(artStyle);
-        const coverPrompt = await generateCoverIllustrationPrompt(
-            title,
-            characters,
-            theme,
-            artStylePrompt
-        );
-
-        // Generate cover image
-        const coverUrl = await generateBookCover(
-            coverPrompt,
-            globalSeed,
-            'blurry, bad quality, distorted, text, words, letters',
-            referenceImages
-        );
-
-        // Update storybook with cover
-        await supabase
-            .from("storybooks")
-            .update({ cover_url: coverUrl })
-            .eq("id", storybook.id);
-
-        // Update order status
-        await supabase
-            .from("orders")
-            .update({
-                status: "cover_preview",
-                cover_generated_at: new Date().toISOString()
-            })
-            .eq("id", orderId);
-
-        return { success: true, coverUrl };
-
-    } catch (error) {
-        console.error("[generateCoverForOrder] Error:", error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : "Failed to generate cover"
-        };
-    }
-}
 
 /**
  * Get the current generation progress

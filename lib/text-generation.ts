@@ -10,6 +10,48 @@ import { AGE_RANGE_LABELS, TEXT_COMPLEXITY } from '@/types/storybook';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+// Dedicated model for detailed visual descriptions (User Request: gemini 3.0 flash preview)
+const modelCharacterDesc = genAI.getGenerativeModel({ model: 'gemini-3.0-flash-preview' });
+
+// ============================================
+// HELPER: RETRY LOGIC FOR API CALLS
+// ============================================
+
+async function generateWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    initialDelay: number = 2000
+): Promise<T> {
+    let lastError: any;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            return await operation();
+        } catch (error: any) {
+            lastError = error;
+
+            // Check if it's a rate limit error (429) or server error (5xx)
+            // Google Generative AI throws errors with status or message
+            const isRateLimit = error.message?.includes('429') || error.status === 429 || error.message?.includes('Too Many Requests');
+            const isServerError = error.message?.includes('500') || error.status === 500;
+
+            if (!isRateLimit && !isServerError) {
+                throw error; // Don't retry for other errors (e.g. invalid prompt)
+            }
+
+            if (attempt === maxRetries - 1) {
+                console.error(`[generateWithRetry] All ${maxRetries} attempts failed. Last error:`, error);
+                throw error;
+            }
+
+            const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff
+            console.log(`[generateWithRetry] Attempt ${attempt + 1} failed (${isRateLimit ? 'Rate Limit' : 'Error'}). Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    throw lastError;
+}
 
 // ============================================
 // STORY OUTLINE GENERATION
@@ -34,7 +76,8 @@ export async function generateMVPStoryOutline(
     ageRange: AgeRange,
     theme: Theme,
     customTitle?: string,
-    description?: string // Added description parameter
+    description?: string, // User context/details
+    subject?: string // Specific story subject/activity
 ): Promise<StoryOutline> {
     const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
     const supportingCharacters = characters.filter(c => c.role === 'supporting');
@@ -42,9 +85,17 @@ export async function generateMVPStoryOutline(
     const complexity = TEXT_COMPLEXITY[ageRange];
     const ageInfo = AGE_RANGE_LABELS[ageRange];
 
-    const characterList = characters.map(c =>
-        `- ${c.name} (${c.entityType}, ${c.gender}${c.role === 'main' ? ' - main character' : ''})`
-    ).join('\n');
+    const characterList = characters.map(c => {
+        let details = `- ${c.name} (${c.entityType}, ${c.gender}${c.role === 'main' ? ' - main character' : ''})`;
+        if (c.description) details += `: ${c.description}`;
+        if (c.clothingStyle) details += ` (Wearing: ${c.clothingStyle})`;
+        return details;
+    }).join('\n');
+
+    // CRITICAL: If a custom title is provided, use it directly!
+    const titleInstruction = customTitle
+        ? `use the provided title "${customTitle}" exactly.`
+        : `create a short, engaging title (3-8 words). The title must be a single string, NO synopsis, NO outline summary. Just the title suitable for a book cover.`;
 
     const prompt = `Create a children's storybook outline with exactly 12 scenes.
 
@@ -52,15 +103,16 @@ TARGET AUDIENCE: Children aged ${ageRange} years old (${ageInfo.label})
 WRITING STYLE: ${complexity.style}
 WORDS PER PAGE: Maximum ${complexity.wordsPerPage} words
 
-THEME: ${theme}
+THEME (Atmosphere/Setting): ${theme}
+${subject ? `STORY SUBJECT (Central Plot/Activity): ${subject}` : ''}
 MAIN CHARACTER: ${mainCharacter.name}
-${description ? `STORY PREMISE: "${description}"\nCRITICAL INSTRUCTION: You must base the story EXACTLY on the "STORY PREMISE" provided above. Do not invent a new random story. Expand on the user's specific idea.` : ''}
+${description ? `USER CONTEXT: "${description}"\nCRITICAL INSTRUCTION: The story must revolve around the "STORY SUBJECT" while incorporating the "USER CONTEXT" details naturally.` : ''}
 
 CHARACTERS:
 ${characterList}
 
 STORY REQUIREMENTS:
-- Create a heartwarming ${theme}-themed story
+- Create a ${theme}-themed story
 - The story should be perfect for a personalized gift book
 - Each scene should have a clear visual moment for illustration
 - End with a positive, loving conclusion
@@ -71,7 +123,7 @@ STORY REQUIREMENTS:
 
 Respond in strict JSON format:
 {
-  "title": "${customTitle || 'Create an engaging title'}",
+  "title": "${customTitle || 'The exact title of the book'}",
   "dedication": "A short, heartfelt dedication message (1 sentence)",
   "scenes": [
     {
@@ -84,9 +136,11 @@ Respond in strict JSON format:
   ]
 }
 
-Create exactly 12 scenes. Make sure the story flows naturally from scene to scene.`;
+Create exactly 12 scenes. Make sure the story flows naturally from scene to scene.
+CRITICAL FOR TITLE: ${titleInstruction}
+`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     const text = result.response.text();
 
     // Parse JSON from response
@@ -116,7 +170,7 @@ export async function generatePageText(
     const complexity = TEXT_COMPLEXITY[ageRange];
     const ageInfo = AGE_RANGE_LABELS[ageRange];
 
-    const characterNames = characters.map(c => c.name).join(', ');
+    const characterNames = characters.map(c => `${c.name} (${c.role})`).join(', ');
 
     const prompt = `Write the text for a single page of a children's storybook.
 
@@ -132,6 +186,8 @@ CHARACTERS IN SCENE: ${characterNames}
 ${previousPageText ? `PREVIOUS PAGE ENDED WITH: "${previousPageText.slice(-150)}..."` : 'This is the opening of the story.'}
 
 INSTRUCTIONS:
+- The MAIN character (${characters.find(c => c.role === 'main')?.name}) should drive the action.
+- Ensure the story flows naturally from the previous page.
 ${ageRange === '0-2' ? `
 - Use 1-5 simple words or short phrases
 - Include sound words like "splash!", "boom!", "whoosh!"
@@ -167,10 +223,10 @@ ${ageRange === '9-12' ? `
 Respond in JSON format:
 {
   "text": "The page text exactly as it should appear in the book",
-  "visualPrompt": "Updated visual description for the illustration based on the text"
+  "visualPrompt": "Updated visual description for the illustration based on the text. START with the main character action."
 }`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     const text = result.response.text();
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -205,7 +261,7 @@ Respond in JSON format:
   "tagline": "Optional tagline for back cover (10-15 words, or null)"
 }`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     const text = result.response.text();
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -245,7 +301,7 @@ Write an engaging summary that:
 
 Return ONLY the summary text, no JSON.`;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateWithRetry(() => model.generateContent(prompt));
     return result.response.text().trim();
 }
 
@@ -267,26 +323,86 @@ export interface CharacterVisualDescription {
 export async function generateCharacterVisualDescription(
     character: SimpleCharacter
 ): Promise<CharacterVisualDescription> {
-    const genderDesc = character.gender === 'male' ? 'boy' : character.gender === 'female' ? 'girl' : 'child';
+    let genderDesc = 'character';
+    if (character.entityType === 'human') {
+        genderDesc = character.gender === 'male' ? 'boy' : character.gender === 'female' ? 'girl' : 'child';
+    } else if (character.entityType === 'animal') {
+        genderDesc = character.description || 'animal';
+    } else {
+        genderDesc = character.description || 'object';
+    }
 
-    const prompt = `Analyze this character and create a detailed visual description for illustration consistency.
+    const isAnimal = character.entityType === 'animal';
+    const isObject = character.entityType === 'object';
+
+    let prompt = "";
+
+    if (isAnimal) {
+        prompt = `Analyze this ANIMAL character and create a detailed visual description for illustration consistency.
 
 CHARACTER: ${character.name}
 TYPE: ${character.entityType}
 GENDER: ${character.gender}
+DESCRIPTION: ${character.description || ''}
 
-Create a detailed visual description that can be used in every illustration to maintain consistency.
-Focus on permanent visual features that should remain the same in every scene.
+Create a detailed visual description for a Pixar-style 3D animated movie.
+Focus on: Fur/skin texture, body shape, distinct markings, ears, tail, and expression.
+
+CRITICAL CONSTRAINTS for ANIMALS:
+- Do NOT describe human features (no "blonde hair", no "fair skin", no "human hands").
+- Use terms like "fur", "scales", "feathers", "snout", "paws".
+- Keep the description focused purely on the animal's physical traits.
+- If the user provided a description (${character.description}), prioritise those details (e.g. "Dalmatian", "Golden Retriever").
 
 Respond in JSON format:
 {
-  "description": "A detailed 2-3 sentence description of the character's appearance including: approximate age (if human), hair color and style, eye color, skin tone, face shape, typical expression, distinctive features",
-  "consistencyKeywords": "comma-separated keywords for consistent generation: hair_color, eye_color, skin_tone, clothing_style, any_distinctive_features",
-  "visualPrompt": "A concise, comma-separated visual description string optimized for image generation prompts (e.g. 'cute boy, messy brown hair, blue hoodie, denim jeans, sneakers, happy expression')"
+  "description": "A detailed 2-3 sentence description of the animal's appearance",
+  "consistencyKeywords": "comma-separated keywords: fur_color, breed, distinct_features, texture",
+  "visualPrompt": "A concise, comma-separated visual description string optimized for image generation (e.g. 'golden retriever puppy, fluffy golden fur, floppy ears, happy expression, red collar')"
 }`;
+    } else if (isObject) {
+        prompt = `Analyze this OBJECT character and create a detailed visual description.
+
+CHARACTER: ${character.name}
+TYPE: ${character.entityType}
+DESCRIPTION: ${character.description || ''}
+
+Create a detailed visual description for a Pixar-style 3D animated movie.
+Focus on: Material, texture, shape, color, and anthropomorphic features if applicable (eyes, mouth).
+
+Respond in JSON format:
+{
+  "description": "A detailed description of the object",
+  "consistencyKeywords": "comma-separated keywords: material, color, shape",
+  "visualPrompt": "concise visual description"
+}`;
+    } else {
+        // HUMAN PROMPT
+        prompt = `Analyze this HUMAN character and create a detailed visual description for illustration consistency.
+
+CHARACTER: ${character.name}
+TYPE: ${character.entityType}
+GENDER: ${character.gender}
+DESCRIPTION: ${character.description || ''}
+
+Create a detailed visual description for a Pixar-style 3D animated movie.
+Focus on permanent visual features: hair, eyes, skin tone, face shape.
+
+CRITICAL: accurately reflect the body type from reference photos.
+- Do NOT describe characters as "muscular", "ripped", or "athletic" unless explicitly stated.
+- For children, use terms like "child-like", "small", "cute".
+- For average adults, use "average build", "slim", or "soft features".
+
+Respond in JSON format:
+{
+  "description": "A detailed 2-3 sentence description including age, hair, eyes, skin, face shape",
+  "consistencyKeywords": "comma-separated keywords: hair_color, eye_color, skin_tone, clothing_style",
+  "visualPrompt": "A concise, comma-separated visual description string"
+}`;
+    }
 
     try {
-        const result = await model.generateContent(prompt);
+        const result = await generateWithRetry(() => modelCharacterDesc.generateContent(prompt));
         const text = result.response.text();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
@@ -347,6 +463,10 @@ blurry, low quality, pixelated, text, watermark, signature
  * Generate a structured illustration prompt with character references and actions
  * Uses Pixar 3D cinematic style by default for best quality
  */
+/**
+ * Generate a structured illustration prompt with character references and actions
+ * Uses the user's professional structured format
+ */
 export async function generateIllustrationPromptForScene(
     scene: SceneOutline,
     characters: SimpleCharacter[],
@@ -354,69 +474,67 @@ export async function generateIllustrationPromptForScene(
     globalSeed: number,
     characterDescriptions?: CharacterVisualDescription[]
 ): Promise<string> {
-    // Determine the art style type
-    const isPixar3D = artStyle.toLowerCase().includes('pixar') ||
-        artStyle.toLowerCase().includes('3d') ||
-        artStyle.toLowerCase().includes('cinematic') ||
-        artStyle.toLowerCase().includes('soft-illustration') ||
-        artStyle.toLowerCase().includes('modern-cartoon');
 
-    const isPhotorealistic = artStyle.toLowerCase().includes('photorealistic') ||
-        artStyle.toLowerCase().includes('realistic');
-
-    // Build character action descriptions with reference images
-    const characterActions = characters.map((char, index) => {
-        const charDesc = characterDescriptions?.find(d => d.name === char.name);
-        const entityDesc = char.entityType === 'human' ?
-            `${char.gender} child` :
-            char.entityType === 'animal' ?
-                'pet/animal' : 'character';
-
-        return `Character ${index + 1} (${char.name}, ${entityDesc}): [reference image ${index + 1}] – [ACTION_PLACEHOLDER_${index + 1}]`;
-    }).join('\n\n');
-
-    // Create prompt to generate character actions for the scene
-    const actionPrompt = `You are creating an illustration prompt for a Pixar-style 3D children's book scene.
-
-SCENE DESCRIPTION: ${scene.sceneDescription}
+    // 1. Generate Character Actions for this specific scene
+    const actionPrompt = `You are an expert art director for a Pixar-style 3D animated movie.
+    
+SCENE CONTEXT:
+${scene.sceneDescription}
 EMOTIONAL TONE: ${scene.emotionalTone}
 
 CHARACTERS IN SCENE:
-${characters.map((c, i) => `- ${c.name} (${c.entityType}, ${c.gender}, role: ${c.role})`).join('\n')}
+${characters.map((c, i) => {
+        const clothingNote = c.useFixedClothing
+            ? "WEARING FIXED OUTFIT (Do not describe clothing)"
+            : "WEARING SCENE-APPROPRIATE CLOTHING (Describe their outfit matching the scene/theme)";
 
-For each character, describe their SPECIFIC action, pose, and expression in this scene.
-Use natural, cozy, warm descriptions suitable for a children's book.
+        // Critical: Strict species definition
+        const speciesDef = c.entityType === 'human'
+            ? `HUMAN (${c.gender})`
+            : `NON-HUMAN ANIMAL (${c.description || c.entityType})`;
+
+        return `- ${c.name} [${speciesDef}] (role: ${c.role}) - ${clothingNote}`;
+    }).join('\n')}
+
+Task: Describe the EXACT ACTION and POSE for each character in this specific scene.
+
+CRITICAL INSTRUCTIONS:
+1. **NO SPECIES HALLUCINATION**: You must respect the "NON-HUMAN ANIMAL" definition exactly. 
+   - If a character is a "Golden Retriever", DO NOT describe them as a "fox", "wolf", "mouse", or anything else.
+   - DO NOT add new animals that are not in the character list.
+2. **ACTION ONLY**: Describe *only* what the character is DOING. 
+   - DO NOT re-describe their appearance (e.g. do NOT say "Tommay, a small brown fox...").
+   - START the sentence with the action verb or the character's name.
+   - Example: "Jumps over the log with excitement" or "Tommay barks happily at the butterfly."
+3. **PHYSICAL GROUNDING**: Actions must be physically possible for that entity type.
+   - Animals should act like animals (on four legs, sniffing, running), unless it's a "fantasy" setting, but even then, maintain their species identity.
 
 Respond in JSON format:
 {
-  "setting": "Detailed description of the environment (e.g., 'Cozy home interior, morning sunlight coming through the window, warm soft light, peaceful atmosphere')",
+  "setting": "Detailed description of the environment/background only (NO characters). Focus on lighting, atmosphere, and small details.",
+  "lighting": "Cinematic lighting description (e.g., 'Soft volumetric lighting, warm candlelight, deep shadows')",
   "characterActions": [
     {
-      "name": "${characters[0]?.name || 'Character 1'}",
-      "action": "specific pose and action (e.g., 'sitting on the floor, playing with a small toy, focused and joyful expression')"
-    }${characters.length > 1 ? `,
-    {
-      "name": "${characters[1]?.name || 'Character 2'}",
-      "action": "specific pose and action"
-    }` : ''}${characters.length > 2 ? `,
-    {
-      "name": "${characters[2]?.name || 'Character 3'}",
-      "action": "specific pose and action"
-    }` : ''}
+      "name": "${characters[0]?.name}",
+      "action": "Specific action/pose ONLY. Do not describe the character's appearance/species."
+    }
+    // ... for other characters
   ]
 }`;
 
     let setting = scene.sceneDescription;
+    let lighting = "Cinematic framing, soft volumetric lighting, realistic global illumination, subtle depth of field, shallow focus on the main subject, warm color palette, high contrast between light and shadow, filmic atmosphere, naturalistic reflections.";
     const charActions: { name: string; action: string }[] = [];
 
     try {
-        const result = await model.generateContent(actionPrompt);
+        const result = await generateWithRetry(() => model.generateContent(actionPrompt));
         const text = result.response.text();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
-            setting = parsed.setting || setting;
-            if (parsed.characterActions) {
+            if (parsed.setting) setting = parsed.setting;
+            if (parsed.lighting) lighting = parsed.lighting + ", realistic global illumination, subtle depth of field.";
+            if (parsed.characterActions && Array.isArray(parsed.characterActions)) {
                 charActions.push(...parsed.characterActions);
             }
         }
@@ -426,33 +544,35 @@ Respond in JSON format:
         characters.forEach(c => {
             charActions.push({
                 name: c.name,
-                action: c.role === 'main' ? 'in the center of the scene, engaged in the main action' : 'nearby, watching with interest'
+                action: c.role === 'main' ? 'Standing in the center, looking engaged' : 'Standing nearby, watching'
             });
         });
     }
 
-    // Build the final structured prompt in the user's preferred format
-    let finalPrompt = `Pixar style 3D cinematic scene. ${setting}.\n\n`;
+    // 2. Build the Final Professional Prompt
+    let finalPrompt = `[SCENE]\n\n`;
+    finalPrompt += `Pixar-style 3D cinematic scene. ${setting}. The mood is ${scene.emotionalTone}.\n\n`;
+
+    finalPrompt += `[COMPOSITION & LIGHTING]\n\n`;
+    finalPrompt += `${lighting}\n\n`;
+
+    finalPrompt += `[CHARACTER ACTIONS]\n\n`;
 
     characters.forEach((char, index) => {
-        const charDesc = characterDescriptions?.find(d => d.name === char.name);
         const action = charActions.find(a => a.name === char.name)?.action ||
             `in the scene with ${scene.emotionalTone} expression`;
 
-        const entityDesc = char.entityType === 'human' ?
-            (char.gender === 'male' ? 'boy' : char.gender === 'female' ? 'girl' : 'child') :
-            char.entityType === 'animal' ? 'pet' : 'character';
-
-        // Include character description for visual consistency
-        const visualDesc = charDesc ? ` (${charDesc.consistencyKeywords})` : '';
-
-        finalPrompt += `Character ${index + 1}: [reference image ${index + 1}]${visualDesc} – ${action}\n\n`;
+        // EXACT TEMPLATE MATCH: 
+        // Character N (Name) — FIXED APPEARANCE (reference image N)
+        // ACTION IN THIS SCENE:
+        // [Action Text]
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})\n\n`;
+        finalPrompt += `ACTION IN THIS SCENE:\n`;
+        finalPrompt += `${action}\n\n`;
     });
 
-    // Add quality keywords
-    finalPrompt += `Cinematic composition, soft shadows, depth of field, warm tones.\n`;
-    finalPrompt += `${PIXAR_3D_QUALITY}\n`;
-    finalPrompt += `No text, no logos.`;
+    finalPrompt += `[RENDER DEFAULT]\n\n`;
+    finalPrompt += `High-quality 3D render, ultra-detailed textures, physically accurate global illumination, realistic volumetric light, cinematic camera lens, photorealistic materials, clean composition. No text, no logos.`;
 
     return finalPrompt;
 }
@@ -490,26 +610,85 @@ export async function generateCoverIllustrationPrompt(
     characters: SimpleCharacter[],
     theme: Theme,
     artStyle: string,
-    characterDescriptions?: CharacterVisualDescription[]
+    characterDescriptions?: CharacterVisualDescription[],
+    characterImageCounts?: number[] // Optional: How many images per character
 ): Promise<string> {
     const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
-    const mainCharDesc = characterDescriptions?.find(d => d.name === mainCharacter.name);
 
-    // Use Pixar 3D style for covers
-    const coverPrompt = `Pixar style 3D cinematic book cover illustration.
+    // 1. Generate Cover Actions/Composition using LLM
+    const coverActionPrompt = `You are an expert art director for a Pixar-style 3D animated movie.
+    
+    Task: Design the COVER ART for a children's book.
+    TITLE: ${title}
+    THEME: ${theme}
+    ART STYLE: ${artStyle}
+    
+    CHARACTERS TO FEATURE:
+    ${characters.map(c => `- ${c.name} (${c.entityType}, ${c.gender})`).join('\n')}
+    
+    Design a compelling, high-quality cover composition.
+    - The main character (${mainCharacter.name}) should be the focal point.
+    - The lighting should be magical and cinematic (Golden Hour / Volumetric).
+    - The background should clearly establish the ${theme} setting.
+    - Action should be inviting and adventurous.
+    
+    Respond in JSON format:
+    {
+      "setting": "Detailed background description (NO characters).",
+      "lighting": "Cinematic lighting description.",
+      "characterActions": [
+        {
+          "name": "${mainCharacter.name}",
+          "action": "Specific commanding pose, looking at camera or into distance, engaging expression."
+        }
+        // ... other characters if present
+      ]
+    }`;
 
-Theme: ${theme} adventure
-Setting: A magical, inviting scene that captures the spirit of ${theme}
+    let setting = `A magical ${theme} world`;
+    let lighting = "Warm golden hour light, soft and inviting, volumetric rays, cinematic depth of field";
+    const charActions: { name: string; action: string }[] = [];
 
-Main Character: [reference image 1]${mainCharDesc ? ` (${mainCharDesc.consistencyKeywords})` : ''} – standing prominently in the center, ${theme === 'adventure' ? 'looking excited and ready for adventure' : 'happy and curious'}
+    try {
+        const result = await generateWithRetry(() => model.generateContent(coverActionPrompt));
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.setting) setting = parsed.setting;
+            if (parsed.lighting) lighting = parsed.lighting;
+            if (parsed.characterActions && Array.isArray(parsed.characterActions)) {
+                charActions.push(...parsed.characterActions);
+            }
+        }
+    } catch (e) {
+        console.error("Failed to generate cover actions:", e);
+    }
 
-Background: Beautiful, atmospheric environment matching the ${theme} theme
-Lighting: Warm golden hour light, soft and inviting, volumetric rays
+    // 2. Build Structural Prompt (Same format as scenes)
+    let finalPrompt = `[SCENE]\n\n`;
+    finalPrompt += `Pixar-style 3D cinematic book cover. ${setting}. \n\n`;
 
-${PIXAR_3D_QUALITY}
-Portrait orientation (3:4 ratio), perfect for book cover.
-No text, no titles, no logos.`;
+    finalPrompt += `[COMPOSITION & LIGHTING]\n\n`;
+    finalPrompt += `${lighting}, 8k resolution, ultra-detailed textures, physically accurate global illumination. Portrait orientation.\n\n`;
 
-    return coverPrompt;
+    finalPrompt += `[CHARACTER ACTIONS]\n\n`;
+
+    characters.forEach((char, index) => {
+        const action = charActions.find(a => a.name === char.name)?.action ||
+            `Standing prominently in the center, smiling warmly, inviting pose`;
+
+        // EXACT TEMPLATE MATCH:
+        // Character N (Name) — FIXED APPEARANCE (reference image N)
+        // ACTION IN THIS SCENE:
+        // [Action Text]
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})\n\n`;
+        finalPrompt += `ACTION IN THIS SCENE:\n`;
+        finalPrompt += `${action}\n\n`;
+    });
+
+    finalPrompt += `[RENDER DEFAULT]\n\n`;
+    finalPrompt += `High-quality 3D render, ultra-detailed textures, physically accurate global illumination, realistic volumetric light, cinematic camera lens, photorealistic materials, clean composition. No text, no logos.`;
+
+    return finalPrompt;
 }
-

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import { cn } from "@/lib/utils";
 import type { SimpleCharacter, Gender, EntityType } from "@/types/storybook";
 
@@ -255,17 +256,34 @@ export default function CharacterUploadList({
                         </div>
 
                         {/* 4. Clothing Style */}
-                        <div className="space-y-2">
-                            <Label className="ml-1 text-slate-700 flex items-center gap-2">
-                                <Shirt className="w-4 h-4 text-primary" />
-                                Clothing Style
-                            </Label>
-                            <Textarea
-                                value={activeCharacter.clothingStyle || ""}
-                                onChange={(e) => handleUpdate("clothingStyle", e.target.value)}
-                                placeholder="Describe their outfit to keep it consistent (e.g. Red hoodie, blue jeans, and white sneakers)..."
-                                className="min-h-[80px] rounded-xl border-2 resize-none text-base"
-                            />
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="ml-1 text-slate-700 flex items-center gap-2">
+                                    <Shirt className="w-4 h-4 text-primary" />
+                                    Clothing Style
+                                </Label>
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={activeCharacter.useFixedClothing || false}
+                                        onChange={(e) => handleUpdate("useFixedClothing", e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/50 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-slate-500 group-hover:text-primary transition-colors">
+                                        Keep consistent?
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Only show clothing description if "Keep consistent" is checked */}
+                            {activeCharacter.useFixedClothing && (
+                                <Textarea
+                                    value={activeCharacter.clothingStyle || ""}
+                                    onChange={(e) => handleUpdate("clothingStyle", e.target.value)}
+                                    placeholder="Describe their outfit to keep it consistent (e.g. Red hoodie, blue jeans, and white sneakers)..."
+                                    className="min-h-[80px] rounded-xl border-2 resize-none text-base animate-in fade-in slide-in-from-top-1"
+                                />
+                            )}
                         </div>
 
                         {/* 5. Character Description */}

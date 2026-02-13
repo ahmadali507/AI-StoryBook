@@ -170,6 +170,7 @@ export interface SimpleCharacter {
     age?: string;
     clothingStyle?: string;
     description?: string;
+    useFixedClothing?: boolean;
 }
 
 // Age ranges for text complexity

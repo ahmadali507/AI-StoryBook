@@ -1,8 +1,7 @@
-"use client";
-
-import { useState } from "react";
+'use client'
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Loader2, Sparkles, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Sparkles, Check, Trash2 } from "lucide-react";
 import CharacterUploadList from "./CharacterUploadList";
 import StorySettingsForm from "./StorySettingsForm";
 import { useToast } from "@/providers/ToastProvider";
@@ -46,12 +45,15 @@ const STEPS = [
     { id: 3, label: "Review", description: "Ready to print" },
 ];
 
+export const STORAGE_KEY = "story_order_form_data";
+
 export default function SimpleOrderForm() {
     const router = useRouter();
     const toast = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Form state
     const [characters, setCharacters] = useState<Partial<SimpleCharacter>[]>([
@@ -69,6 +71,55 @@ export default function SimpleOrderForm() {
     const [artStyle, setArtStyle] = useState<MVPArtStyle | null>(null);
     const [bookTitle, setBookTitle] = useState("");
     const [description, setDescription] = useState("");
+
+    // Load from localStorage on mount
+    useEffect(() => {
+        try {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                const parsed = JSON.parse(savedData);
+
+                if (parsed.characters && Array.isArray(parsed.characters)) setCharacters(parsed.characters);
+                if (parsed.ageRange) setAgeRange(parsed.ageRange);
+                if (parsed.theme) setTheme(parsed.theme);
+                if (parsed.subject) setSubject(parsed.subject);
+                if (parsed.artStyle) setArtStyle(parsed.artStyle);
+                if (parsed.bookTitle) setBookTitle(parsed.bookTitle);
+                if (parsed.description) setDescription(parsed.description);
+                // We intentionally don't restore currentStep to let user start from check characters if they reload
+                // But user requested "data vaporises", restoring step might be expected behavior
+                if (parsed.currentStep) setCurrentStep(parsed.currentStep);
+            }
+        } catch (error) {
+            console.error("Failed to load form data:", error);
+        } finally {
+            setIsLoaded(true);
+        }
+    }, []);
+
+    // Save to localStorage on change
+    useEffect(() => {
+        if (!isLoaded) return; // Don't save empty default state before loading
+
+        const dataToSave = {
+            characters,
+            ageRange,
+            theme,
+            subject,
+            artStyle,
+            bookTitle,
+            description,
+            currentStep
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    }, [characters, ageRange, theme, subject, artStyle, bookTitle, description, currentStep, isLoaded]);
+
+    const clearForm = () => {
+        if (confirm("Are you sure you want to clear all data and start over?")) {
+            localStorage.removeItem(STORAGE_KEY);
+            window.location.reload();
+        }
+    };
 
     // Order state
     const [orderId, setOrderId] = useState<string | null>(null);
@@ -129,17 +180,34 @@ export default function SimpleOrderForm() {
             setOrderId(orderResult.orderId);
 
             // Add characters to order
+            let addedCount = 0;
             for (const char of characters) {
                 if (char.name && char.photoUrl) {
-                    await addCharacterToOrder({
+                    console.log(`[SimpleOrderForm] Adding character: ${char.name}`);
+                    const result = await addCharacterToOrder({
                         orderId: orderResult.orderId,
                         name: char.name,
                         photoUrl: char.photoUrl,
                         gender: char.gender || "other",
                         entityType: char.entityType || "human",
                         role: char.role || "supporting",
+                        clothingStyle: char.clothingStyle,
+                        description: char.description,
+                        useFixedClothing: char.useFixedClothing,
                     });
+
+                    if (!result.success) {
+                        console.error(`[SimpleOrderForm] Failed to add character ${char.name}:`, result.error);
+                        throw new Error(`Failed to save character ${char.name}: ${result.error}`);
+                    }
+                    addedCount++;
+                } else {
+                    console.warn(`[SimpleOrderForm] Skipping incomplete character:`, char);
                 }
+            }
+
+            if (addedCount === 0) {
+                throw new Error("No valid characters were found to add to the order.");
             }
 
             // Generate cover preview
@@ -151,7 +219,12 @@ export default function SimpleOrderForm() {
             setCoverUrl(coverResult.coverUrl);
             setCurrentStep(3);
             toast.success("Your book cover looks amazing! 🎨");
-        } catch (err) {
+        } catch (err: any) {
+            console.error("[SimpleOrderForm] Generate Cover Error:", err);
+            // Log full details if available
+            if (err.message) console.error("[SimpleOrderForm] Error Message:", err.message);
+            if (err.stack) console.error("[SimpleOrderForm] Error Stack:", err.stack);
+
             const friendlyMessage = getFriendlyOrderErrorMessage(
                 err instanceof Error ? err.message : "Something went wrong"
             );
@@ -257,153 +330,178 @@ export default function SimpleOrderForm() {
                     {/* Decorative top gradient line */}
                     <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary via-purple-400 to-pink-400 opacity-80" />
 
-                    {/* Error message */}
-                    {error && (
-                        <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-2">
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            {error}
+                    {!isLoaded ? (
+                        <div className="flex items-center justify-center min-h-[300px]">
+                            <Loader2 className="w-8 h-8 text-primary animate-spin" />
                         </div>
-                    )}
-
-                    {/* Step Content */}
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Step 1: Characters */}
-                        {currentStep === 1 && (
-                            <div className="space-y-6">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
-                                        Who is this story for?
-                                    </h2>
-                                    <p className="text-gray-500 text-lg">
-                                        Upload a photo to transform them into a character.
-                                    </p>
+                    ) : (
+                        <>
+                            {/* Error message */}
+                            {error && (
+                                <div className="mb-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-2">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                    {error}
                                 </div>
-                                <CharacterUploadList
-                                    characters={characters}
-                                    onCharactersChange={setCharacters}
-                                    onPhotoUpload={handlePhotoUpload}
-                                />
-                            </div>
-                        )}
+                            )}
 
-                        {/* Step 2: Settings */}
-                        {currentStep === 2 && (
-                            <div className="space-y-6">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
-                                        Craft your world
-                                    </h2>
-                                    <p className="text-gray-500 text-lg">
-                                        Choose the perfect theme and style for your adventure.
-                                    </p>
-                                </div>
-                                <StorySettingsForm
-                                    ageRange={ageRange}
-                                    setAgeRange={setAgeRange}
-                                    theme={theme}
-                                    setTheme={setTheme}
-                                    subject={subject}
-                                    setSubject={setSubject}
-                                    artStyle={artStyle}
-                                    setArtStyle={setArtStyle}
-                                    title={bookTitle}
-                                    setTitle={setBookTitle}
-                                    description={description}
-                                    setDescription={setDescription}
-                                />
-                            </div>
-                        )}
-
-                        {/* Step 3: Preview & Purchase */}
-                        {currentStep === 3 && (
-                            <div className="text-center max-w-2xl mx-auto">
-                                <div className="mb-8">
-                                    <div className="inline-flex items-center justify-center p-3 bg-green-100 text-green-600 rounded-full mb-4">
-                                        <Sparkles className="w-6 h-6" />
-                                    </div>
-                                    <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
-                                        Your Book Cover is Ready!
-                                    </h2>
-                                    <p className="text-gray-500 text-lg">
-                                        This is just a preview. The full story will be generated magically after purchase.
-                                    </p>
-                                </div>
-
-                                {/* Cover preview */}
-                                <div className="relative group mx-auto mb-10 w-full max-w-sm perspective-1000">
-                                    <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-gray-100 relative transform transition-transform duration-500 group-hover:rotate-y-12 preserve-3d">
-                                        {coverUrl ? (
-                                            <img
-                                                src={coverUrl}
-                                                alt="Book Cover"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-slate-50">
-                                                <div className="w-16 h-16 mb-4 rounded-full bg-slate-100" />
-                                                <p>Cover Preview</p>
+                            {/* Step Content */}
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* Step 1: Characters */}
+                                {currentStep === 1 && (
+                                    <div className="space-y-6">
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                                            <div className="text-center sm:text-left">
+                                                <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-2">
+                                                    Who is this story for?
+                                                </h2>
+                                                <p className="text-gray-500 text-lg">
+                                                    Upload a photo to transform them into a character.
+                                                </p>
                                             </div>
-                                        )}
-                                        {/* Shine effect */}
-                                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                            <button
+                                                onClick={clearForm}
+                                                className="text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 flex items-center gap-2 transition-all px-4 py-2 rounded-full shadow-sm hover:shadow-md"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Reset Form
+                                            </button>
+                                        </div>
+                                        <CharacterUploadList
+                                            characters={characters}
+                                            onCharactersChange={setCharacters}
+                                            onPhotoUpload={handlePhotoUpload}
+                                            maxCharacters={3}
+                                        />
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Order summary card */}
-                                <div className="bg-gray-50/80 rounded-2xl p-6 border border-gray-100 mb-8 backdrop-blur-sm">
-                                    <h3 className="font-heading font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
-                                        Order Summary
-                                    </h3>
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
-                                            <span className="text-gray-500">Characters</span>
-                                            <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">
-                                                {characters.filter((c) => c.name).length}
-                                            </span>
+                                {/* Step 2: Settings */}
+                                {currentStep === 2 && (
+                                    <div className="space-y-6">
+                                        <div className="relative text-center mb-8">
+                                            <button
+                                                onClick={handleBack}
+                                                className="absolute left-0 top-0 sm:top-1/2 sm:-translate-y-1/2 p-2 rounded-full hover:bg-gray-100 text-slate-400 hover:text-slate-600 transition-colors"
+                                                aria-label="Go back"
+                                            >
+                                                <ChevronLeft className="w-6 h-6" />
+                                            </button>
+                                            <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                                                Craft your world
+                                            </h2>
+                                            <p className="text-gray-500 text-lg">
+                                                Choose the perfect theme and style for your adventure.
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
-                                            <span className="text-gray-500">Age Group</span>
-                                            <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">{ageRange}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
-                                            <span className="text-gray-500">Theme</span>
-                                            <span className="font-medium text-gray-900 capitalize bg-white px-2 py-1 rounded shadow-sm">
-                                                {theme}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-2">
-                                            <span className="font-bold text-gray-900 text-lg">Total</span>
-                                            <span className="font-heading font-bold text-2xl text-primary">
-                                                $7.99
-                                            </span>
-                                        </div>
+                                        <StorySettingsForm
+                                            ageRange={ageRange}
+                                            setAgeRange={setAgeRange}
+                                            theme={theme}
+                                            setTheme={setTheme}
+                                            subject={subject}
+                                            setSubject={setSubject}
+                                            artStyle={artStyle}
+                                            setArtStyle={setArtStyle}
+                                            title={bookTitle}
+                                            setTitle={setBookTitle}
+                                            description={description}
+                                            setDescription={setDescription}
+                                        />
                                     </div>
-                                </div>
+                                )}
 
-                                <button
-                                    onClick={handlePurchase}
-                                    disabled={isLoading}
-                                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full font-bold text-lg shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group"
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            Redirecting...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
-                                            Pay $7.99 & Generate Book
-                                        </>
-                                    )}
-                                </button>
-                                <p className="mt-4 text-xs text-gray-400 flex items-center justify-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-green-500" />
-                                    Secure checkout powered by Stripe
-                                </p>
+                                {/* Step 3: Preview & Purchase */}
+                                {currentStep === 3 && (
+                                    <div className="text-center max-w-2xl mx-auto">
+                                        <div className="mb-8">
+                                            <div className="inline-flex items-center justify-center p-3 bg-green-100 text-green-600 rounded-full mb-4">
+                                                <Sparkles className="w-6 h-6" />
+                                            </div>
+                                            <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                                                Your Book Cover is Ready!
+                                            </h2>
+                                            <p className="text-gray-500 text-lg">
+                                                This is just a preview. The full story will be generated magically after purchase.
+                                            </p>
+                                        </div>
+
+                                        {/* Cover preview */}
+                                        <div className="relative group mx-auto mb-10 w-full max-w-sm perspective-1000">
+                                            <div className="aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-gray-100 relative transform transition-transform duration-500 group-hover:rotate-y-12 preserve-3d">
+                                                {coverUrl ? (
+                                                    <img
+                                                        src={coverUrl}
+                                                        alt="Book Cover"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-col items-center justify-center h-full text-gray-400 bg-slate-50">
+                                                        <div className="w-16 h-16 mb-4 rounded-full bg-slate-100" />
+                                                        <p>Cover Preview</p>
+                                                    </div>
+                                                )}
+                                                {/* Shine effect */}
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                                            </div>
+                                        </div>
+
+                                        {/* Order summary card */}
+                                        <div className="bg-gray-50/80 rounded-2xl p-6 border border-gray-100 mb-8 backdrop-blur-sm">
+                                            <h3 className="font-heading font-semibold text-gray-900 mb-4 flex items-center justify-center gap-2">
+                                                Order Summary
+                                            </h3>
+                                            <div className="space-y-3 text-sm">
+                                                <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                                    <span className="text-gray-500">Characters</span>
+                                                    <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">
+                                                        {characters.filter((c) => c.name).length}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                                    <span className="text-gray-500">Age Group</span>
+                                                    <span className="font-medium text-gray-900 bg-white px-2 py-1 rounded shadow-sm">{ageRange}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center py-2 border-b border-gray-200/50">
+                                                    <span className="text-gray-500">Theme</span>
+                                                    <span className="font-medium text-gray-900 capitalize bg-white px-2 py-1 rounded shadow-sm">
+                                                        {theme}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-2">
+                                                    <span className="font-bold text-gray-900 text-lg">Total</span>
+                                                    <span className="font-heading font-bold text-2xl text-primary">
+                                                        $7.99
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handlePurchase}
+                                            disabled={isLoading}
+                                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white rounded-full font-bold text-lg shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed group"
+                                        >
+                                            {isLoading ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    Redirecting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles className="w-5 h-5 group-hover:animate-pulse" />
+                                                    Pay $7.99 & Generate Book
+                                                </>
+                                            )}
+                                        </button>
+                                        <p className="mt-4 text-xs text-gray-400 flex items-center justify-center gap-1">
+                                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                                            Secure checkout powered by Stripe
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Navigation buttons */}
@@ -411,7 +509,7 @@ export default function SimpleOrderForm() {
                     <button
                         onClick={handleBack}
                         disabled={currentStep === 1}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all ${currentStep === 1
+                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all ${currentStep === 1 || currentStep === 2
                             ? "opacity-0 pointer-events-none"
                             : "text-gray-500 hover:text-gray-800 hover:bg-white/50"
                             }`}
@@ -448,7 +546,7 @@ export default function SimpleOrderForm() {
                         </button>
                     )}
                 </div>
-            </div>
+            </div >
         </>
     );
 }

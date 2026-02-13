@@ -8,6 +8,7 @@ import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
 import { useToast } from "@/providers/ToastProvider";
+import { STORAGE_KEY } from "@/app/components/order/SimpleOrderForm";
 
 export default function OrderStatusPage() {
     const params = useParams();
@@ -63,6 +64,7 @@ export default function OrderStatusPage() {
                 switch (orderData.status) {
                     case "complete":
                         // Book is ready - redirect to story
+                        localStorage.removeItem(STORAGE_KEY);
                         setStatusMessage("Your book is ready!");
                         if (orderData.storybook?.id) {
                             toast.success("Your book is ready! Enjoy reading! 📚");
@@ -73,11 +75,13 @@ export default function OrderStatusPage() {
                     case "generating":
                         // Already generating - just show status and poll
                         // DO NOT trigger again - generation is already in progress
+                        localStorage.removeItem(STORAGE_KEY);
                         setStatusMessage("Generating your personalized storybook...");
                         break;
 
                     case "paid":
                         // Paid but generation not started yet - trigger it
+                        localStorage.removeItem(STORAGE_KEY);
                         setStatusMessage("Starting book generation...");
                         // Only show this toast once if we just came from payment
                         if (isPaidFromUrl) {
@@ -107,6 +111,7 @@ export default function OrderStatusPage() {
                             try {
                                 const result = await verifyOrderPayment(orderId, sessionId);
                                 if (result.success && result.paid) {
+                                    localStorage.removeItem(STORAGE_KEY);
                                     setStatusMessage("Starting book generation...");
                                     toast.success("Payment successful! Creating your book... ✨");
 
