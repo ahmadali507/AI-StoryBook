@@ -15,7 +15,7 @@ interface NavbarProps {
 }
 
 const defaultLinks: NavLink[] = [
-    { href: "/", label: "Features" },
+    { href: "/library", label: "Library" },
     { href: "/", label: "Pricing" },
     { href: "/", label: "About" },
 ];
@@ -64,7 +64,7 @@ export default async function Navbar({ links = defaultLinks, showAuth = true }: 
                                         Login
                                     </Link>
                                     <Link
-                                        href="/story-chat"
+                                        href="/create"
                                         className="bg-secondary text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-all duration-200 cursor-pointer"
                                     >
                                         Get Started

@@ -42,7 +42,7 @@ export default function HeroSection() {
 
                                 {/* Chat AI Option */}
                                 <Link
-                                    href="/story-chat"
+                                    href="/create"
                                     className="group bg-gradient-to-br from-secondary to-secondary/80 text-white px-6 py-4 rounded-2xl font-semibold hover:shadow-xl hover:shadow-secondary/25 transition-all duration-300 flex flex-col items-center sm:items-start gap-2 cursor-pointer min-w-[200px]"
                                 >
                                     <div className="flex items-center gap-2">

@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Image from "next/image";
 import { Upload, X, User, Dog, Package, Loader2, Sparkles } from "lucide-react";
-import type { SimpleCharacter, Gender, EntityType, CharacterRole } from "@/types/storybook";
+import type { SimpleCharacter, Gender, EntityType } from "@/types/storybook";
 
 interface PhotoCharacterCardProps {
     character: Partial<SimpleCharacter>;
@@ -79,25 +79,15 @@ export default function PhotoCharacterCard({
                 </button>
             )}
 
-            {/* Role badge */}
-            <div className="absolute top-3 left-3">
-                <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${character.role === "main"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                >
-                    {character.role === "main" ? "Main Character" : "Supporting"}
-                </span>
-            </div>
+
 
             {/* Photo upload area */}
             <div
                 className={`mt-8 mb-4 relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-all ${dragActive
-                        ? "bg-primary/10 border-2 border-primary border-dashed"
-                        : character.photoUrl
-                            ? ""
-                            : "bg-gray-50 border-2 border-dashed border-gray-200 hover:border-primary/50"
+                    ? "bg-primary/10 border-2 border-primary border-dashed"
+                    : character.photoUrl
+                        ? ""
+                        : "bg-gray-50 border-2 border-dashed border-gray-200 hover:border-primary/50"
                     }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -211,8 +201,8 @@ export default function PhotoCharacterCard({
                             key={gender}
                             onClick={() => onUpdate({ gender })}
                             className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${character.gender === gender
-                                    ? "bg-primary text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                ? "bg-primary text-white"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                 }`}
                         >
                             {gender.charAt(0).toUpperCase() + gender.slice(1)}
@@ -232,8 +222,8 @@ export default function PhotoCharacterCard({
                             key={type}
                             onClick={() => onUpdate({ entityType: type })}
                             className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${character.entityType === type
-                                    ? "bg-primary text-white"
-                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                ? "bg-primary text-white"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                 }`}
                         >
                             {entityIcons[type]}
@@ -243,23 +233,7 @@ export default function PhotoCharacterCard({
                 </div>
             </div>
 
-            {/* Role toggle (for non-first characters) */}
-            {!isFirst && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                    <button
-                        onClick={() =>
-                            onUpdate({
-                                role: character.role === "main" ? "supporting" : "main",
-                            })
-                        }
-                        className="text-xs text-gray-500 hover:text-primary transition-colors"
-                    >
-                        {character.role === "main"
-                            ? "Make supporting character"
-                            : "Make main character"}
-                    </button>
-                </div>
-            )}
+
         </div>
     );
 }

@@ -10,7 +10,7 @@ import NavbarMobileMenu from "@/app/components/NavbarMobileMenu";
 // MVP Navigation - simplified for gift-oriented experience
 const navLinks = [
     { href: "/create", label: "Create Book", icon: "wand" },
-    { href: "/story-chat", label: "AI Chat", icon: "chat" },
+    { href: "/create", label: "AI Chat", icon: "chat" },
 ];
 
 export default function NavbarClient() {

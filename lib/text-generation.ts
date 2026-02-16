@@ -9,9 +9,9 @@ import type { AgeRange, Theme, SimpleCharacter } from '@/types/storybook';
 import { AGE_RANGE_LABELS, TEXT_COMPLEXITY } from '@/types/storybook';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 // Dedicated model for detailed visual descriptions (User Request: gemini 3.0 flash preview)
-const modelCharacterDesc = genAI.getGenerativeModel({ model: 'gemini-3.0-flash-preview' });
+const modelCharacterDesc = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
 // ============================================
 // HELPER: RETRY LOGIC FOR API CALLS
@@ -79,18 +79,17 @@ export async function generateMVPStoryOutline(
     description?: string, // User context/details
     subject?: string // Specific story subject/activity
 ): Promise<StoryOutline> {
-    const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
-    const supportingCharacters = characters.filter(c => c.role === 'supporting');
-
-    const complexity = TEXT_COMPLEXITY[ageRange];
-    const ageInfo = AGE_RANGE_LABELS[ageRange];
-
-    const characterList = characters.map(c => {
-        let details = `- ${c.name} (${c.entityType}, ${c.gender}${c.role === 'main' ? ' - main character' : ''})`;
+    const characterList = characters.map((c, i) => {
+        const roleDesc = c.storyRole ? ` [STORY ROLE: ${c.storyRole}]` : '';
+        const focusTag = c.role === 'main' ? ' [STORY FOCUS — the story is told through this character\'s perspective]' : '';
+        let details = `- ${c.name} (${c.entityType}, ${c.gender})${roleDesc}${focusTag}`;
         if (c.description) details += `: ${c.description}`;
         if (c.clothingStyle) details += ` (Wearing: ${c.clothingStyle})`;
         return details;
     }).join('\n');
+
+    const complexity = TEXT_COMPLEXITY[ageRange];
+    const ageInfo = AGE_RANGE_LABELS[ageRange];
 
     // CRITICAL: If a custom title is provided, use it directly!
     const titleInstruction = customTitle
@@ -105,21 +104,33 @@ WORDS PER PAGE: Maximum ${complexity.wordsPerPage} words
 
 THEME (Atmosphere/Setting): ${theme}
 ${subject ? `STORY SUBJECT (Central Plot/Activity): ${subject}` : ''}
-MAIN CHARACTER: ${mainCharacter.name}
 ${description ? `USER CONTEXT: "${description}"\nCRITICAL INSTRUCTION: The story must revolve around the "STORY SUBJECT" while incorporating the "USER CONTEXT" details naturally.` : ''}
 
 CHARACTERS:
 ${characterList}
 
+CHARACTER IMPORTANCE RULES:
+- ALL characters are equally important and should have equal presence, dialogue, actions, and development across the story.
+- The character marked [STORY FOCUS] is the story's LOCUS — the narrative is told from their perspective and the plot revolves around their journey/experience.
+- Being the focus does NOT mean other characters are less important. Every character should be deeply woven into the story with their own voice, personality, and meaningful contributions.
+- Think of it like an ensemble cast where the camera follows one character — but every character matters equally.
+
 STORY REQUIREMENTS:
 - Create a ${theme}-themed story
-- The story should be perfect for a personalized gift book
+- The story is experienced through the focus character's eyes, but all characters drive the plot equally
+- Each scene should feature multiple characters interacting meaningfully
 - Each scene should have a clear visual moment for illustration
 - End with a positive, loving conclusion
 - ${ageRange === '0-2' ? 'Use lots of sound words, repetition, and simple concepts' : ''}
 - ${ageRange === '2-4' ? 'Use simple sentences, familiar concepts, and gentle rhythm' : ''}
 - ${ageRange === '5-8' ? 'Include dialogue, adventure elements, and clear plot progression' : ''}
 - ${ageRange === '9-12' ? 'Include character development, richer vocabulary, and meaningful themes' : ''}
+
+ROLE ENFORCEMENT — MANDATORY:
+Each character has a defined STORY ROLE (e.g. "father", "big sister", "best friend"). You MUST use the exact role provided for each character.
+- If a character's STORY ROLE is "father", they MUST be referred to and treated as the father in EVERY scene. Never change them to "uncle", "friend", "brother", or any other relationship.
+- The STORY ROLE is non-negotiable and must remain consistent across all 12 scenes.
+- Characters without a specified role should be referred to by their name and main/supporting designation.
 
 Respond in strict JSON format:
 {
@@ -161,33 +172,81 @@ export interface PageText {
     visualPrompt: string;
 }
 
+export interface PreviousSceneContext {
+    sceneTitle: string;
+    text: string;
+}
+
 export async function generatePageText(
     sceneOutline: SceneOutline,
     characters: SimpleCharacter[],
     ageRange: AgeRange,
-    previousPageText?: string
+    allPreviousScenes?: PreviousSceneContext[],
+    storyOutline?: StoryOutline
 ): Promise<PageText> {
     const complexity = TEXT_COMPLEXITY[ageRange];
     const ageInfo = AGE_RANGE_LABELS[ageRange];
 
-    const characterNames = characters.map(c => `${c.name} (${c.role})`).join(', ');
+    const characterNames = characters.map(c => {
+        let label = `${c.name} (${c.role})`;
+        if (c.storyRole) label = `${c.name} (${c.storyRole})`;
+        if (c.role === 'main') label += ' [STORY FOCUS]';
+        return label;
+    }).join(', ');
+
+    // Build role enforcement for page text
+    const roleEnforcement = characters
+        .filter(c => c.storyRole)
+        .map(c => `- ${c.name}'s role is ${c.storyRole!.toUpperCase()}. Do not change this relationship.`)
+        .join('\n');
+
+    // Build cumulative story context so each scene is aware of the full narrative
+    let storyContext = '';
+    if (allPreviousScenes && allPreviousScenes.length > 0) {
+        // Summarize all previous scenes
+        const sceneSummaries = allPreviousScenes.map((s, i) =>
+            `Scene ${i + 1} "${s.sceneTitle}": ${s.text.substring(0, 120)}...`
+        ).join('\n');
+        storyContext = `\nSTORY SO FAR (${allPreviousScenes.length} scenes completed):\n${sceneSummaries}\n\nPREVIOUS PAGE (full text for flow continuity):\n"${allPreviousScenes[allPreviousScenes.length - 1].text}"\n`;
+    } else {
+        storyContext = '\nThis is the OPENING of the story. Set the scene and introduce all the characters.';
+    }
+
+    // Provide upcoming scene awareness for smoother transitions
+    let upcomingContext = '';
+    if (storyOutline) {
+        const currentIndex = storyOutline.scenes.findIndex(s => s.number === sceneOutline.number);
+        if (currentIndex >= 0 && currentIndex < storyOutline.scenes.length - 1) {
+            const nextScene = storyOutline.scenes[currentIndex + 1];
+            upcomingContext = `\nNEXT SCENE PREVIEW (for smooth transition): "${nextScene.title}" - ${nextScene.summary}`;
+        } else if (currentIndex === storyOutline.scenes.length - 1) {
+            upcomingContext = '\nThis is the FINAL scene. Wrap up the story with a satisfying, heartfelt conclusion.';
+        }
+    }
 
     const prompt = `Write the text for a single page of a children's storybook.
 
 TARGET AUDIENCE: Children aged ${ageRange} years old (${ageInfo.label})
 WRITING STYLE: ${complexity.style}
+VOCABULARY LEVEL: ${complexity.vocabulary} — use SIMPLE, easy-to-read words throughout
 TARGET WORD COUNT: ${complexity.wordsPerPage} words (THIS IS IMPORTANT - write close to this amount)
 
-SCENE: ${sceneOutline.title}
+CURRENT SCENE (${sceneOutline.number} of ${storyOutline?.scenes.length || 12}): ${sceneOutline.title}
 ${sceneOutline.summary}
 EMOTIONAL TONE: ${sceneOutline.emotionalTone}
 CHARACTERS IN SCENE: ${characterNames}
+${roleEnforcement ? `\nMANDATORY ROLE ENFORCEMENT:\n${roleEnforcement}` : ''}
+${storyContext}
+${upcomingContext}
 
-${previousPageText ? `PREVIOUS PAGE ENDED WITH: "${previousPageText.slice(-150)}..."` : 'This is the opening of the story.'}
-
-INSTRUCTIONS:
-- The MAIN character (${characters.find(c => c.role === 'main')?.name}) should drive the action.
-- Ensure the story flows naturally from the previous page.
+CRITICAL INSTRUCTIONS:
+- The character marked [STORY FOCUS] is the narrative lens — the story is told from their perspective.
+- However, ALL characters are equally important. Give every character meaningful actions, dialogue, and emotional presence.
+- No character should feel secondary or like a sidekick — they all matter equally, the focus character is just where the camera follows.
+- This scene MUST flow directly from the previous scene. Do NOT restart or repeat what already happened.
+- Continue the narrative naturally — the reader should feel like they are turning pages of one connected story.
+- Do NOT introduce new plot elements that contradict what happened before.
+- Build on the emotional arc established in previous scenes.
 ${ageRange === '0-2' ? `
 - Use 1-5 simple words or short phrases
 - Include sound words like "splash!", "boom!", "whoosh!"
@@ -211,19 +270,18 @@ ${ageRange === '5-8' ? `
 ` : ''}
 ${ageRange === '9-12' ? `
 - Write 150-200 words - this is essential for a chapter book feel
-- Include rich, immersive descriptions of settings and atmosphere
-- Show character introspection - thoughts, doubts, hopes, fears
-- Use clear, easy-to-understand vocabulary but complex sentence structures (avoid overly difficult words)
-- Create complex emotional moments and character development
+- Use SIMPLE, beginner-level vocabulary. Every word should be easy for a pre-teen to read.
+- Keep sentences SHORT and CLEAR. No complex sentence structures.
+- Show character thoughts, feelings, and emotions
 - Include dialogue that reveals character personality
 - Balance action with reflection and description
-- The text should feel like a proper young adult novel but accessible
+- The text should be engaging and easy to follow
 ` : ''}
 
 Respond in JSON format:
 {
   "text": "The page text exactly as it should appear in the book",
-  "visualPrompt": "Updated visual description for the illustration based on the text. START with the main character action."
+  "visualPrompt": "Detailed visual description for the illustration based on the text. Describe the exact setting, character positions, actions, and mood. Give ALL characters meaningful positions and actions."
 }`;
 
     const result = await generateWithRetry(() => model.generateContent(prompt));
@@ -287,14 +345,14 @@ export async function generateBackCoverSummary(
     const prompt = `Write a brief back cover summary for this children's storybook.
 
 TITLE: ${title}
-MAIN CHARACTER: ${characters.find(c => c.role === 'main')?.name || characters[0].name}
+CHARACTERS: ${characters.map(c => `${c.name}${c.storyRole ? ` (${c.storyRole})` : ''}`).join(', ')}
 STORY OVERVIEW: ${storyOutline.scenes.slice(0, 3).map(s => s.summary).join(' ')}
 
 TARGET AUDIENCE: Children aged ${ageRange}
 MAXIMUM WORDS: ${Math.min(complexity.wordsPerPage * 2, 100)}
 
 Write an engaging summary that:
-- Introduces the main character
+- Introduces the characters and their relationships
 - Hints at the adventure without spoilers
 - Creates excitement to read the book
 - Ends with an inviting question or statement
@@ -472,28 +530,35 @@ export async function generateIllustrationPromptForScene(
     characters: SimpleCharacter[],
     artStyle: string,
     globalSeed: number,
-    characterDescriptions?: CharacterVisualDescription[]
+    characterDescriptions?: CharacterVisualDescription[],
+    generatedVisualPrompt?: string
 ): Promise<string> {
 
     // 1. Generate Character Actions for this specific scene
     const actionPrompt = `You are an expert art director for a Pixar-style 3D animated movie.
     
 SCENE CONTEXT:
-${scene.sceneDescription}
+${generatedVisualPrompt || scene.sceneDescription}
 EMOTIONAL TONE: ${scene.emotionalTone}
 
 CHARACTERS IN SCENE:
 ${characters.map((c, i) => {
-        const clothingNote = c.useFixedClothing
-            ? "WEARING FIXED OUTFIT (Do not describe clothing)"
-            : "WEARING SCENE-APPROPRIATE CLOTHING (Describe their outfit matching the scene/theme)";
+        let clothingNote: string;
+        if (c.useFixedClothing && !c.clothingStyle) {
+            clothingNote = "WEARING EXACT SAME CLOTHING AS IN REFERENCE IMAGE (Do not change or describe clothing)";
+        } else if (c.clothingStyle) {
+            clothingNote = `FIXED OUTFIT: ${c.clothingStyle} (DO NOT change this outfit across scenes)`;
+        } else {
+            clothingNote = "WEARING SCENE-APPROPRIATE CLOTHING (Describe their outfit matching the scene/theme)";
+        }
 
         // Critical: Strict species definition
         const speciesDef = c.entityType === 'human'
             ? `HUMAN (${c.gender})`
             : `NON-HUMAN ANIMAL (${c.description || c.entityType})`;
 
-        return `- ${c.name} [${speciesDef}] (role: ${c.role}) - ${clothingNote}`;
+        const roleLabel = c.storyRole ? `role: ${c.storyRole}` : `role: ${c.role}`;
+        return `- ${c.name} [${speciesDef}] (${roleLabel}) - ${clothingNote}`;
     }).join('\n')}
 
 Task: Describe the EXACT ACTION and POSE for each character in this specific scene.
@@ -544,7 +609,7 @@ Respond in JSON format:
         characters.forEach(c => {
             charActions.push({
                 name: c.name,
-                action: c.role === 'main' ? 'Standing in the center, looking engaged' : 'Standing nearby, watching'
+                action: 'Standing in the scene, engaged and interacting'
             });
         });
     }
@@ -612,9 +677,7 @@ export async function generateCoverIllustrationPrompt(
     artStyle: string,
     characterDescriptions?: CharacterVisualDescription[],
     characterImageCounts?: number[] // Optional: How many images per character
-): Promise<string> {
-    const mainCharacter = characters.find(c => c.role === 'main') || characters[0];
-
+) {
     // 1. Generate Cover Actions/Composition using LLM
     const coverActionPrompt = `You are an expert art director for a Pixar-style 3D animated movie.
     
@@ -623,11 +686,12 @@ export async function generateCoverIllustrationPrompt(
     THEME: ${theme}
     ART STYLE: ${artStyle}
     
-    CHARACTERS TO FEATURE:
-    ${characters.map(c => `- ${c.name} (${c.entityType}, ${c.gender})`).join('\n')}
+    CHARACTERS TO FEATURE (all equally prominent):
+    ${characters.map(c => `- ${c.name} (${c.entityType}, ${c.gender})${c.storyRole ? ` — role: ${c.storyRole}` : ''}`).join('\n')}
     
     Design a compelling, high-quality cover composition.
-    - The main character (${mainCharacter.name}) should be the focal point.
+    - ALL characters should be featured prominently and equally in the composition.
+    - Their story roles (e.g. father, sister, friend) should inform their poses and positioning.
     - The lighting should be magical and cinematic (Golden Hour / Volumetric).
     - The background should clearly establish the ${theme} setting.
     - Action should be inviting and adventurous.
@@ -638,8 +702,8 @@ export async function generateCoverIllustrationPrompt(
       "lighting": "Cinematic lighting description.",
       "characterActions": [
         {
-          "name": "${mainCharacter.name}",
-          "action": "Specific commanding pose, looking at camera or into distance, engaging expression."
+          "name": "${characters[0]?.name}",
+          "action": "Specific commanding pose, engaging expression, reflecting their role."
         }
         // ... other characters if present
       ]

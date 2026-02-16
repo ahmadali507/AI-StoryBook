@@ -11,7 +11,8 @@ import {
     getNegativePrompt,
     type StoryOutline,
     type SceneOutline,
-    type CharacterVisualDescription
+    type CharacterVisualDescription,
+    type PreviousSceneContext
 } from "@/lib/text-generation";
 import { generateWithSeedream, generateBookCover } from "@/lib/replicate";
 import { getOrderCharacters } from "@/actions/order";
@@ -302,9 +303,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 .eq("id", storybook.id);
         }
 
-        // 4. Generate all page texts
+        // 4. Generate all page texts with cumulative context
         const pageTexts: { sceneNumber: number; text: string; visualPrompt: string }[] = [];
-        let previousText = '';
+        const allPreviousScenes: PreviousSceneContext[] = [];
 
         // Track progress: Starting narrative generation
         await updateGenerationProgress(orderId, {
@@ -336,7 +337,8 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 scene,
                 characters,
                 ageRange,
-                previousText
+                allPreviousScenes.length > 0 ? allPreviousScenes : undefined,
+                storyOutline
             );
 
             pageTexts.push({
@@ -345,7 +347,11 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 visualPrompt: pageText.visualPrompt
             });
 
-            previousText = pageText.text;
+            // Add to cumulative context for next scene
+            allPreviousScenes.push({
+                sceneTitle: scene.title,
+                text: pageText.text
+            });
         }
 
         // 5. Generate back cover summary
@@ -558,7 +564,8 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 characters,
                 artStyle, // Pass the ID string e.g 'pixar-3d'
                 sceneSeed,
-                characterDescriptions
+                characterDescriptions,
+                pageText.visualPrompt // Use the text-derived visual prompt for better text-image sync
             );
 
             console.log(`[generateFullBook] ------------------------------------------------------------`);
@@ -634,7 +641,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             const pageText = pageTexts[i];
             const illustration = illustrations[i];
 
-            // Illustration page
+            // Illustration page (left side of spread)
             bookContent.pages.push({
                 pageNumber: 3 + (i * 2),
                 type: 'story',
@@ -642,7 +649,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 sceneNumber: i + 1
             });
 
-            // Text page
+            // Text page (right side of spread)
             bookContent.pages.push({
                 pageNumber: 4 + (i * 2),
                 type: 'story',

@@ -13,7 +13,7 @@ export default function CTASection() {
                     Your first story is free!
                 </p>
                 <Link
-                    href="/story-chat"
+                    href="/create"
                     className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition-all duration-200 cursor-pointer"
                 >
                     <Sparkles className="w-5 h-5" />

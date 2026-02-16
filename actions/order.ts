@@ -445,6 +445,7 @@ interface AddCharacterInput {
     role: "main" | "supporting";
     clothingStyle?: string;
     description?: string;
+    storyRole?: string;
     useFixedClothing?: boolean;
 }
 
@@ -458,6 +459,11 @@ export async function addCharacterToOrder(
         ? `[FIXED] ${data.clothingStyle || ''}`
         : data.clothingStyle;
 
+    // Encode storyRole as prefix in description column to avoid DB migration
+    const descriptionToSave = data.storyRole
+        ? `[ROLE:${data.storyRole}] ${data.description || ''}`
+        : data.description;
+
     const { data: character, error } = await supabase
         .from("order_characters")
         .insert({
@@ -468,7 +474,7 @@ export async function addCharacterToOrder(
             entity_type: data.entityType,
             role: data.role,
             clothing_style: clothingStyleToSave,
-            description: data.description,
+            description: descriptionToSave,
         })
         .select()
         .single();
@@ -535,6 +541,12 @@ export async function getOrderCharacters(
         const isFixed = rawStyle.startsWith('[FIXED] ');
         const cleanStyle = isFixed ? rawStyle.replace('[FIXED] ', '') : rawStyle;
 
+        // Decode storyRole from description prefix [ROLE:xxx]
+        const rawDesc = char.description || '';
+        const roleMatch = rawDesc.match(/^\[ROLE:([^\]]+)\]\s*/);
+        const storyRole = roleMatch ? roleMatch[1] : undefined;
+        const cleanDescription = roleMatch ? rawDesc.replace(roleMatch[0], '') : rawDesc;
+
         return {
             id: char.id,
             name: char.name,
@@ -545,7 +557,8 @@ export async function getOrderCharacters(
             role: char.role,
             clothingStyle: cleanStyle,
             useFixedClothing: isFixed,
-            description: char.description,
+            description: cleanDescription,
+            storyRole,
         };
     });
 }
@@ -663,7 +676,7 @@ export async function generateCoverPreview(
         const { generateBookCover } = await import("@/lib/replicate");
 
         // Build character descriptions for the prompt
-        const mainChar = characters.find(c => c.role === "main") || characters[0];
+        const firstChar = characters[0];
         const charDescriptions = characters.map(c => {
             const genderDesc = c.gender === "male" ? "boy" : c.gender === "female" ? "girl" : "child";
             const typeDesc = c.entityType === "human" ? genderDesc : c.entityType;
@@ -700,7 +713,7 @@ export async function generateCoverPreview(
 
         const artStyle = order.storybooks?.art_style || "storybook";
         const theme = order.storybooks?.theme || "adventure";
-        const title = order.storybooks?.title || `${mainChar.name}'s Adventure`;
+        const title = order.storybooks?.title || `${firstChar.name}'s Adventure`;
         const seed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
         const storyDescription = order.storybooks?.description ? `Scenery context: ${order.storybooks.description}` : "";
 

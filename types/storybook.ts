@@ -170,6 +170,7 @@ export interface SimpleCharacter {
     age?: string;
     clothingStyle?: string;
     description?: string;
+    storyRole?: string;       // e.g. "father", "big sister", "best friend"
     useFixedClothing?: boolean;
 }
 
@@ -210,9 +211,9 @@ export const TEXT_COMPLEXITY: Record<AgeRange, {
     },
     '9-12': {
         wordsPerPage: 180,
-        style: 'Rich vocabulary, complex plot, character introspection, immersive narrative',
-        vocabulary: 'advanced',
-        promptHint: 'Write like a young adult chapter book. 150-200 words per page. Rich descriptions, character thoughts, emotional depth, and immersive storytelling.',
+        style: 'Clear, simple sentences with engaging plot, character thoughts, and immersive narrative',
+        vocabulary: 'beginner-friendly',
+        promptHint: 'Write for pre-teens using EASY, beginner-level vocabulary. 150-200 words per page. Keep sentences short and clear. Avoid difficult words. Use simple, everyday language while telling an engaging story with character emotions and plot development.',
     },
 };
 

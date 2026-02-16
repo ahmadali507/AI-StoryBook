@@ -87,7 +87,7 @@ IllustrationPage.displayName = "IllustrationPage";
 
 // Title Page Component
 const TitlePage = forwardRef<HTMLDivElement, any>((props, ref) => {
-    const [title, dedication] = (props.text || "").split('\n\n');
+    const [title] = (props.text || "").split('\n\n');
 
     return (
         <Page {...props} ref={ref}>
@@ -96,17 +96,28 @@ const TitlePage = forwardRef<HTMLDivElement, any>((props, ref) => {
                 <h1 className="font-serif text-3xl md:text-4xl font-bold text-slate-900 mb-6 leading-tight">
                     {title}
                 </h1>
-                {dedication && (
-                    <p className="font-serif text-lg text-slate-600 italic max-w-md">
-                        {dedication}
-                    </p>
-                )}
                 <div className="w-16 h-1 bg-sky-500 mt-8"></div>
             </div>
         </Page>
     );
 });
 TitlePage.displayName = "TitlePage";
+
+// Dedication Page Component (spacer that aligns scene spreads)
+const DedicationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
+    return (
+        <Page {...props} ref={ref}>
+            <div className="h-full flex flex-col items-center justify-center text-center px-8">
+                {props.dedication && (
+                    <p className="font-serif text-lg text-slate-600 italic max-w-md leading-relaxed">
+                        {props.dedication}
+                    </p>
+                )}
+            </div>
+        </Page>
+    );
+});
+DedicationPage.displayName = "DedicationPage";
 
 // Cover Component
 const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
@@ -236,7 +247,8 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                     );
                     break;
 
-                case 'title':
+                case 'title': {
+                    const [, dedication] = (page.text || "").split('\n\n');
                     renderedPages.push(
                         <TitlePage
                             key={`page-${index}`}
@@ -245,7 +257,18 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                             text={page.text}
                         />
                     );
+                    // Add dedication page as spacer to align scene pairs into proper spreads
+                    // Without this, scene illustration + text end up on different spreads
+                    renderedPages.push(
+                        <DedicationPage
+                            key={`page-${index}-dedication`}
+                            number={displayPageNumber++}
+                            runningHeader={story.title}
+                            dedication={dedication || ''}
+                        />
+                    );
                     break;
+                }
 
                 case 'story':
                     if (page.illustrationUrl) {

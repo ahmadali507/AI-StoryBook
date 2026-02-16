@@ -125,8 +125,9 @@ export default function SimpleOrderForm() {
     const [orderId, setOrderId] = useState<string | null>(null);
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
-    // Validation
-    const isStep1Valid = characters.every(
+    // Validation - at least 1 character complete, and any started characters must be complete
+    const filledCharacters = characters.filter(c => c.name || c.photoUrl);
+    const isStep1Valid = filledCharacters.length > 0 && filledCharacters.every(
         (c) => c.name && c.photoUrl && c.gender && c.entityType
     );
     const isStep2Valid = ageRange && theme && subject && artStyle;
@@ -193,6 +194,7 @@ export default function SimpleOrderForm() {
                         role: char.role || "supporting",
                         clothingStyle: char.clothingStyle,
                         description: char.description,
+                        storyRole: char.storyRole,
                         useFixedClothing: char.useFixedClothing,
                     });
 
