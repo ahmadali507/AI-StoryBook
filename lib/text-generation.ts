@@ -402,6 +402,7 @@ CHARACTER: ${character.name}
 TYPE: ${character.entityType}
 GENDER: ${character.gender}
 DESCRIPTION: ${character.description || ''}
+${!character.clothingStyle ? "CLOTHING: NO CLOTHING. Natural appearance only." : `CLOTHING: ${character.clothingStyle}`}
 
 Create a detailed visual description for a Pixar-style 3D animated movie.
 Focus on: Fur/skin texture, body shape, distinct markings, ears, tail, and expression.
@@ -411,6 +412,7 @@ CRITICAL CONSTRAINTS for ANIMALS:
 - Use terms like "fur", "scales", "feathers", "snout", "paws".
 - Keep the description focused purely on the animal's physical traits.
 - If the user provided a description (${character.description}), prioritise those details (e.g. "Dalmatian", "Golden Retriever").
+- ${!character.clothingStyle ? "Ensure the visual prompt explicitly states 'no clothing' or 'natural fur'." : "Include the clothing description."}
 
 Respond in JSON format:
 {
@@ -441,6 +443,8 @@ Respond in JSON format:
 CHARACTER: ${character.name}
 TYPE: ${character.entityType}
 GENDER: ${character.gender}
+AGE: ${character.age || 'Unspecified'}
+ROLE: ${character.storyRole || 'Unspecified'}
 DESCRIPTION: ${character.description || ''}
 
 Create a detailed visual description for a Pixar-style 3D animated movie.
@@ -564,15 +568,20 @@ ${characters.map((c, i) => {
 Task: Describe the EXACT ACTION and POSE for each character in this specific scene.
 
 CRITICAL INSTRUCTIONS:
-1. **NO SPECIES HALLUCINATION**: You must respect the "NON-HUMAN ANIMAL" definition exactly. 
-   - If a character is a "Golden Retriever", DO NOT describe them as a "fox", "wolf", "mouse", or anything else.
-   - DO NOT add new animals that are not in the character list.
-2. **ACTION ONLY**: Describe *only* what the character is DOING. 
-   - DO NOT re-describe their appearance (e.g. do NOT say "Tommay, a small brown fox...").
-   - START the sentence with the action verb or the character's name.
-   - Example: "Jumps over the log with excitement" or "Tommay barks happily at the butterfly."
-3. **PHYSICAL GROUNDING**: Actions must be physically possible for that entity type.
-   - Animals should act like animals (on four legs, sniffing, running), unless it's a "fantasy" setting, but even then, maintain their species identity.
+1. **NO STATIC POSES**: Do NOT describe characters as just "standing", "posing", or "looking at the camera". 
+   - Characters MUST be DOING something related to the scene.
+   - BANNED PHRASES: "standing in front of", "posing for a photo", "smiling at the viewer".
+
+2. **PHYSICAL INTERACTION (MANDATORY)**: Characters must physically interact with the environment.
+   - Examples: "sitting on the mossy rock", "leaning against the tree", "holding a glowing lantern", "feet splashing in the puddle", "reaching for the apple".
+   - Connect the character to the background elements.
+
+3. **NO SPECIES HALLUCINATION**: Respect "NON-HUMAN ANIMAL" definitions exactly.
+   - If a character is a "Golden Retriever", DO NOT describe them as a "fox" or anything else.
+
+4. **ACTION ONLY**: Describe *only* what the character is DOING.
+   - DO NOT re-describe their appearance.
+   - START with the action verb or name: "Tom jumps over the log..."
 
 Respond in JSON format:
 {
@@ -581,7 +590,7 @@ Respond in JSON format:
   "characterActions": [
     {
       "name": "${characters[0]?.name}",
-      "action": "Specific action/pose ONLY. Do not describe the character's appearance/species."
+      "action": "Specific action/pose ONLY. Must involve physical interaction with the scene."
     }
     // ... for other characters
   ]
@@ -627,11 +636,40 @@ Respond in JSON format:
         const action = charActions.find(a => a.name === char.name)?.action ||
             `in the scene with ${scene.emotionalTone} expression`;
 
+        // Create visual anchors for the character
+        const visualComponents = [];
+        // Entity type is critical for model understanding
+        visualComponents.push(`[${char.entityType.toUpperCase()}]`);
+
+        if (char.gender) visualComponents.push(char.gender);
+        if (char.age) visualComponents.push(`${char.age} years old`);
+        if (char.storyRole) visualComponents.push(`Role: ${char.storyRole}`);
+        if (char.description) visualComponents.push(`Species/Desc: ${char.description}`);
+
+        // Add specific visual descriptors if available
+        const visualDesc = characterDescriptions?.find(d => d.name === char.name)?.visualPrompt;
+        if (visualDesc) visualComponents.push(`Visual traits: ${visualDesc}`);
+
+        const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
+
+        // Strict clothing enforcement
+        let clothingInstruction = "";
+        if (char.clothingStyle) {
+            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent).`;
+        } else if (char.entityType === 'animal') {
+            // Critical for animals: explicit "no clothing" if none provided
+            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only.`;
+        } else {
+            clothingInstruction = `WEARING: Scene-appropriate casual clothing.`;
+        }
+
         // EXACT TEMPLATE MATCH: 
-        // Character N (Name) — FIXED APPEARANCE (reference image N)
+        // Character N (Name) — FIXED APPEARANCE (reference image N) — [Anchors]
+        // CLOTHING: [Instruction]
         // ACTION IN THIS SCENE:
         // [Action Text]
-        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})\n\n`;
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})${visualAnchors}\n`;
+        finalPrompt += `${clothingInstruction}\n`;
         finalPrompt += `ACTION IN THIS SCENE:\n`;
         finalPrompt += `${action}\n\n`;
     });
@@ -692,9 +730,9 @@ export async function generateCoverIllustrationPrompt(
     Design a compelling, high-quality cover composition.
     - ALL characters should be featured prominently and equally in the composition.
     - Their story roles (e.g. father, sister, friend) should inform their poses and positioning.
+    - **INTERACTION**: Characters must be DOING something (running, flying, holding hands, exploring), not just standing.
     - The lighting should be magical and cinematic (Golden Hour / Volumetric).
     - The background should clearly establish the ${theme} setting.
-    - Action should be inviting and adventurous.
     
     Respond in JSON format:
     {
@@ -703,7 +741,7 @@ export async function generateCoverIllustrationPrompt(
       "characterActions": [
         {
           "name": "${characters[0]?.name}",
-          "action": "Specific commanding pose, engaging expression, reflecting their role."
+          "action": "Specific dynamic pose/action. interacting with the environment or other characters."
         }
         // ... other characters if present
       ]
@@ -742,11 +780,40 @@ export async function generateCoverIllustrationPrompt(
         const action = charActions.find(a => a.name === char.name)?.action ||
             `Standing prominently in the center, smiling warmly, inviting pose`;
 
+        // Create visual anchors for the character
+        const visualComponents = [];
+        // Entity type is critical for model understanding
+        visualComponents.push(`[${char.entityType.toUpperCase()}]`);
+
+        if (char.gender) visualComponents.push(char.gender);
+        if (char.age) visualComponents.push(`${char.age} years old`);
+        if (char.storyRole) visualComponents.push(`Role: ${char.storyRole}`);
+        if (char.description) visualComponents.push(`Species/Desc: ${char.description}`);
+
+        // Add specific visual descriptors if available
+        const visualDesc = characterDescriptions?.find(d => d.name === char.name)?.visualPrompt;
+        if (visualDesc) visualComponents.push(`Visual traits: ${visualDesc}`);
+
+        const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
+
+        // Strict clothing enforcement
+        let clothingInstruction = "";
+        if (char.clothingStyle) {
+            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent).`;
+        } else if (char.entityType === 'animal') {
+            // Critical for animals: explicit "no clothing" if none provided
+            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only.`;
+        } else {
+            clothingInstruction = `WEARING: Casual, friendly clothing.`;
+        }
+
         // EXACT TEMPLATE MATCH:
-        // Character N (Name) — FIXED APPEARANCE (reference image N)
+        // Character N (Name) — FIXED APPEARANCE (reference image N) — [Anchors]
+        // CLOTHING: [Instruction]
         // ACTION IN THIS SCENE:
         // [Action Text]
-        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})\n\n`;
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})${visualAnchors}\n`;
+        finalPrompt += `${clothingInstruction}\n`;
         finalPrompt += `ACTION IN THIS SCENE:\n`;
         finalPrompt += `${action}\n\n`;
     });

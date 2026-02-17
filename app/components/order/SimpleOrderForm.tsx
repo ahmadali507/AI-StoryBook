@@ -196,6 +196,7 @@ export default function SimpleOrderForm() {
                         description: char.description,
                         storyRole: char.storyRole,
                         useFixedClothing: char.useFixedClothing,
+                        age: char.age,
                     });
 
                     if (!result.success) {

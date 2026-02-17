@@ -447,6 +447,7 @@ interface AddCharacterInput {
     description?: string;
     storyRole?: string;
     useFixedClothing?: boolean;
+    age?: string;
 }
 
 export async function addCharacterToOrder(
@@ -459,10 +460,16 @@ export async function addCharacterToOrder(
         ? `[FIXED] ${data.clothingStyle || ''}`
         : data.clothingStyle;
 
-    // Encode storyRole as prefix in description column to avoid DB migration
-    const descriptionToSave = data.storyRole
-        ? `[ROLE:${data.storyRole}] ${data.description || ''}`
-        : data.description;
+    // Encode storyRole and age as prefix in description column to avoid DB migration
+    let descriptionToSave = data.description || '';
+
+    if (data.storyRole) {
+        descriptionToSave = `[ROLE:${data.storyRole}] ${descriptionToSave}`;
+    }
+
+    if (data.age) {
+        descriptionToSave = `[AGE:${data.age}] ${descriptionToSave}`;
+    }
 
     const { data: character, error } = await supabase
         .from("order_characters")
@@ -542,10 +549,20 @@ export async function getOrderCharacters(
         const cleanStyle = isFixed ? rawStyle.replace('[FIXED] ', '') : rawStyle;
 
         // Decode storyRole from description prefix [ROLE:xxx]
-        const rawDesc = char.description || '';
-        const roleMatch = rawDesc.match(/^\[ROLE:([^\]]+)\]\s*/);
+        // Decode storyRole and age from description prefix
+        let rawDesc = char.description || '';
+
+        // Extract Age
+        const ageMatch = rawDesc.match(/\[AGE:([^\]]+)\]\s*/);
+        const age = ageMatch ? ageMatch[1] : undefined;
+        if (ageMatch) rawDesc = rawDesc.replace(ageMatch[0], '');
+
+        // Extract Role
+        const roleMatch = rawDesc.match(/\[ROLE:([^\]]+)\]\s*/);
         const storyRole = roleMatch ? roleMatch[1] : undefined;
-        const cleanDescription = roleMatch ? rawDesc.replace(roleMatch[0], '') : rawDesc;
+        if (roleMatch) rawDesc = rawDesc.replace(roleMatch[0], '');
+
+        const cleanDescription = rawDesc;
 
         return {
             id: char.id,
@@ -559,6 +576,7 @@ export async function getOrderCharacters(
             useFixedClothing: isFixed,
             description: cleanDescription,
             storyRole,
+            age,
         };
     });
 }
@@ -748,10 +766,11 @@ export async function generateCoverPreview(
                         char.entityType,
                         artStyle,
                         char.age,
-                        // Only use specific clothing style if the user checked "Fixed Clothing"
-                        // Otherwise generate a neutral base avatar so scenes can dictate clothing
-                        char.useFixedClothing ? char.clothingStyle : "neutral casual clothing",
-                        char.description
+                        // Use user provided clothing style directly (or undefined if none)
+                        // The prompt builder now handles defaults if this is missing
+                        char.clothingStyle,
+                        char.description,
+                        char.storyRole
                     );
 
                     // Save to DB as JSON string

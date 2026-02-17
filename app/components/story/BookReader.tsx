@@ -132,33 +132,32 @@ const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
                     <img
                         src={props.coverUrl}
                         alt="Book Cover"
-                        className="w-full h-full object-cover opacity-90"
+                        className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/30"></div>
                 </div>
-            ) : null}
+            ) : (
+                <div className="h-full flex flex-col justify-center px-12 py-16 relative z-10">
+                    <div className="w-16 h-2 bg-sky-400 mb-8"></div>
 
-            <div className="h-full flex flex-col justify-center px-12 py-16 relative z-10">
-                <div className="w-16 h-2 bg-sky-400 mb-8"></div>
+                    <h1 className="font-sans text-5xl font-bold mb-6 leading-tight tracking-tight drop-shadow-lg">
+                        {props.title}
+                    </h1>
 
-                <h1 className="font-sans text-5xl font-bold mb-6 leading-tight tracking-tight drop-shadow-lg">
-                    {props.title}
-                </h1>
+                    <div className="w-full h-px bg-white/20 my-8"></div>
 
-                <div className="w-full h-px bg-white/20 my-8"></div>
+                    {props.author && (
+                        <p className="font-sans text-xl text-sky-100 font-light drop-shadow-md">
+                            {props.author}
+                        </p>
+                    )}
 
-                {props.author && (
-                    <p className="font-sans text-xl text-sky-100 font-light drop-shadow-md">
-                        {props.author}
-                    </p>
-                )}
-
-                <div className="mt-auto">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold drop-shadow-sm">
-                        Personalized Edition
-                    </p>
+                    <div className="mt-auto">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold drop-shadow-sm">
+                            Personalized Edition
+                        </p>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 });

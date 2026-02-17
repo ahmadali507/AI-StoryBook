@@ -35,23 +35,34 @@ export default function CharacterUploadList({
 }: CharacterUploadListProps) {
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
 
-    // Always ensure 3 slots exist
-    const ensuredCharacters: Partial<SimpleCharacter>[] = Array.from({ length: maxCharacters }, (_, i) => {
-        return characters[i] || null;
-    });
+    // Add a new character slot
+    const handleAddCharacter = () => {
+        if (characters.length >= maxCharacters) return;
+
+        const newCharacters = [...characters];
+        newCharacters.push({
+            name: "",
+            photoUrl: "",
+            gender: "other",
+            entityType: "human",
+            role: "supporting",
+        });
+        onCharactersChange(newCharacters);
+    };
 
     const handleUpdate = (index: number, field: keyof SimpleCharacter, value: any) => {
         const newCharacters = [...characters];
-        // If this index doesn't have a character yet, create one
-        while (newCharacters.length <= index) {
-            newCharacters.push({
-                name: "",
-                photoUrl: "",
-                gender: "other",
-                entityType: "human",
-                role: "supporting",
-            });
+
+        // Handle side-effects of changing entity type
+        if (field === "entityType") {
+            // Reset specific fields when switching types to avoid ghost data
+            if (value === "animal" || value === "object") {
+                delete newCharacters[index].age;
+                delete newCharacters[index].clothingStyle;
+                delete newCharacters[index].useFixedClothing;
+            }
         }
+
         newCharacters[index] = { ...newCharacters[index], [field]: value };
         onCharactersChange(newCharacters);
     };
@@ -60,20 +71,6 @@ export default function CharacterUploadList({
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             try {
-                // Ensure character slot exists before uploading
-                if (!characters[index]) {
-                    const newCharacters = [...characters];
-                    while (newCharacters.length <= index) {
-                        newCharacters.push({
-                            name: "",
-                            photoUrl: "",
-                            gender: "other",
-                            entityType: "human",
-                            role: index === 0 ? "main" : "supporting",
-                        });
-                    }
-                    onCharactersChange(newCharacters);
-                }
                 const url = await onPhotoUpload(file);
                 handleUpdate(index, "photoUrl", url);
             } catch (error) {
@@ -83,46 +80,46 @@ export default function CharacterUploadList({
     };
 
     const removeCharacter = (index: number) => {
-        if (index === 0) return; // Can't remove first character
+        // Can't remove the first character (Main Character)
+        if (index === 0) return;
+
         const newCharacters = characters.filter((_, i) => i !== index);
         onCharactersChange(newCharacters);
     };
 
-    const isSlotActive = (index: number) => {
-        return !!ensuredCharacters[index];
-    };
-
-    const isSlotComplete = (index: number) => {
-        const char = ensuredCharacters[index];
+    const isSlotComplete = (char: Partial<SimpleCharacter>) => {
         return char && char.name && char.photoUrl;
     };
 
-
     return (
         <div className="relative">
-            {/* 3-Column Character Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
-                {ensuredCharacters.map((char, index) => {
-                    const meta = CHARACTER_LABELS[index];
-                    const active = isSlotActive(index);
-                    const complete = isSlotComplete(index);
+            {/* Dynamic Character List */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
+
+                {/* Render existing characters */}
+                {characters.map((char, index) => {
+                    const meta = CHARACTER_LABELS[index] || {
+                        label: `Character ${index + 1}`,
+                        subtitle: null,
+                        emoji: "✨",
+                        color: "from-purple-400 to-pink-500"
+                    };
+                    const complete = isSlotComplete(char);
                     const isUploading = uploadingIndex === index;
+                    const isHuman = char.entityType === "human";
 
                     return (
                         <div
                             key={index}
                             className={cn(
-                                "relative rounded-2xl border-2 transition-all duration-300 overflow-hidden",
-                                active
-                                    ? "bg-white shadow-lg border-slate-200 hover:shadow-xl"
-                                    : "bg-slate-50/50 border-dashed border-slate-200 hover:border-primary/30 hover:bg-white/80"
+                                "relative rounded-2xl border-2 transition-all duration-300 overflow-hidden bg-white shadow-lg border-slate-200 hover:shadow-xl",
+                                "animate-in fade-in slide-in-from-left-4 duration-500"
                             )}
                         >
                             {/* Character Header Badge */}
                             <div className={cn(
-                                "flex items-center justify-between px-4 py-2.5 border-b",
-                                active ? "bg-gradient-to-r text-white border-transparent" : "bg-slate-50 border-slate-100",
-                                active && meta.color
+                                "flex items-center justify-between px-4 py-2.5 border-b bg-gradient-to-r text-white border-transparent",
+                                meta.color
                             )}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm">{meta.emoji}</span>
@@ -137,7 +134,7 @@ export default function CharacterUploadList({
                                         )}
                                     </div>
                                 </div>
-                                {active && index > 0 && (
+                                {index > 0 && (
                                     <button
                                         onClick={() => removeCharacter(index)}
                                         className="p-1 rounded-full hover:bg-white/20 transition-colors"
@@ -160,13 +157,13 @@ export default function CharacterUploadList({
                                         onClick={() => fileInputRefs.current[index]?.click()}
                                         className={cn(
                                             "group relative w-24 h-24 rounded-2xl border-3 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-1 overflow-hidden",
-                                            char?.photoUrl
+                                            char.photoUrl
                                                 ? "border-transparent shadow-md"
                                                 : "border-slate-200 hover:border-primary/40 bg-slate-50 hover:bg-primary/5",
                                             isUploading && "opacity-50 pointer-events-none"
                                         )}
                                     >
-                                        {char?.photoUrl ? (
+                                        {char.photoUrl ? (
                                             <img src={char.photoUrl} alt="Character" className="w-full h-full object-cover" />
                                         ) : (
                                             <>
@@ -185,39 +182,11 @@ export default function CharacterUploadList({
                                         />
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-medium text-center">
-                                        {isUploading ? "Uploading..." : "Clear front-facing photo"}
+                                        {isUploading ? "Uploading..." : `Clear photo of ${char.entityType || 'character'}`}
                                     </p>
                                 </div>
 
-                                {/* Name */}
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 font-semibold ml-0.5">Name</Label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                                        <Input
-                                            value={char?.name || ""}
-                                            onChange={(e) => handleUpdate(index, "name", e.target.value)}
-                                            placeholder="Character name"
-                                            className="pl-8 h-9 text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Age */}
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 font-semibold ml-0.5">Age</Label>
-                                    <div className="relative">
-                                        <Smile className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                                        <Input
-                                            value={char?.age || ""}
-                                            onChange={(e) => handleUpdate(index, "age", e.target.value)}
-                                            placeholder="e.g. 8 years old"
-                                            className="pl-8 h-9 text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Type */}
+                                {/* Type Selection */}
                                 <div className="space-y-1">
                                     <Label className="text-xs text-slate-500 font-semibold ml-0.5">Type</Label>
                                     <div className="flex p-0.5 bg-slate-100 rounded-lg">
@@ -227,7 +196,7 @@ export default function CharacterUploadList({
                                                 onClick={() => handleUpdate(index, "entityType", t)}
                                                 className={cn(
                                                     "flex-1 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
-                                                    char?.entityType === t
+                                                    char.entityType === t
                                                         ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
                                                         : "text-slate-500 hover:text-slate-700"
                                                 )}
@@ -238,92 +207,153 @@ export default function CharacterUploadList({
                                     </div>
                                 </div>
 
-                                {/* Gender */}
+                                {/* Name */}
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-slate-500 font-semibold ml-0.5">Gender</Label>
-                                    <div className="flex p-0.5 bg-slate-100 rounded-lg">
-                                        {(["male", "female", "other"] as const).map((g) => (
-                                            <button
-                                                key={g}
-                                                onClick={() => handleUpdate(index, "gender", g)}
-                                                className={cn(
-                                                    "flex-1 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
-                                                    char?.gender === g
-                                                        ? "bg-white text-orange-500 shadow-sm ring-1 ring-black/5"
-                                                        : "text-slate-500 hover:text-slate-700"
-                                                )}
-                                            >
-                                                {g}
-                                            </button>
-                                        ))}
+                                    <Label className="text-xs text-slate-500 font-semibold ml-0.5">Name</Label>
+                                    <div className="relative">
+                                        <User className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                                        <Input
+                                            value={char.name || ""}
+                                            onChange={(e) => handleUpdate(index, "name", e.target.value)}
+                                            placeholder={char.entityType === 'animal' ? "Pet's name" : "Character name"}
+                                            className="pl-8 h-9 text-sm"
+                                        />
                                     </div>
                                 </div>
 
-                                {/* Additional Details */}
-                                <div className="space-y-4 border-t border-slate-100 pt-4">
-                                    {/* Clothing Style */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
-                                                <Shirt className="w-3.5 h-3.5 text-primary" />
-                                                Clothing Style
-                                            </Label>
-                                            <label className="flex items-center gap-1.5 cursor-pointer group">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={char?.useFixedClothing || false}
-                                                    onChange={(e) => handleUpdate(index, "useFixedClothing", e.target.checked)}
-                                                    className="w-3.5 h-3.5 rounded border-gray-300 text-primary focus:ring-primary/50 cursor-pointer"
+                                {/* Human-Only fields: Age & Gender */}
+                                {isHuman && (
+                                    <>
+                                        {/* Age */}
+                                        <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                                            <Label className="text-xs text-slate-500 font-semibold ml-0.5">Age</Label>
+                                            <div className="relative">
+                                                <Smile className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                                                <Input
+                                                    value={char.age || ""}
+                                                    onChange={(e) => handleUpdate(index, "age", e.target.value)}
+                                                    placeholder="e.g. 5 years old"
+                                                    className="pl-8 h-9 text-sm"
                                                 />
-                                                <span className="text-[10px] text-slate-500 group-hover:text-primary transition-colors">
-                                                    Keep photo clothes
-                                                </span>
-                                            </label>
+                                            </div>
                                         </div>
 
-                                        {!char?.useFixedClothing && (
-                                            <Textarea
-                                                value={char?.clothingStyle || ""}
-                                                onChange={(e) => handleUpdate(index, "clothingStyle", e.target.value)}
-                                                placeholder="e.g. Red hoodie, blue jeans..."
-                                                className="min-h-[60px] rounded-lg border resize-none text-xs"
+                                        {/* Gender */}
+                                        <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                                            <Label className="text-xs text-slate-500 font-semibold ml-0.5">Gender</Label>
+                                            <div className="flex p-0.5 bg-slate-100 rounded-lg">
+                                                {(["male", "female", "other"] as const).map((g) => (
+                                                    <button
+                                                        key={g}
+                                                        onClick={() => handleUpdate(index, "gender", g)}
+                                                        className={cn(
+                                                            "flex-1 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
+                                                            char.gender === g
+                                                                ? "bg-white text-orange-500 shadow-sm ring-1 ring-black/5"
+                                                                : "text-slate-500 hover:text-slate-700"
+                                                        )}
+                                                    >
+                                                        {g}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Animal: Gender only (optional but good for pronouns) */}
+                                {char.entityType === 'animal' && (
+                                    <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                                        <Label className="text-xs text-slate-500 font-semibold ml-0.5">Gender</Label>
+                                        <div className="flex p-0.5 bg-slate-100 rounded-lg">
+                                            {(["male", "female"] as const).map((g) => (
+                                                <button
+                                                    key={g}
+                                                    onClick={() => handleUpdate(index, "gender", g)}
+                                                    className={cn(
+                                                        "flex-1 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
+                                                        char.gender === g
+                                                            ? "bg-white text-orange-500 shadow-sm ring-1 ring-black/5"
+                                                            : "text-slate-500 hover:text-slate-700"
+                                                    )}
+                                                >
+                                                    {g}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+
+                                {/* Additional Details Section */}
+                                <div className="space-y-4 border-t border-slate-100 pt-4">
+
+                                    {/* Human: Clothing Style */}
+                                    {isHuman && (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                                                    <Shirt className="w-3.5 h-3.5 text-primary" />
+                                                    Clothing Style
+                                                </Label>
+                                                <label className="flex items-center gap-1.5 cursor-pointer group">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={char.useFixedClothing || false}
+                                                        onChange={(e) => handleUpdate(index, "useFixedClothing", e.target.checked)}
+                                                        className="w-3.5 h-3.5 rounded border-gray-300 text-primary focus:ring-primary/50 cursor-pointer"
+                                                    />
+                                                    <span className="text-[10px] text-slate-500 group-hover:text-primary transition-colors">
+                                                        Keep photo clothes
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            {!char.useFixedClothing && (
+                                                <Textarea
+                                                    value={char.clothingStyle || ""}
+                                                    onChange={(e) => handleUpdate(index, "clothingStyle", e.target.value)}
+                                                    placeholder="e.g. Red hoodie, blue jeans..."
+                                                    className="min-h-[60px] rounded-lg border resize-none text-xs"
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Role (for secondary characters) */}
+                                    {index > 0 && (
+                                        <div className="space-y-1">
+                                            <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                                                <User className="w-3.5 h-3.5 text-primary" />
+                                                Relation to {characters[0]?.name || "Main Character"}
+                                            </Label>
+                                            <Input
+                                                value={char.storyRole || ""}
+                                                onChange={(e) => handleUpdate(index, "storyRole", e.target.value)}
+                                                placeholder={char.entityType === 'animal' ? "e.g. Family Pet" : "e.g. Brother, Best Friend"}
+                                                className="h-9 text-xs"
                                             />
-                                        )}
+                                        </div>
+                                    )}
 
-                                        {char?.useFixedClothing && (
-                                            <p className="text-[10px] text-slate-400 italic">
-                                                Uses clothing from uploaded photo.
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Role in Story */}
-                                    <div className="space-y-1">
-                                        <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
-                                            <User className="w-3.5 h-3.5 text-primary" />
-                                            Role in Story
-                                        </Label>
-                                        <Input
-                                            value={char?.storyRole || ""}
-                                            onChange={(e) => handleUpdate(index, "storyRole", e.target.value)}
-                                            placeholder="e.g. Father, Best friend..."
-                                            className="h-9 text-xs"
-                                        />
-                                        <p className="text-[10px] text-slate-400">
-                                            Enforced throughout the story.
-                                        </p>
-                                    </div>
-
-                                    {/* Additional Details */}
+                                    {/* Generic Description / Breed */}
                                     <div className="space-y-1">
                                         <Label className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
                                             <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-                                            Extra Details (optional)
+                                            {char.entityType === 'human'
+                                                ? "Extra Details (optional)"
+                                                : char.entityType === 'animal'
+                                                    ? "Breed & Description"
+                                                    : "Description"}
                                         </Label>
                                         <Textarea
-                                            value={char?.description || ""}
+                                            value={char.description || ""}
                                             onChange={(e) => handleUpdate(index, "description", e.target.value)}
-                                            placeholder="Extra personality or physical details..."
+                                            placeholder={char.entityType === 'human'
+                                                ? "Extra personality or physical details..."
+                                                : char.entityType === 'animal'
+                                                    ? "Describe breed, fur color, notable markings..."
+                                                    : "Describe the object, material, color..."}
                                             className="min-h-[60px] rounded-lg border resize-none text-xs"
                                         />
                                     </div>
@@ -332,11 +362,34 @@ export default function CharacterUploadList({
                         </div>
                     );
                 })}
+
+                {/* "Add Character" Button Card */}
+                {characters.length < maxCharacters && (
+                    <div
+                        onClick={handleAddCharacter}
+                        className="group relative rounded-2xl border-2 border-dashed border-slate-300 hover:border-primary/50 bg-slate-50 hover:bg-white transition-all cursor-pointer flex flex-col items-center justify-center min-h-[400px] gap-4"
+                    >
+                        <div className="w-16 h-16 rounded-full bg-slate-200 group-hover:bg-primary/10 text-slate-400 group-hover:text-primary transition-colors flex items-center justify-center">
+                            <Plus className="w-8 h-8" />
+                        </div>
+                        <div className="text-center">
+                            <h3 className="text-sm font-bold text-slate-600 group-hover:text-primary transition-colors">
+                                Add Character {characters.length + 1}
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-1 px-4">
+                                Add another friend, family member, or pet to the story.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             {/* Footer */}
-            <p className="text-center text-slate-400 text-xs mt-5">
-                Fill in as many characters as you like. Only characters with a photo and name will be included.
+            <p className="text-center text-slate-400 text-xs mt-8">
+                {characters.length === 1
+                    ? "Tip: You can add more characters (friends, siblings, pets) using the button above."
+                    : "Add up to 3 characters. Only completed characters will be included."}
             </p>
         </div>
     );
