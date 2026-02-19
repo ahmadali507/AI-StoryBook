@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
     generateMVPStoryOutline,
     generatePageText,
@@ -52,7 +53,7 @@ async function updateGenerationProgress(
     orderId: string,
     progress: Partial<GenerationProgress>
 ): Promise<void> {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const currentProgress: GenerationProgress = {
         stage: progress.stage || 'outline',
@@ -66,10 +67,14 @@ async function updateGenerationProgress(
         updatedAt: new Date().toISOString()
     };
 
-    await supabase
+    const { error } = await supabase
         .from("orders")
         .update({ generation_progress: currentProgress })
         .eq("id", orderId);
+
+    if (error) {
+        console.error(`[updateGenerationProgress] Error updating progress for order ${orderId}:`, error);
+    }
 }
 
 /**
@@ -207,6 +212,7 @@ function buildPixarPrompt(
  */
 export async function generateFullBook(orderId: string): Promise<{ success: boolean; error?: string }> {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient(); // Use admin client for writes
 
     console.log(`[generateFullBook] Starting generation for order: ${orderId}`);
 
@@ -295,12 +301,16 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             startedAt
         });
 
-        // Update storybook with title if generated
+        // Update storybook with title if generated (Using admin client)
         if (storyOutline.title && storyOutline.title !== storybook.title) {
-            await supabase
+            const { error: titleError } = await adminSupabase
                 .from("storybooks")
                 .update({ title: storyOutline.title })
                 .eq("id", storybook.id);
+
+            if (titleError) {
+                console.error(`[generateFullBook] Error updating title for storybook ${storybook.id}:`, titleError);
+            }
         }
 
         // 4. Generate all page texts with cumulative context
@@ -321,7 +331,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             console.log(`[generateFullBook] Generating text for scene ${scene.number}/12`);
 
             // Add small delay to avoid rate limits
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // Update progress for each scene
             await updateGenerationProgress(orderId, {
@@ -403,47 +413,51 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         if (!coverUrl) {
             console.log(`[generateFullBook] Generating cover illustration (no existing cover found)`);
 
-            // Use max 4 generated avatars per character for the cover (to allow 3 chars max ~12 imgs)
+            // Use EXACTLY ONE reference image per character to match the 1-to-1 prompt mapping
+            // This is critical for index alignment in the prompt: "Character N ... (reference image N)"
             const referenceImages: string[] = [];
             const characterImageCounts: number[] = [];
 
             for (const c of characters) {
-                let count = 0;
+                let charImage: string | null = null;
+
                 if (c.aiAvatarUrl) {
                     try {
                         const parsed = JSON.parse(c.aiAvatarUrl);
-                        if (Array.isArray(parsed)) {
-                            // Use first 4 images: Front Closeup, Right Profile, Left Profile, Front Full
-                            // matched with actions/character.ts generation order
-                            const selected = parsed.slice(0, 4);
-                            referenceImages.push(...selected);
-                            count = selected.length;
-                        } else {
-                            referenceImages.push(c.aiAvatarUrl);
-                            count = 1;
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            // Use the FIRST image (Front/Closeup) as the canonical reference
+                            charImage = parsed[0];
+                        } else if (typeof parsed === 'string') {
+                            charImage = parsed;
                         }
                     } catch {
-                        referenceImages.push(c.aiAvatarUrl);
-                        count = 1;
+                        charImage = c.aiAvatarUrl;
                     }
-                } else if (c.photoUrl) {
-                    referenceImages.push(c.photoUrl);
-                    count = 1;
-                } else {
-                    count = 0;
                 }
-                characterImageCounts.push(count);
-            }
 
-            // Safety cap: If total images > 14, trim the last character's images
-            if (referenceImages.length > 14) {
-                const diff = referenceImages.length - 14;
-                console.warn(`[generateFullBook] Cover: Too many reference images (${referenceImages.length}), trimming by ${diff}`);
-                referenceImages.splice(14, diff);
+                if (!charImage && c.photoUrl) {
+                    charImage = c.photoUrl;
+                }
 
-                // Adjust counts (simplify: just reduce the last char's count)
-                if (characterImageCounts.length > 0) {
-                    characterImageCounts[characterImageCounts.length - 1] = Math.max(0, characterImageCounts[characterImageCounts.length - 1] - diff);
+                if (charImage) {
+                    referenceImages.push(charImage);
+                    characterImageCounts.push(1);
+                } else {
+                    console.warn(`[generateFullBook] Cover: No reference image found for character ${c.name}, skipping visual ref`);
+                    // We must push a placeholder or duplicate to maintain index alignment if possible, 
+                    // or just accept prompt will be off. 
+                    // Better to push the photoUrl even if raw.
+                    if (c.photoUrl) {
+                        referenceImages.push(c.photoUrl);
+                        characterImageCounts.push(1);
+                    } else {
+                        // Critical failure for alignment. 
+                        console.error(`[generateFullBook] Cover: CRITICAL - Character ${c.name} has NO images. Indices will be misaligned.`);
+                        // Attempt to maintain alignment by pushing a dummy? Replicate might fail.
+                        // Best effort:
+                        referenceImages.push("https://via.placeholder.com/512"); // Placeholder to keep index
+                        characterImageCounts.push(1);
+                    }
                 }
             }
 
@@ -463,10 +477,14 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
 
             // Should also save this new cover URL to DB if generated here
-            await supabase
+            const { error: coverUpdateError } = await adminSupabase
                 .from("storybooks")
                 .update({ cover_url: coverUrl })
                 .eq("id", storybook.id);
+
+            if (coverUpdateError) {
+                console.error(`[generateFullBook] Error updating cover URL for storybook ${storybook.id}:`, coverUpdateError);
+            }
         } else {
             console.log(`[generateFullBook] Reusing existing cover illustration: ${coverUrl}`);
         }
@@ -658,16 +676,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             });
         }
 
-        // Page 23: "The End"
+        // Back cover (last page)
         bookContent.pages.push({
-            pageNumber: 23,
-            type: 'end',
-            text: 'The End'
-        });
-
-        // Page 24: Back cover
-        bookContent.pages.push({
-            pageNumber: 24,
+            pageNumber: bookContent.pages.length + 1,
             type: 'back',
             text: backCoverSummary
         });
@@ -675,23 +686,32 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         // 8. Store book content in database
         const bookContentJson = JSON.stringify(bookContent);
 
-        await supabase
+        const { error: contentError } = await adminSupabase
             .from("storybooks")
             .update({
                 content: bookContent,
-                cover_url: coverUrl,
+                cover_url: coverUrl, // Ensure final cover URL is saved
                 status: 'complete'
             })
             .eq("id", storybook.id);
 
-        // 9. Update order status
-        await supabase
+        if (contentError) {
+            console.error(`[generateFullBook] Error saving book content for storybook ${storybook.id}:`, contentError);
+            // Don't throw here, try to update order status anyway, but log critical error
+        }
+
+        // 9. Update order status - USING ADMIN CLIENT FOR ROBUSTNESS
+        const { error: orderUpdateError } = await adminSupabase
             .from("orders")
             .update({
                 status: "complete",
                 book_completed_at: new Date().toISOString()
             })
             .eq("id", orderId);
+
+        if (orderUpdateError) {
+            console.error(`[generateFullBook] Error updating order status to complete for order ${orderId}:`, orderUpdateError);
+        }
 
         console.log(`[generateFullBook] Book generation complete for order: ${orderId}`);
 
@@ -718,8 +738,9 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             startedAt: new Date().toISOString() // New timestamp for error
         });
 
-        // Update order with error status
-        await supabase
+        // Update order with error status - USING ADMIN CLIENT
+        const adminSupabase = createAdminClient();
+        await adminSupabase
             .from("orders")
             .update({
                 status: "failed",

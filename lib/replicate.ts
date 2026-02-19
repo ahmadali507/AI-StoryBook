@@ -45,7 +45,10 @@ export async function generateWithSeedream(
         try {
             console.log(`[generateWithSeedream] Attempt ${attempt + 1}/${maxRetries} - Generating image...`);
 
+            // Direct API call without manual timeout to avoid premature cancellation
+            // The Replicate client or the API itself should handle timeouts if necessary
             const output = await replicate.run('bytedance/seedream-4.5', { input });
+            console.log(`[generateWithSeedream] API call returned for attempt ${attempt + 1}`);
 
             // Seedream returns an array of image URLs or a single URL
             if (Array.isArray(output) && output.length > 0) {

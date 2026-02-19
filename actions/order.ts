@@ -2,6 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import {
+    generateStoryTitle,
+    generateCoverIllustrationPrompt,
+    generateCharacterVisualDescription,
+    getNegativePrompt,
+    type CharacterVisualDescription
+} from "@/lib/text-generation";
 
 export type OrderStatus =
     | "pending"
@@ -447,6 +454,7 @@ interface AddCharacterInput {
     description?: string;
     storyRole?: string;
     useFixedClothing?: boolean;
+    animalType?: string;
     age?: string;
 }
 
@@ -469,6 +477,10 @@ export async function addCharacterToOrder(
 
     if (data.age) {
         descriptionToSave = `[AGE:${data.age}] ${descriptionToSave}`;
+    }
+
+    if (data.animalType) {
+        descriptionToSave = `[ANIMAL:${data.animalType}] ${descriptionToSave}`;
     }
 
     const { data: character, error } = await supabase
@@ -562,6 +574,11 @@ export async function getOrderCharacters(
         const storyRole = roleMatch ? roleMatch[1] : undefined;
         if (roleMatch) rawDesc = rawDesc.replace(roleMatch[0], '');
 
+        // Extract Animal Type
+        const animalMatch = rawDesc.match(/\[ANIMAL:([^\]]+)\]\s*/);
+        const animalType = animalMatch ? animalMatch[1] : undefined;
+        if (animalMatch) rawDesc = rawDesc.replace(animalMatch[0], '');
+
         const cleanDescription = rawDesc;
 
         return {
@@ -576,6 +593,7 @@ export async function getOrderCharacters(
             useFixedClothing: isFixed,
             description: cleanDescription,
             storyRole,
+            animalType,
             age,
         };
     });
@@ -693,72 +711,69 @@ export async function generateCoverPreview(
         // Import Seedream
         const { generateBookCover } = await import("@/lib/replicate");
 
-        // Build character descriptions for the prompt
-        const firstChar = characters[0];
-        const charDescriptions = characters.map(c => {
-            const genderDesc = c.gender === "male" ? "boy" : c.gender === "female" ? "girl" : "child";
-            const typeDesc = c.entityType === "human" ? genderDesc : c.entityType;
+        // 1. Intelligent Title Generation
+        // If title is default or generic, try to generate a better one
+        const currentTitle = order.storybooks?.title;
+        const isGenericTitle = !currentTitle ||
+            currentTitle === "My Personalized Story" ||
+            currentTitle === "My Adventure";
 
-            let desc = `${c.name} (a friendly ${typeDesc}`;
+        let title = currentTitle;
 
-            if (c.clothingStyle) {
-                desc += `, wearing ${c.clothingStyle}`;
+        if (isGenericTitle) {
+            // Extract subject from description if available
+            let subject = undefined;
+            if (order.storybooks?.description) {
+                const desc = order.storybooks.description;
+                if (desc.startsWith("Subject: ")) {
+                    const end = desc.indexOf('.');
+                    if (end !== -1) subject = desc.substring(9, end).trim();
+                }
             }
-            if (c.description) {
-                desc += `, ${c.description}`;
-            }
 
-            return desc + ")";
-        }).join(", ");
+            console.log(`[generateCoverPreview] Generating smart title for order ${orderId}...`);
 
-        // Art style mapping
-        const artStylePrompts: Record<string, string> = {
-            "pixar-3d": "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination",
-            "storybook": "classic children's book illustration style, warm and inviting",
-        };
+            // Use the new title generation function
+            title = await generateStoryTitle(
+                characters,
+                order.storybooks?.theme as Theme,
+                order.storybooks?.description,
+                order.storybooks?.age_range as AgeRange,
+                subject
+            );
 
-        // Theme mapping
-        const themePrompts: Record<string, string> = {
-            "educational": "educational setting, classroom or learning environment, bright and cheerful",
-            "fairy-tales": "magical fairy tale world, enchanted castle, whimsical atmosphere",
-            "adventure": "exciting adventure scene, magical journey",
-            "activities": "playful scene, playground or activity center, energetic and fun",
-            "worlds": "fantastic new world, alien landscape or magical realm, breathtaking scenery",
-            "stories": "classic storybook setting, library or reading nook, cozy and imaginative",
-            "holidays": "festive holiday scene, decorations, celebration, joy and warmth",
-            "family": "warm family home setting, togetherness, love and happiness"
-        };
+            console.log(`[generateCoverPreview] Must-have title generated: "${title}"`);
 
+            // Update DB with new title
+            await supabase
+                .from("storybooks")
+                .update({ title })
+                .eq("id", order.storybooks.id);
+        }
+
+        // 2. Generate Character Visual Descriptions (Consistency)
+        console.log(`[generateCoverPreview] Generating character visual descriptions...`);
+        const characterDescriptions: CharacterVisualDescription[] = [];
+        for (const char of characters) {
+            const desc = await generateCharacterVisualDescription(char);
+            characterDescriptions.push(desc);
+        }
+
+        // 3. Prepare Reference Images
+        const referenceImages: string[] = [];
         const artStyle = order.storybooks?.art_style || "storybook";
         const theme = order.storybooks?.theme || "adventure";
-        const title = order.storybooks?.title || `${firstChar.name}'s Adventure`;
-        const seed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
-        const storyDescription = order.storybooks?.description ? `Scenery context: ${order.storybooks.description}` : "";
+        const globalSeed = order.storybooks?.global_seed || Math.floor(Math.random() * 999999);
 
-        // Generate AI Avatar if missing and photo is available
-        const referenceImages: string[] = [];
-
+        // Ensure every character has an avatar
         for (const char of characters) {
-            if (char.aiAvatarUrl) {
-                // Try to parse if it's a JSON array of URLs
-                try {
-                    const parsed = JSON.parse(char.aiAvatarUrl);
-                    if (Array.isArray(parsed)) {
-                        referenceImages.push(...parsed);
-                    } else {
-                        referenceImages.push(char.aiAvatarUrl);
-                    }
-                } catch (e) {
-                    // Not JSON, assume single URL
-                    referenceImages.push(char.aiAvatarUrl);
-                }
-            } else if (char.photoUrl) {
+            let avatarUrl = char.aiAvatarUrl;
+
+            // If no avatar, generate one
+            if (!avatarUrl && char.photoUrl) {
                 console.log(`[generateCoverPreview] Generating avatars for ${char.name}...`);
                 try {
-                    console.log(`[generateCoverPreview] Importing character generator...`);
                     const { generateMultiAngleAvatars } = await import("@/actions/character");
-                    console.log(`[generateCoverPreview] Calling generateMultiAngleAvatars (Single Mode)...`);
-
                     const avatarUrls = await generateMultiAngleAvatars(
                         char.photoUrl,
                         char.name,
@@ -766,48 +781,71 @@ export async function generateCoverPreview(
                         char.entityType,
                         artStyle,
                         char.age,
-                        // Use user provided clothing style directly (or undefined if none)
-                        // The prompt builder now handles defaults if this is missing
                         char.clothingStyle,
                         char.description,
-                        char.storyRole
+                        char.storyRole,
+                        char.animalType
                     );
 
-                    // Save to DB as JSON string
+                    // Save to DB
                     await updateCharacterAvatar(char.id!, JSON.stringify(avatarUrls));
 
-                    // Update local object
-                    // We keep the first one as the "main" url for simple displays if needed, 
-                    // but for generation we add all of them
+                    // Use the first one
+                    avatarUrl = avatarUrls[0];
+                    // Also update local char object for reference
                     char.aiAvatarUrl = avatarUrls[0];
-                    referenceImages.push(...avatarUrls);
-
-                    console.log(`[generateCoverPreview] ✓ Generated ${avatarUrls.length} avatars for ${char.name}`);
                 } catch (err) {
                     console.error(`[generateCoverPreview] Failed to generate avatars for ${char.name}:`, err);
-                    // Fallback to photo if avatar generation fails
-                    referenceImages.push(char.photoUrl);
+                    avatarUrl = char.photoUrl; // Fallback
                 }
+            }
+
+            // Parse if it's a JSON string of array
+            if (avatarUrl) {
+                try {
+                    const parsed = JSON.parse(avatarUrl);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        referenceImages.push(parsed[0]); // Use first image only for 1-to-1 mapping
+                    } else if (typeof parsed === 'string') {
+                        referenceImages.push(parsed);
+                    } else {
+                        // Fallback or single URL
+                        referenceImages.push(avatarUrl);
+                    }
+                } catch {
+                    referenceImages.push(avatarUrl);
+                }
+            } else {
+                // If still no URL (no photo provided?), we must push a placeholder or warn
+                // But normally this shouldn't happen if photoUrl check passed or we have defaults
+                // For safety in 1-to-1 prompt mapping, we effectively skip this character in visual mapping 
+                // but the prompt might still refer to "reference image X". 
+                // We'll push a dummy or the photoUrl if exists.
+                if (char.photoUrl) referenceImages.push(char.photoUrl);
             }
         }
 
-        // Build the cover prompt
-        const coverPrompt = `Children's book cover illustration featuring ${charDescriptions}. 
-Title: "${title}". 
-${themePrompts[theme] || "magical adventure"}. 
-${storyDescription}
-${artStylePrompts[artStyle] || "classic children's book illustration style"}.
-Beautiful, colorful, engaging book cover for children, high quality illustration, 
-professional children's book art, suitable for ages ${order.storybooks?.age_range || "3-6"}.`;
+        // 4. Generate Semantic Prompt
+        const artStylePrompt = artStyle === "pixar-3d"
+            ? "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed, global illumination"
+            : "classic children's book illustration style, warm and inviting";
 
-        const negativePrompt = "text, words, letters, typography, watermark, signature, scary, violent, dark themes, realistic human faces, photo-realistic, low quality, blurry";
+        const coverPrompt = await generateCoverIllustrationPrompt(
+            title,
+            characters,
+            theme as Theme,
+            artStylePrompt,
+            characterDescriptions
+        );
+
+        const negativePrompt = getNegativePrompt(artStyle);
 
         console.log(`[generateCoverPreview] Generating cover for order ${orderId}...`);
-        console.log(`[generateCoverPreview] Prompt: ${coverPrompt.substring(0, 200)}...`);
+        console.log(`[generateCoverPreview] Prompt length: ${coverPrompt.length}`);
         console.log(`[generateCoverPreview] Using ${referenceImages.length} reference images`);
 
-        // Generate the cover with Seedream
-        const coverUrl = await generateBookCover(coverPrompt, seed, negativePrompt, referenceImages);
+        // 5. Generate with Seedream
+        const coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
 
         console.log(`[generateCoverPreview] ✓ Cover generated: ${coverUrl.substring(0, 50)}...`);
 
@@ -848,7 +886,7 @@ export async function triggerBookGeneration(
     // First, check current status to prevent duplicate triggers
     const { data: currentOrder, error: fetchError } = await supabase
         .from("orders")
-        .select("status")
+        .select("status, book_generation_started_at")
         .eq("id", orderId)
         .single();
 
@@ -858,9 +896,27 @@ export async function triggerBookGeneration(
 
     // If already generating or complete, don't trigger again
     if (currentOrder?.status === "generating") {
+        // Safe-guard: If it's been "generating" for more than 5 minutes, we might consider it dead?
+        // But for now, just strictly prevent sticking to it.
         console.log(`[triggerBookGeneration] Order ${orderId} is already generating, skipping duplicate trigger`);
-        return { success: true }; // Return success since generation is in progress
+        return { success: true };
     }
+
+    // CHECK TIME WINDOW: Only allow auto-trigger if it hasn't been tried recently
+    // or if we explicitly want to force it (which would need a param).
+    // For now, if book_generation_started_at exists and is recent (< 5 mins), SKIP.
+    // This prevents race conditions where multiple requests try to start it.
+    if (currentOrder?.status === 'paid' && currentOrder?.book_generation_started_at) {
+        const startedAt = new Date(currentOrder.book_generation_started_at).getTime();
+        const now = Date.now();
+        const diffMinutes = (now - startedAt) / 1000 / 60;
+
+        if (diffMinutes < 5) {
+            console.log(`[triggerBookGeneration] Order ${orderId} was already started ${diffMinutes.toFixed(1)}m ago. Skipping.`);
+            return { success: true };
+        }
+    }
+
 
     if (currentOrder?.status === "complete") {
         console.log(`[triggerBookGeneration] Order ${orderId} is already complete`);
@@ -868,7 +924,7 @@ export async function triggerBookGeneration(
     }
 
     // Update status to generating
-    const { error } = await supabase
+    const { error, data } = await supabase
         .from("orders")
         .update({
             status: "generating",
@@ -876,10 +932,19 @@ export async function triggerBookGeneration(
         })
         .eq("id", orderId)
         // Only update if status allows (prevents race condition)
-        .in("status", ["paid", "pending", "cover_preview"]);
+        .in("status", ["paid", "pending", "cover_preview"])
+        .select();
 
     if (error) {
         return { success: false, error: error.message };
+    }
+
+    // Checking count is critical for race conditions. 
+    // If count is 0, it means the status was already changed by another request.
+    // data will be null or empty array if no rows updated
+    if (!data || data.length === 0) {
+        console.log(`[triggerBookGeneration] Race condition detected for order ${orderId} - another process started generation.`);
+        return { success: true };
     }
 
     // Import and call the book generation pipeline

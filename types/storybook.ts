@@ -172,6 +172,7 @@ export interface SimpleCharacter {
     description?: string;
     storyRole?: string;       // e.g. "father", "big sister", "best friend"
     useFixedClothing?: boolean;
+    animalType?: string;      // e.g. "dog", "cat", "rabbit"
 }
 
 // Age ranges for text complexity

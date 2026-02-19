@@ -26,6 +26,11 @@ const CHARACTER_LABELS = [
     { label: "Character 3", subtitle: null, emoji: "✨", color: "from-purple-400 to-pink-500" },
 ];
 
+const ANIMAL_TYPES = [
+    "Dog", "Cat", "Rabbit", "Bird", "Hamster", "Horse",
+    "Turtle", "Fish", "Guinea Pig", "Lizard", "Other"
+];
+
 export default function CharacterUploadList({
     characters,
     onCharactersChange,
@@ -60,6 +65,11 @@ export default function CharacterUploadList({
                 delete newCharacters[index].age;
                 delete newCharacters[index].clothingStyle;
                 delete newCharacters[index].useFixedClothing;
+                if (value !== "animal") {
+                    delete newCharacters[index].animalType;
+                }
+            } else if (value === "human") {
+                delete newCharacters[index].animalType;
             }
         }
 
@@ -206,6 +216,25 @@ export default function CharacterUploadList({
                                         ))}
                                     </div>
                                 </div>
+
+                                {/* Animal Type Selection */}
+                                {char.entityType === 'animal' && (
+                                    <div className="space-y-1 animate-in fade-in slide-in-from-top-1">
+                                        <Label className="text-xs text-slate-500 font-semibold ml-0.5">Animal Type</Label>
+                                        <div className="relative">
+                                            <select
+                                                value={char.animalType || ""}
+                                                onChange={(e) => handleUpdate(index, "animalType", e.target.value)}
+                                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <option value="" disabled>Select type...</option>
+                                                {ANIMAL_TYPES.map(type => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Name */}
                                 <div className="space-y-1">

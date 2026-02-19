@@ -74,7 +74,7 @@ export default function SimpleOrderForm() {
 
     // Load from localStorage on mount
     useEffect(() => {
-        try {
+        try { 
             const savedData = localStorage.getItem(STORAGE_KEY);
             if (savedData) {
                 const parsed = JSON.parse(savedData);
@@ -197,6 +197,7 @@ export default function SimpleOrderForm() {
                         storyRole: char.storyRole,
                         useFixedClothing: char.useFixedClothing,
                         age: char.age,
+                        animalType: char.animalType,
                     });
 
                     if (!result.success) {

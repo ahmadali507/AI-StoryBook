@@ -387,7 +387,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                         fontSize: '11pt'
                     }}
                 >
-                    {currentPage} / {totalPages}
+                    {currentPage} / {totalPages-2}
                 </span>
 
                 <button

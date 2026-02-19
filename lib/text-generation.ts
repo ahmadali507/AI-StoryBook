@@ -296,6 +296,68 @@ Respond in JSON format:
 }
 
 // ============================================
+// STORY TITLE GENERATION
+// ============================================
+
+export async function generateStoryTitle(
+    characters: SimpleCharacter[],
+    theme: Theme,
+    description?: string,
+    ageRange?: AgeRange,
+    subject?: string
+): Promise<string> {
+    const ageInfo = ageRange ? AGE_RANGE_LABELS[ageRange].label : 'children';
+
+    // Extract subject if not provided but present in description
+    let actualSubject = subject;
+    if (!actualSubject && description && description.startsWith("Subject: ")) {
+        const subjectEndIndex = description.indexOf('.');
+        if (subjectEndIndex !== -1) {
+            actualSubject = description.substring(9, subjectEndIndex).trim();
+        }
+    }
+
+    const charNames = characters.map(c => c.name).join(', ');
+    const context = actualSubject ? `Subject: ${actualSubject}` : `Theme: ${theme}`;
+    const descContext = description ? `Context: ${description}` : '';
+
+    const prompt = `Generate a catchy, creative title for a children's storybook.
+    
+    TARGET AUDIENCE: ${ageInfo} (${ageRange || 'pre-school'})
+    CHARACTERS: ${charNames}
+    STORY FOCUS: ${context}
+    ${descContext}
+
+    Guidelines:
+    - Keep it short (2-6 words)
+    - Make it exciting and appealing to children
+    - Relate specifically to the subject/theme provided
+    - Avoid generic titles like "The Adventure of..." unless explicitly fitting
+    - Do NOT use colons or subtitles
+    - NO quotes around the output
+
+    Examples:
+    - The Moon's Best Friend
+    - Sarah Saves the Day
+    - The Magical Treehouse
+    - Benny's Big Balloon
+
+    Respond with ONLY the title string.`;
+
+    try {
+        const result = await generateWithRetry(() => model.generateContent(prompt));
+        let title = result.response.text().trim();
+        // Remove quotes if present
+        title = title.replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+        return title;
+    } catch (error) {
+        console.error("Failed to generate title:", error);
+        // Fallback
+        return `${characters[0].name}'s ${theme.charAt(0).toUpperCase() + theme.slice(1)} Story`;
+    }
+}
+
+// ============================================
 // COVER TEXT GENERATION
 // ============================================
 
@@ -727,7 +789,9 @@ export async function generateCoverIllustrationPrompt(
     CHARACTERS TO FEATURE (all equally prominent):
     ${characters.map(c => `- ${c.name} (${c.entityType}, ${c.gender})${c.storyRole ? ` — role: ${c.storyRole}` : ''}`).join('\n')}
     
+    [MANDATORY]: The GENERATED COVER PAGE should ALWAYS INCLUDE THE STORY TITLE.
     Design a compelling, high-quality cover composition.
+    - The CLOTHING OF CHARACTERS should be exactly same as the reference images. DO NOT DESCRIBE NEW CLOTHING.
     - ALL characters should be featured prominently and equally in the composition.
     - Their story roles (e.g. father, sister, friend) should inform their poses and positioning.
     - **INTERACTION**: Characters must be DOING something (running, flying, holding hands, exploring), not just standing.
@@ -741,7 +805,7 @@ export async function generateCoverIllustrationPrompt(
       "characterActions": [
         {
           "name": "${characters[0]?.name}",
-          "action": "Specific dynamic pose/action. interacting with the environment or other characters."
+          "action": "Specific dynamic pose/action. interacting with the environment or other characters. DO NOT MENTION CLOTHING."
         }
         // ... other characters if present
       ]
@@ -767,14 +831,13 @@ export async function generateCoverIllustrationPrompt(
         console.error("Failed to generate cover actions:", e);
     }
 
-    // 2. Build Structural Prompt (Same format as scenes)
-    let finalPrompt = `[SCENE]\n\n`;
-    finalPrompt += `Pixar-style 3D cinematic book cover. ${setting}. \n\n`;
+    // 2. Build Structural Prompt (Optimized Semantic Order: Subject -> Setting -> Style)
+    // Characters first ensures they are the main focus of the generation
 
-    finalPrompt += `[COMPOSITION & LIGHTING]\n\n`;
-    finalPrompt += `${lighting}, 8k resolution, ultra-detailed textures, physically accurate global illumination. Portrait orientation.\n\n`;
+    // CRITICAL: Text instruction MUST affect the entire composition, so we put it first.
+    let finalPrompt = `Poster with title text "${title}" written in large, magical 3D font at the top. \n\n`;
 
-    finalPrompt += `[CHARACTER ACTIONS]\n\n`;
+    finalPrompt += `[SUBJECT (CHARACTERS & ACTION)]\n\n`;
 
     characters.forEach((char, index) => {
         const action = charActions.find(a => a.name === char.name)?.action ||
@@ -796,15 +859,17 @@ export async function generateCoverIllustrationPrompt(
 
         const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
 
-        // Strict clothing enforcement
+        // Strict clothing enforcement - PRIORITIZE REFERENCE IMAGE
         let clothingInstruction = "";
-        if (char.clothingStyle) {
-            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent).`;
-        } else if (char.entityType === 'animal') {
+
+        if (char.entityType === 'animal') {
             // Critical for animals: explicit "no clothing" if none provided
-            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only.`;
+            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only. MATCH SPECIES/COLOR OF REFERENCE IMAGE EXACTLY.`;
         } else {
-            clothingInstruction = `WEARING: Casual, friendly clothing.`;
+            // FORCE REFERENCE CLOTHING. 
+            // We deliberately ignore 'char.clothingStyle' here to prevent text descriptions from conflicting with the reference image.
+            // The reference image (Step 1) already has the correct clothing.
+            clothingInstruction = `WEARING: MATCH REFERENCE IMAGE EXACTLY. Same outfit colors and style as reference.`;
         }
 
         // EXACT TEMPLATE MATCH:
@@ -812,14 +877,20 @@ export async function generateCoverIllustrationPrompt(
         // CLOTHING: [Instruction]
         // ACTION IN THIS SCENE:
         // [Action Text]
-        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})${visualAnchors}\n`;
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1}) — MATCH FACE, HAIR, BODY, SPECIES, COLOR EXACTLY.\n`;
         finalPrompt += `${clothingInstruction}\n`;
         finalPrompt += `ACTION IN THIS SCENE:\n`;
         finalPrompt += `${action}\n\n`;
     });
 
-    finalPrompt += `[RENDER DEFAULT]\n\n`;
-    finalPrompt += `High-quality 3D render, ultra-detailed textures, physically accurate global illumination, realistic volumetric light, cinematic camera lens, photorealistic materials, clean composition. No text, no logos.`;
+    finalPrompt += `[SETTING & CONTEXT]\n\n`;
+    finalPrompt += `Pixar-style 3D cinematic book cover. ${setting}. \n\n`;
+
+    finalPrompt += `[COMPOSITION & LIGHTING]\n\n`;
+    finalPrompt += `${lighting}, 8k resolution, ultra-detailed textures, physically accurate global illumination. Portrait orientation.\n\n`;
+
+    finalPrompt += `[TECHNICAL SPECS]\n\n`;
+    finalPrompt += `High-quality 3D render, ultra-detailed textures, physically accurate global illumination, realistic volumetric light, cinematic camera lens, photorealistic materials, clean composition, typography, poster art.`;
 
     return finalPrompt;
 }

@@ -325,6 +325,27 @@ export async function verifyOrderPayment(
         const paid = session.payment_status === "paid";
 
         if (paid) {
+            // CRITICAL FIX: Check current status first to prevent resetting "generating" or "complete"
+            const { data: currentOrder } = await supabase
+                .from("orders")
+                .select("status")
+                .eq("id", orderId)
+                .single();
+
+            // If already paid or further along, DO NOT update status again
+            // This prevents "paid=true" query param from resetting state on refresh
+            if (currentOrder && (
+                currentOrder.status === "paid" ||
+                currentOrder.status === "generating" ||
+                currentOrder.status === "complete" ||
+                currentOrder.status === "processing" ||
+                currentOrder.status === "shipped" ||
+                currentOrder.status === "delivered"
+            )) {
+                console.log(`[verifyOrderPayment] Order ${orderId} already in status ${currentOrder.status}. Skipping update.`);
+                return { success: true, paid: true };
+            }
+
             // Update order payment status
             await supabase
                 .from("orders")

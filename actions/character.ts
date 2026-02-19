@@ -271,14 +271,14 @@ function getAgePhysicalDescriptors(age?: string): { label: string; proportions: 
         return { label: age, proportions: "proportions matching age" };
     }
 
-    if (num <= 2)  return { label: `${num}-year-old toddler`,  proportions: "toddler proportions, very large head relative to body, chubby limbs, very short stature, pudgy cheeks, tiny hands and feet" };
-    if (num <= 5)  return { label: `${num}-year-old child`,    proportions: "young child proportions, large head, short limbs, rounded cheeks, small nose, wide eyes, small stature" };
-    if (num <= 9)  return { label: `${num}-year-old child`,    proportions: "child proportions, head slightly large for body, lean limbs, small stature, youthful face" };
-    if (num <= 12) return { label: `${num}-year-old preteen`,  proportions: "preteen proportions, nearly adult head size, growing limbs, slim build, youthful face" };
+    if (num <= 2) return { label: `${num}-year-old toddler`, proportions: "toddler proportions, very large head relative to body, chubby limbs, very short stature, pudgy cheeks, tiny hands and feet" };
+    if (num <= 5) return { label: `${num}-year-old child`, proportions: "young child proportions, large head, short limbs, rounded cheeks, small nose, wide eyes, small stature" };
+    if (num <= 9) return { label: `${num}-year-old child`, proportions: "child proportions, head slightly large for body, lean limbs, small stature, youthful face" };
+    if (num <= 12) return { label: `${num}-year-old preteen`, proportions: "preteen proportions, nearly adult head size, growing limbs, slim build, youthful face" };
     if (num <= 17) return { label: `${num}-year-old teenager`, proportions: "teenage proportions, adult-sized head, longer limbs, lean build, youthful facial features" };
     if (num <= 30) return { label: `${num}-year-old young adult`, proportions: "young adult proportions, natural limb length, fit build" };
-    if (num <= 55) return { label: `${num}-year-old adult`,    proportions: "adult proportions, natural build" };
-    return             { label: `${num}-year-old senior`,     proportions: "senior proportions, slightly shorter stature, softer facial features, natural aging signs" };
+    if (num <= 55) return { label: `${num}-year-old adult`, proportions: "adult proportions, natural build" };
+    return { label: `${num}-year-old senior`, proportions: "senior proportions, slightly shorter stature, softer facial features, natural aging signs" };
 }
 
 /**
@@ -392,21 +392,25 @@ Ultra detailed, 8k render quality.`.trim();
  */
 function buildSpeciesDescription(
     gender: string,
-    description?: string
+    description?: string,
+    animalType?: string
 ): string {
     const genderLabel = gender === "male" ? "male" : gender === "female" ? "female" : "";
+    let speciesTerm = animalType || "animal";
+
+    // If animalType is provided, we want to rely on it.
+    // If description is provided, we append it.
 
     if (description?.trim()) {
-        // If user gave a description (e.g. "golden retriever with fluffy coat"),
-        // prepend gender only if it's meaningful (male/female, not "other").
+        // e.g. "male Dog (Golden Retriever)" 
+        // or just "male (Golden Retriever)" if no animalType, but we added animalType param so it should always be there if available
+        const base = animalType ? animalType : "animal";
         return genderLabel
-            ? `${genderLabel} ${description.trim()}`
-            : description.trim();
+            ? `${genderLabel} ${base}, ${description.trim()}`
+            : `${base}, ${description.trim()}`;
     }
 
-    // No description — use a safe generic that at least gives the model a species context.
-    // Avoid bare "animal" which is too abstract for Pixar models to resolve cleanly.
-    return genderLabel ? `${genderLabel} animal` : "animal";
+    return genderLabel ? `${genderLabel} ${speciesTerm}` : speciesTerm;
 }
 
 /**
@@ -426,10 +430,11 @@ function buildAnimalPromptConfig(
     name: string,
     gender: string,
     description?: string,
-    clothingStyle?: string
+    clothingStyle?: string,
+    animalType?: string
 ): { prompt: string; negativePrompt: string; imageInput: string[] } {
 
-    const speciesDesc = buildSpeciesDescription(gender, description);
+    const speciesDesc = buildSpeciesDescription(gender, description, animalType);
 
     // Accessory/clothing block:
     // If clothing given → state it positively with high specificity.
@@ -444,11 +449,14 @@ function buildAnimalPromptConfig(
     //
     // "NO HUMANS" appears at token position 1 — earlier than any other token
     // that could trigger a companion-animal compositional pattern.
-    const prompt = `SOLO ANIMAL ONLY, NO HUMANS, single subject centered.
+    const animalToken = animalType ? animalType.toUpperCase() : "ANIMAL";
+    const speciesToken = animalType || "animal";
+
+    const prompt = `SOLO ${animalToken} ONLY, NO HUMANS, single subject centered.
 Pixar 3D animated character portrait of one ${speciesDesc}. This character's name is ${name}.
 ${clothingBlock}
-MATCH FROM REFERENCE PHOTO: exact breed, fur/coat color, markings, eye color, ear shape, tail type.
-POSE: animal sitting or standing, facing toward camera, alert and expressive.
+MATCH FROM REFERENCE PHOTO: exact ${speciesToken} breed/species, fur/coat color, markings, eye color, ear shape, tail type.
+POSE: ${speciesToken} sitting or standing, facing toward camera, alert and expressive.
 EXPRESSION: bright eyes, natural animal expression — no humanized smile or emotion.
 BACKGROUND: simple soft gradient, warm studio lighting, no environment, no props.
 STYLE: Pixar/Disney 3D animation, individual fur strands, realistic eye reflections,
@@ -550,7 +558,8 @@ export async function generateMultiAngleAvatars(
     age?: string,
     clothingStyle?: string,
     description?: string,
-    storyRole?: string
+    storyRole?: string,
+    animalType?: string
 ): Promise<string[]> {
     const { generateWithSeedream } = await import("@/lib/replicate");
 
@@ -563,7 +572,7 @@ export async function generateMultiAngleAvatars(
         );
     } else if (entityType === "animal") {
         config = buildAnimalPromptConfig(
-            photoUrl, name, gender, description, clothingStyle
+            photoUrl, name, gender, description, clothingStyle, animalType
         );
     } else {
         // "object" or any future entity type
@@ -577,6 +586,7 @@ export async function generateMultiAngleAvatars(
     console.log(`\n[generateAvatar] ══════════════════════════════════════`);
     console.log(`[generateAvatar] Name:       ${name}`);
     console.log(`[generateAvatar] Entity:     ${entityType}`);
+    console.log(`[generateAvatar] Type:       ${animalType ?? "n/a"}`);
     console.log(`[generateAvatar] Gender:     ${gender}`);
     console.log(`[generateAvatar] Age:        ${age ?? "n/a"}`);
     console.log(`[generateAvatar] Clothing:   ${clothingStyle ?? "none specified"}`);
@@ -621,10 +631,11 @@ export async function generateAvatarFromPhoto(
     age?: string,
     clothingStyle?: string,
     description?: string,
-    storyRole?: string
+    storyRole?: string,
+    animalType?: string,
 ): Promise<string> {
     const urls = await generateMultiAngleAvatars(
-        photoUrl, name, gender, entityType, artStyle, age, clothingStyle, description, storyRole
+        photoUrl, name, gender, entityType, artStyle, age, clothingStyle, description, storyRole, animalType
     );
     return urls[0];
 }
