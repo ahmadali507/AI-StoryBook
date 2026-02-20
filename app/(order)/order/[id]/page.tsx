@@ -1,46 +1,201 @@
+"use client";
+
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight } from "lucide-react";
-import { redirect } from "next/navigation";
+import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle } from "lucide-react";
 import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
-import OrderStatusListener from "@/app/components/order/OrderStatusListener";
+import { useToast } from "@/providers/ToastProvider";
+import { STORAGE_KEY } from "@/app/components/order/SimpleOrderForm";
 
-interface OrderStatusPageProps {
-    params: {
-        id: string;
-    };
-    searchParams: {
-        session_id?: string;
-        paid?: string;
-        [key: string]: string | string[] | undefined;
-    };
-}
+export default function OrderStatusPage() {
+    const params = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const toast = useToast();
+    const orderId = params.id as string;
 
-export default async function OrderStatusPage({ params, searchParams }: OrderStatusPageProps) {
-    const resolvedParams = await params;
-    const resolvedSearchParams = await searchParams;
+    // Use refs to track across re-renders (but these reset on page refresh - that's OK)
+    const isProcessing = useRef(false);
 
-    const orderId = resolvedParams.id;
-    const sessionId = resolvedSearchParams?.session_id as string | undefined;
-    const isPaidFromUrl = resolvedSearchParams?.paid === "true";
+    const [order, setOrder] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [statusMessage, setStatusMessage] = useState("Loading...");
+    const [error, setError] = useState<string | null>(null);
 
-    // 1. Verify Payment if coming from Stripe
-    let paymentError = null;
-    if (isPaidFromUrl && sessionId) {
+    // Check for payment params (from Stripe redirect)
+    const sessionId = searchParams.get("session_id");
+    const isPaidFromUrl = searchParams.get("paid") === "true";
+
+    // Load order data
+    const loadOrder = useCallback(async () => {
         try {
-            const verification = await verifyOrderPayment(orderId, sessionId);
-            if (!verification.success) {
-                paymentError = verification.error || "Payment verification failed";
-            }
-        } catch (e) {
-            console.error("[OrderStatusPage] Payment verification error:", e);
-            paymentError = "Error verifying payment";
+            const orderData = await getOrderWithStorybook(orderId);
+            setOrder(orderData);
+            return orderData;
+        } catch (err) {
+            console.error("[OrderPage] Failed to load order:", err);
+            return null;
         }
-    }
+    }, [orderId]);
 
-    // 2. Fetch Order Data
-    let order = await getOrderWithStorybook(orderId);
+    // Initial load and payment verification
+    useEffect(() => {
+        const init = async () => {
+            // Prevent concurrent processing
+            if (isProcessing.current) return;
+            isProcessing.current = true;
+
+            try {
+                const orderData = await loadOrder();
+                setLoading(false);
+
+                if (!orderData) {
+                    setError("Order not found");
+                    isProcessing.current = false;
+                    return;
+                }
+
+                console.log("[OrderPage] Order status:", orderData.status);
+
+                // Handle based on DATABASE status (source of truth)
+                switch (orderData.status) {
+                    case "complete":
+                        // Book is ready - redirect to story
+                        localStorage.removeItem(STORAGE_KEY);
+                        setStatusMessage("Your book is ready!");
+                        if (orderData.storybook?.id) {
+                            toast.success("Your book is ready! Enjoy reading! 📚");
+                            router.push(`/story/${orderData.storybook.id}`);
+                        }
+                        break;
+
+                    case "generating":
+                        // Already generating - just show status and poll
+                        // DO NOT trigger again - generation is already in progress
+                        localStorage.removeItem(STORAGE_KEY);
+                        setStatusMessage("Generating your personalized storybook...");
+                        break;
+
+                    case "paid":
+                        // Paid but generation not started yet - trigger it
+                        localStorage.removeItem(STORAGE_KEY);
+                        setStatusMessage("Starting book generation...");
+                        // Only show this toast once if we just came from payment
+                        if (isPaidFromUrl) {
+                            toast.success("Payment verified! Starting generation... 🚀");
+                        }
+
+                        const genResult = await triggerBookGeneration(orderId);
+                        if (genResult.success) {
+                            setStatusMessage("Generating your personalized storybook...");
+                        } else {
+                            const errorMsg = "Failed to start generation";
+                            setError(genResult.error || errorMsg);
+                            toast.error("We couldn't start generating your book. Please contact support.");
+                        }
+                        break;
+
+                    case "failed":
+                        // Generation failed
+                        setError("Generation failed. Please contact support.");
+                        toast.error("Something went wrong with generation. We're looking into it.");
+                        break;
+
+                    default:
+                        // Other statuses (draft, cover_preview, pending) - check if we need to verify payment
+                        if (isPaidFromUrl && sessionId) {
+                            setStatusMessage("Verifying payment...");
+                            try {
+                                const result = await verifyOrderPayment(orderId, sessionId);
+                                if (result.success && result.paid) {
+                                    localStorage.removeItem(STORAGE_KEY);
+                                    setStatusMessage("Starting book generation...");
+                                    toast.success("Payment successful! Creating your book... ✨");
+
+                                    const genResult = await triggerBookGeneration(orderId);
+                                    if (genResult.success) {
+                                        setStatusMessage("Generating your personalized storybook...");
+                                        // Reload to get updated status
+                                        await loadOrder();
+                                    } else {
+                                        const errorMsg = "Failed to start generation";
+                                        setError(genResult.error || errorMsg);
+                                        toast.error("Payment verified, but we couldn't start generation. Please contact support.");
+                                    }
+                                } else {
+                                    const errorMsg = result.error || "Payment verification failed";
+                                    setError(errorMsg);
+                                    toast.error("We couldn't verify your payment. Please contact support.");
+                                }
+                            } catch (err) {
+                                console.error("[OrderPage] Payment verification error:", err);
+                                setError("Error verifying payment");
+                                toast.error("Something went wrong verifying your payment. Please try again.");
+                            }
+                        } else {
+                            setStatusMessage(`Order status: ${orderData.status?.replace("_", " ") || "Pending"}`);
+                        }
+                        break;
+                }
+            } finally {
+                isProcessing.current = false;
+            }
+        };
+
+        init();
+    }, [orderId, sessionId, isPaidFromUrl, router, loadOrder]);
+
+    // Poll for completion when generating
+    useEffect(() => {
+        // Only poll if status is generating or paid
+        const shouldPoll = order?.status === "generating" || order?.status === "paid";
+
+        if (!shouldPoll || loading) return;
+
+        console.log("[OrderPage] Starting poll, current status:", order?.status);
+
+        const interval = setInterval(async () => {
+            try {
+                const orderData = await loadOrder();
+                console.log("[OrderPage] Poll - status:", orderData?.status);
+
+                if (orderData?.status === "complete") {
+                    console.log("[OrderPage] Generation complete! Redirecting...");
+                    setStatusMessage("Your book is ready!");
+                    toast.success("Your book is ready! Enjoy reading! 📚");
+                    clearInterval(interval);
+
+                    if (orderData.storybook?.id) {
+                        setTimeout(() => {
+                            router.push(`/story/${orderData.storybook?.id}`);
+                        }, 1500);
+                    }
+                } else if (orderData?.status === "failed") {
+                    console.log("[OrderPage] Generation failed");
+                    setError("Generation failed. Please contact support.");
+                    clearInterval(interval);
+                }
+            } catch (err) {
+                console.error("[OrderPage] Poll error:", err);
+            }
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [order?.status, loading, loadOrder, router]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background">
+                <NavbarClient />
+                <div className="flex items-center justify-center min-h-[80vh]">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            </div>
+        );
+    }
 
     if (!order) {
         return (
@@ -56,64 +211,23 @@ export default async function OrderStatusPage({ params, searchParams }: OrderSta
         );
     }
 
-    // 3. Auto-Trigger Generation if Paid but not Generating
-    // This is safe because triggerBookGeneration handles idempotency
-    let generationError = null;
-
-    // Auto-trigger on page load is restored because we fixed the cross-talk issue.
-    // The cross-talk fix prevents other tabs from refreshing and triggering this.
-    // The time-window fix in triggerBookGeneration prevents double-triggers.
-    if (order.status === "paid") {
-        const genResult = await triggerBookGeneration(orderId);
-        if (genResult.success) {
-            // Optimistically fetch updated order to show "generating" state immediately
-            // (or rely on `triggerBookGeneration` returning the new status if we modified it, but we didn't)
-            // So we re-fetch.
-            const updatedOrder = await getOrderWithStorybook(orderId);
-            if (updatedOrder) order = updatedOrder;
-        } else {
-            generationError = genResult.error || "Failed to start generation";
-        }
-    }
-
-    // Logic fix: Only show generating if status is specifically 'generating' or 'paid' 
-    // AND NOT 'complete' or 'failed'. 
-    // The previous logic `order.status === "generating" || order.status === "paid"` was okay, 
-    // but if `triggerBookGeneration` finished quickly and set it to complete, we need to respect that.
-
-    // We check for completion first to avoid TS narrowing issues
-    const isComplete = order.status === "complete";
-    const isGenerating = !isComplete && (order.status === "generating" || order.status === "paid");
-
-    const statusMessage = isGenerating
-        ? "Generating your personalized storybook..."
-        : (order.status?.replace("_", " ") || "Pending");
-
-    // Combine errors
-    const error = paymentError || generationError;
+    // Check if currently generating based on database status
+    const isGenerating = order.status === "generating" || order.status === "paid";
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5">
             <NavbarClient />
-
-            {/* Realtime Listener for auto-refresh */}
-            <OrderStatusListener
-                orderId={orderId}
-                storybookId={order.storybook?.id}
-                initialStatus={order.status}
-            />
-
             <main className="pt-24 pb-16">
                 <div className="max-w-xl mx-auto px-4">
                     {error ? (
                         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
                             <div className="text-red-500 mb-4">{error}</div>
                             <Link href="/create" className="text-primary hover:underline">
-                                Try again or contact support
+                                Try again
                             </Link>
                         </div>
                     ) : isGenerating ? (
-                        /* Generating state */
+                        /* Simple generating state */
                         <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
                             <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-6" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-3">
@@ -141,14 +255,14 @@ export default async function OrderStatusPage({ params, searchParams }: OrderSta
                             )}
                         </div>
                     ) : (
-                        /* Default / Other state */
+                        /* Default state */
                         <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
                             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-2">
                                 Order Status
                             </h1>
                             <p className="text-gray-500 capitalize mb-6">
-                                {statusMessage}
+                                {order.status?.replace("_", " ") || "Pending"}
                             </p>
                             {order.status === "cover_preview" && (
                                 <Link
@@ -166,3 +280,4 @@ export default async function OrderStatusPage({ params, searchParams }: OrderSta
         </div>
     );
 }
+
