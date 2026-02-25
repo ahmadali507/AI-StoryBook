@@ -610,12 +610,13 @@ EMOTIONAL TONE: ${scene.emotionalTone}
 CHARACTERS IN SCENE:
 ${characters.map((c, i) => {
         let clothingNote: string;
-        if (c.useFixedClothing && !c.clothingStyle) {
-            clothingNote = "WEARING EXACT SAME CLOTHING AS IN REFERENCE IMAGE (Do not change or describe clothing)";
-        } else if (c.clothingStyle) {
+        if (c.clothingStyle) {
             clothingNote = `FIXED OUTFIT: ${c.clothingStyle} (DO NOT change this outfit across scenes)`;
+        } else if (c.entityType === 'animal') {
+            clothingNote = "NO CLOTHING. Natural fur/skin only";
         } else {
-            clothingNote = "WEARING SCENE-APPROPRIATE CLOTHING (Describe their outfit matching the scene/theme)";
+            // Default for humans: always match reference image clothing
+            clothingNote = "WEARING EXACT SAME CLOTHING AS IN REFERENCE IMAGE (Do not change or describe new clothing)";
         }
 
         // Critical: Strict species definition
@@ -714,15 +715,16 @@ Respond in JSON format:
 
         const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
 
-        // Strict clothing enforcement
+        // Strict clothing enforcement — match reference image unless custom clothing is specified
         let clothingInstruction = "";
         if (char.clothingStyle) {
-            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent).`;
+            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent across all scenes).`;
         } else if (char.entityType === 'animal') {
             // Critical for animals: explicit "no clothing" if none provided
-            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only.`;
+            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only. MATCH SPECIES/COLOR OF REFERENCE IMAGE EXACTLY.`;
         } else {
-            clothingInstruction = `WEARING: Scene-appropriate casual clothing.`;
+            // Default for humans: always match reference image clothing (fixes checkbox & no-clothing scenarios)
+            clothingInstruction = `WEARING: MATCH REFERENCE IMAGE EXACTLY. Same outfit colors and style as reference. DO NOT invent new clothing.`;
         }
 
         // EXACT TEMPLATE MATCH: 

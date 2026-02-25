@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import {
     Lock, Palette, Bell, AlertTriangle, Save, Loader2,
-    CheckCircle, BookOpen, Users, ShoppingBag, Camera,
+    CheckCircle, BookOpen, Users, ShoppingBag, Camera, Pencil,
 } from "lucide-react";
 import type { Profile } from "@/actions/profile";
 import { updateProfileAction, deleteAccountAction } from "@/actions/profile";
+import { uploadProfilePicture } from "@/actions/upload-avatar";
+import ImageCropper from "./ImageCropper";
 
 const ART_STYLE_OPTIONS = [
     { value: "", label: "No preference" },
@@ -42,9 +44,12 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
     const [emailNotifications, setEmailNotifications] = useState(profile.emailNotifications);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+    // ── Cropper state ───────────────────────────────────────────────────
+    const [cropperSrc, setCropperSrc] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // ── Save mutation ───────────────────────────────────────────────────
+    // ── Save profile mutation ───────────────────────────────────────────
     const saveMutation = useMutation({
         mutationFn: () =>
             updateProfileAction({
@@ -62,6 +67,22 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
         },
     });
 
+    // ── Upload avatar mutation ──────────────────────────────────────────
+    const uploadMutation = useMutation({
+        mutationFn: (base64Data: string) => uploadProfilePicture(base64Data),
+        onSuccess: (result) => {
+            if (!result.success) {
+                alert(result.error ?? "Failed to upload photo.");
+                return;
+            }
+            if (result.avatarUrl) {
+                setAvatarUrl(result.avatarUrl);
+            }
+            setCropperSrc(null);
+            router.refresh();
+        },
+    });
+
     // ── Delete mutation ─────────────────────────────────────────────────
     const deleteMutation = useMutation({
         mutationFn: () => deleteAccountAction(),
@@ -72,19 +93,28 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
         },
     });
 
-    // ── Avatar upload handler ───────────────────────────────────────────
-    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ── File selection → open cropper ───────────────────────────────────
+    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Upload to Supabase Storage via a simple fetch to our own API
-        // For now, convert to a data URL preview; actual upload goes through the save action
         const reader = new FileReader();
         reader.onloadend = () => {
-            setAvatarUrl(reader.result as string);
+            setCropperSrc(reader.result as string);
         };
         reader.readAsDataURL(file);
-    };
+
+        // Reset input so the same file can be re-selected
+        e.target.value = "";
+    }, []);
+
+    // ── Cropper confirm → upload ────────────────────────────────────────
+    const handleCropConfirm = useCallback(
+        (croppedBase64: string) => {
+            uploadMutation.mutate(croppedBase64);
+        },
+        [uploadMutation]
+    );
 
     const initials = getInitials(profile.fullName, profile.email);
     const lastUpdated = new Date(profile.updatedAt).toLocaleDateString("en-US", {
@@ -98,7 +128,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
         <div className="min-h-screen bg-slate-50 pt-24 pb-16 px-4 sm:px-6">
             <div className="max-w-2xl mx-auto space-y-6">
 
-                {/* ── Page header ──────────────────────────────────────── */}
+                {/* ── Page header ──────────────────────────────────── */}
                 <div className="mb-2">
                     <h1 className="text-3xl font-bold text-slate-800 font-heading">
                         Account Settings
@@ -110,7 +140,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                     </p>
                 </div>
 
-                {/* ── Main profile card ────────────────────────────────── */}
+                {/* ── Main profile card ────────────────────────────── */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
                     {/* Avatar + name strip */}
@@ -118,8 +148,14 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                         <div className="relative group">
                             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-lg shadow-indigo-200 overflow-hidden">
                                 {avatarUrl ? (
-                                    <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                                ) : initials}
+                                    <img
+                                        src={avatarUrl}
+                                        alt="Avatar"
+                                        className="w-full h-full rounded-full object-cover"
+                                    />
+                                ) : (
+                                    initials
+                                )}
                             </div>
                             {isOwner && (
                                 <>
@@ -127,15 +163,15 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                                        aria-label="Upload avatar"
+                                        aria-label="Change profile photo"
                                     >
                                         <Camera className="w-5 h-5 text-white" />
                                     </button>
                                     <input
                                         ref={fileInputRef}
                                         type="file"
-                                        accept="image/*"
-                                        onChange={handleAvatarChange}
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={handleFileSelect}
                                         className="hidden"
                                     />
                                 </>
@@ -148,9 +184,20 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                             <p className="text-slate-400 text-sm truncate">{profile.email}</p>
                             <p className="text-slate-300 text-xs mt-0.5">Member since {memberSince}</p>
                         </div>
+                        {/* Edit existing photo button */}
+                        {isOwner && avatarUrl && (
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-50"
+                            >
+                                <Pencil className="w-3 h-3" />
+                                Edit Photo
+                            </button>
+                        )}
                     </div>
 
-                    {/* ── Stats row ────────────────────────────────────── */}
+                    {/* ── Stats row ────────────────────────────────── */}
                     <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
                         <StatCard
                             icon={<BookOpen className="w-4 h-4 text-indigo-400" />}
@@ -169,7 +216,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                         />
                     </div>
 
-                    {/* ── Form fields ──────────────────────────────────── */}
+                    {/* ── Form fields ──────────────────────────────── */}
                     <div className="px-8 py-6 space-y-6">
 
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
@@ -309,7 +356,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                     </div>
                 </div>
 
-                {/* ── Danger Zone (owner only) ─────────────────────────── */}
+                {/* ── Danger Zone (owner only) ─────────────────────── */}
                 {isOwner && (
                     <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden">
                         <div className="px-8 py-6">
@@ -338,7 +385,17 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                 )}
             </div>
 
-            {/* ── Delete confirmation modal ────────────────────────────── */}
+            {/* ── Image Cropper modal ──────────────────────────────── */}
+            {cropperSrc && (
+                <ImageCropper
+                    imageSrc={cropperSrc}
+                    onCropComplete={handleCropConfirm}
+                    onCancel={() => setCropperSrc(null)}
+                    isUploading={uploadMutation.isPending}
+                />
+            )}
+
+            {/* ── Delete confirmation modal ────────────────────────── */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                     <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6">
