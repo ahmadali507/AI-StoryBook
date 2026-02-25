@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, Inter, Cinzel_Decorative, Crimson_Text } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import CookieConsentBanner from "@/app/components/gdpr/CookieConsentBanner";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -45,6 +46,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <ToastProvider>{children}</ToastProvider>
+          <CookieConsentBanner />
         </QueryProvider>
       </body>
     </html>

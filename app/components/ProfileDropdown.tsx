@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
-import { User, LogOut, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { User, LogOut, ChevronDown, Settings } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { useRouter } from "next/navigation";
 
@@ -111,6 +112,14 @@ export default function ProfileDropdown({ user }: ProfileDropdownProps) {
 
                     {/* Menu Items */}
                     <div className="p-2">
+                        <Link
+                            href={`/profile/${user.id}`}
+                            onClick={() => setIsOpen(false)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg hover:bg-background transition-colors duration-150 text-text-muted hover:text-foreground cursor-pointer"
+                        >
+                            <Settings className="w-4 h-4" />
+                            <span className="font-medium">Account Settings</span>
+                        </Link>
                         <button
                             onClick={handleLogout}
                             disabled={isPending}

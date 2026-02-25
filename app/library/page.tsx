@@ -10,7 +10,7 @@ export default async function LibraryPage() {
         orders = await getUserOrders();
     } catch (e) {
         // Redirect if not authenticated
-        redirect("/login");
+        redirect("/auth/login");
     }
 
     return (

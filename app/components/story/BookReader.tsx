@@ -2,8 +2,10 @@
 
 import React, { forwardRef, useCallback, useRef, useState, useEffect } from "react";
 import HTMLFlipBook from "react-pageflip";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, Loader2 } from "lucide-react";
 import type { BookPage, PageBasedStory } from "@/actions/library";
+import { usePDF } from "@react-pdf/renderer";
+import { StoryPDF } from "./PDFExport";
 
 interface BookReaderProps {
     story: PageBasedStory;
@@ -212,6 +214,27 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    // Build PDF instance — updates whenever story changes
+    const [pdfInstance, updatePdf] = usePDF({ document: <StoryPDF story={story} /> });
+
+    const handleExportPDF = () => {
+        if (pdfInstance.loading) return;
+        if (pdfInstance.error) {
+            console.error('[PDF] Generation error:', pdfInstance.error);
+            alert('PDF generation failed. Please try again.');
+            return;
+        }
+        if (pdfInstance.url) {
+            const link = document.createElement('a');
+            link.href = pdfInstance.url;
+            link.download = `${story.title.replace(/\s+/g, '_')}_Storybook.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
 
     useEffect(() => {
         const checkMobile = () => {
@@ -387,7 +410,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                         fontSize: '11pt'
                     }}
                 >
-                    {currentPage} / {totalPages-2}
+                    {currentPage} / {totalPages - 2}
                 </span>
 
                 <button
@@ -398,6 +421,28 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                 >
                     <ChevronRight className="w-5 h-5" />
                 </button>
+
+                {/* PDF Export Button */}
+                <div className="border-l border-stone-200 pl-4 ml-4">
+                    <button
+                        onClick={handleExportPDF}
+                        disabled={pdfInstance.loading}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-sm font-semibold transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Export as PDF"
+                    >
+                        {pdfInstance.loading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Preparing...
+                            </>
+                        ) : (
+                            <>
+                                <FileDown className="w-4 h-4" />
+                                Export PDF
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

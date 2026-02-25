@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle, FileDown } from "lucide-react";
 import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
@@ -233,9 +233,17 @@ export default function OrderStatusPage() {
                             <h1 className="text-2xl font-bold text-gray-900 mb-3">
                                 {statusMessage}
                             </h1>
-                            <p className="text-gray-500">
+                            <p className="text-gray-500 mb-6">
                                 This may take a few minutes. You can close this page and come back later.
                             </p>
+                            <a
+                                href={`/api/invoice/${orderId}`}
+                                download
+                                className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:border-primary hover:text-primary transition-colors text-sm"
+                            >
+                                <FileDown className="w-4 h-4" />
+                                Download Invoice
+                            </a>
                         </div>
                     ) : order.status === "complete" ? (
                         /* Complete state */
@@ -244,15 +252,25 @@ export default function OrderStatusPage() {
                             <h1 className="text-2xl font-bold text-gray-900 mb-3">
                                 Your Book is Ready! 🎉
                             </h1>
-                            {order.storybook && (
-                                <Link
-                                    href={`/story/${order.storybook.id}`}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors mt-4"
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-4">
+                                {order.storybook && (
+                                    <Link
+                                        href={`/story/${order.storybook.id}`}
+                                        className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                                    >
+                                        <BookOpen className="w-5 h-5" />
+                                        Read Your Book
+                                    </Link>
+                                )}
+                                <a
+                                    href={`/api/invoice/${orderId}`}
+                                    download
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:border-primary hover:text-primary transition-colors text-sm"
                                 >
-                                    <BookOpen className="w-5 h-5" />
-                                    Read Your Book
-                                </Link>
-                            )}
+                                    <FileDown className="w-4 h-4" />
+                                    Download Invoice
+                                </a>
+                            </div>
                         </div>
                     ) : (
                         /* Default state */
