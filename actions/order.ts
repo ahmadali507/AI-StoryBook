@@ -845,9 +845,22 @@ export async function generateCoverPreview(
         console.log(`[generateCoverPreview] Using ${referenceImages.length} reference images`);
 
         // 5. Generate with Seedream
-        const coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
+        const replicateCoverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
 
-        console.log(`[generateCoverPreview] ✓ Cover generated: ${coverUrl.substring(0, 50)}...`);
+        console.log(`[generateCoverPreview] ✓ Cover generated: ${replicateCoverUrl.substring(0, 50)}...`);
+
+        // Persist to Supabase Storage so the URL never expires
+        let coverUrl = replicateCoverUrl;
+        try {
+            const { persistGeneratedImage } = await import("@/lib/storage-utils");
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (currentUser) {
+                coverUrl = await persistGeneratedImage(replicateCoverUrl, currentUser.id, "covers");
+                console.log(`[generateCoverPreview] ✓ Cover persisted to Supabase Storage`);
+            }
+        } catch (storageError) {
+            console.error(`[generateCoverPreview] ⚠ Storage upload failed, using Replicate URL as fallback:`, storageError);
+        }
 
         // Update storybook with cover URL
         await supabase

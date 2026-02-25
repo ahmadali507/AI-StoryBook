@@ -50,8 +50,8 @@ Page.displayName = "Page";
 const TextPage = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
         <Page {...props} ref={ref}>
-            {/* Body text - clean, no chapter headers */}
-            <div className="flex-1 text-justify font-sans text-sm leading-relaxed text-slate-700 overflow-hidden">
+            {/* Body text - vertically centered, serif font to match PDF */}
+            <div className="flex-1 flex flex-col justify-center text-justify text-sm leading-relaxed text-slate-700 overflow-hidden" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
                 {props.content.split('\n\n').map((paragraph: string, pIndex: number) => (
                     <p key={pIndex} className="mb-4 last:mb-0">
                         {paragraph}
@@ -63,26 +63,28 @@ const TextPage = forwardRef<HTMLDivElement, any>((props, ref) => {
 });
 TextPage.displayName = "TextPage";
 
-// Illustration Page Component - No chapter labels
+// Illustration Page Component - Full page image, no padding/borders
 const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
     return (
-        <Page {...props} ref={ref}>
-            <div className="h-full flex flex-col justify-center">
-                <div className="relative w-full aspect-[4/3] bg-slate-50 rounded-sm overflow-hidden border border-slate-100 shadow-inner">
-                    {props.illustrationUrl ? (
-                        <img
-                            src={props.illustrationUrl}
-                            alt={props.alt || "Illustration"}
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                            <span className="text-xs uppercase tracking-widest">No Illustration</span>
-                        </div>
-                    )}
+        <div
+            className="page-content h-full bg-white shadow-sm border-l border-slate-100 relative overflow-hidden"
+            ref={ref}
+        >
+            {props.illustrationUrl ? (
+                <img
+                    src={props.illustrationUrl}
+                    alt={props.alt || "Illustration"}
+                    className="w-full h-full object-cover"
+                />
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
+                    <span className="text-xs uppercase tracking-widest">No Illustration</span>
                 </div>
-            </div>
-        </Page>
+            )}
+
+            {/* Spine Shadow */}
+            <div className={`absolute top-0 bottom-0 w-6 pointer-events-none ${props.number % 2 === 0 ? 'left-0 bg-gradient-to-r' : 'right-0 bg-gradient-to-l'} from-black/[0.04] to-transparent`} />
+        </div>
     );
 });
 IllustrationPage.displayName = "IllustrationPage";

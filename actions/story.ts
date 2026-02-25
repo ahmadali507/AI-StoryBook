@@ -616,7 +616,21 @@ export async function generateAndSaveCover(storybookId: string) {
 
         // Using generateBookCover for better aspect ratio (3:4)
         const negativePrompt = getNegativePrompt(storybook.artStyle);
-        const imageUrl = await generateBookCover(prompt, storybook.globalSeed, negativePrompt);
+        const replicateUrl = await generateBookCover(prompt, storybook.globalSeed, negativePrompt);
+
+        // Persist to Supabase Storage so the URL never expires
+        let imageUrl = replicateUrl;
+        try {
+            const { persistGeneratedImage } = await import("@/lib/storage-utils");
+            const supabase2 = await createClient();
+            const { data: { user } } = await supabase2.auth.getUser();
+            if (user) {
+                imageUrl = await persistGeneratedImage(replicateUrl, user.id, "covers");
+                console.log(`[generateAndSaveCover] ✓ Cover persisted to Supabase Storage`);
+            }
+        } catch (storageError) {
+            console.error(`[generateAndSaveCover] ⚠ Storage upload failed, using Replicate URL as fallback:`, storageError);
+        }
 
         const supabase = await createClient();
         await supabase.from("storybooks").update({ cover_image_url: imageUrl }).eq("id", storybookId);

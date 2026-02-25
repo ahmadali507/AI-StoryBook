@@ -40,12 +40,26 @@ export async function generateIllustration(
         .map(c => c.referenceImageUrl)
         .filter((url): url is string => !!url && url.length > 0);
 
-    const imageUrl = await generateSceneIllustration(
+    const replicateUrl = await generateSceneIllustration(
         prompt,
         data.seedNumber,
         negativePrompt,
         referenceImages.length > 0 ? referenceImages : undefined
     );
+
+    // Persist to Supabase Storage so the URL never expires
+    let imageUrl = replicateUrl;
+    try {
+        const { persistGeneratedImage } = await import("@/lib/storage-utils");
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            imageUrl = await persistGeneratedImage(replicateUrl, user.id, "illustrations");
+            console.log(`[generateIllustration] ✓ Illustration persisted to Supabase Storage`);
+        }
+    } catch (storageError) {
+        console.error(`[generateIllustration] ⚠ Storage upload failed, using Replicate URL as fallback:`, storageError);
+    }
 
     return {
         imageUrl,

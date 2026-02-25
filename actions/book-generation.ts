@@ -18,6 +18,7 @@ import {
     type PreviousSceneContext
 } from "@/lib/text-generation";
 import { generateWithSeedream, generateBookCover } from "@/lib/replicate";
+import { persistGeneratedImageAdmin } from "@/lib/storage-utils";
 import { getOrderCharacters } from "@/actions/order";
 import type { SimpleCharacter, AgeRange, Theme, MVPArtStyle } from "@/types/storybook";
 import { MVP_ART_STYLES } from "@/types/storybook";
@@ -478,6 +479,14 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
 
             coverUrl = await generateBookCover(coverPrompt, globalSeed, negativePrompt, referenceImages);
 
+            // Persist cover to Supabase Storage so URL never expires
+            try {
+                coverUrl = await persistGeneratedImageAdmin(coverUrl, order.user_id, "covers");
+                console.log(`[generateFullBook] ✓ Cover persisted to Supabase Storage`);
+            } catch (storageError) {
+                console.error(`[generateFullBook] ⚠ Cover storage upload failed, using Replicate URL as fallback:`, storageError);
+            }
+
             // Should also save this new cover URL to DB if generated here
             const { error: coverUpdateError } = await adminSupabase
                 .from("storybooks")
@@ -600,9 +609,18 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 referenceImages // Pass ONLY character avatars
             );
 
+            // Persist illustration to Supabase Storage so URL never expires
+            let permanentIllustrationUrl = illustrationUrl;
+            try {
+                permanentIllustrationUrl = await persistGeneratedImageAdmin(illustrationUrl, order.user_id, "illustrations");
+                console.log(`[generateFullBook] ✓ Illustration ${i + 1} persisted to Supabase Storage`);
+            } catch (storageError) {
+                console.error(`[generateFullBook] ⚠ Illustration ${i + 1} storage upload failed, using Replicate URL as fallback:`, storageError);
+            }
+
             illustrations.push({
                 sceneNumber: scene.number,
-                url: illustrationUrl
+                url: permanentIllustrationUrl
             });
         }
 

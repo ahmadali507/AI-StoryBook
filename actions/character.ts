@@ -612,8 +612,26 @@ export async function generateMultiAngleAvatars(
 
         if (!url) throw new Error(`Seedream returned no image URL for ${entityType} "${name}"`);
 
+        // Persist to Supabase Storage so the URL never expires
+        const { persistGeneratedImage } = await import("@/lib/storage-utils");
+        const supabaseClient = await (await import("@/lib/supabase/server")).createClient();
+        const { data: { user } } = await supabaseClient.auth.getUser();
+
+        let permanentUrl = url;
+        if (user) {
+            try {
+                permanentUrl = await persistGeneratedImage(url, user.id, "avatars");
+                console.log(`[generateAvatar] ✓ Avatar persisted to Supabase Storage for ${entityType} "${name}"`);
+            } catch (storageError) {
+                console.error(`[generateAvatar] ⚠ Storage upload failed, using Replicate URL as fallback:`, storageError);
+                // Fallback to Replicate URL if storage upload fails
+            }
+        } else {
+            console.warn(`[generateAvatar] ⚠ No authenticated user, cannot persist avatar to storage`);
+        }
+
         console.log(`[generateAvatar] ✓ Avatar generated successfully for ${entityType} "${name}"`);
-        return [url];
+        return [permanentUrl];
 
     } catch (error) {
         console.error(`[generateAvatar] ✗ Failed [${entityType}] "${name}":`, error);

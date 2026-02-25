@@ -100,6 +100,7 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'center',
         height: '100%',
     },
     textContent: {
