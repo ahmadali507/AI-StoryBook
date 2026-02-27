@@ -1,5 +1,8 @@
 "use server";
 
+// Allow up to 5 minutes for generation on Vercel
+// export const maxDuration = 300;
+
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import {
@@ -978,8 +981,49 @@ export async function triggerBookGeneration(
             console.error(`Book generation error for order ${orderId}:`, err);
         });
 
-    console.log(`Book generation triggered for order: ${orderId}`);
+    console.log(`[triggerBookGeneration] Triggered async generation for order: ${orderId}`);
     return { success: true };
+}
+
+/**
+ * Awaitable version of triggerBookGeneration.
+ * Use this from the client-side global provider to keep the HTTP
+ * connection open so Vercel does not kill the serverless function.
+ */
+export async function triggerBookGenerationAwaitable(
+    orderId: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = await createClient();
+
+    // Update status to generating
+    const { error, data } = await supabase
+        .from("orders")
+        .update({
+            status: "generating",
+            book_generation_started_at: new Date().toISOString(),
+        })
+        .eq("id", orderId)
+        .in("status", ["paid", "pending", "cover_preview"])
+        .select();
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+        // Might already be generating or complete.
+        // We will just run it anyway, generateFullBook has its own guards or is idempotent enough
+        console.log(`[triggerBookGenerationAwaitable] Order ${orderId} already in progress or complete.`);
+    }
+
+    // AWAIT the generation so Vercel keeps the lambda alive
+    const { generateFullBook } = await import("@/actions/book-generation");
+
+    console.log(`[triggerBookGenerationAwaitable] Starting AWAITED generation for order: ${orderId}`);
+    const result = await generateFullBook(orderId);
+    console.log(`[triggerBookGenerationAwaitable] AWAITED generation finished for order: ${orderId}`);
+
+    return result;
 }
 
 // ============================================

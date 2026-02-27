@@ -5,6 +5,7 @@ import NavbarClient from "@/app/components/NavbarClient";
 import { getAllUserOrders } from "@/actions/library";
 import LibraryPDFButton from "@/app/components/library/LibraryPDFButton";
 import OrderCheckoutButton from "@/app/components/order/OrderCheckoutButton";
+import OrdersAutoRefresh from "@/app/components/order/OrdersAutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function OrdersPage() {
     } catch (e) {
         redirect("/auth/login");
     }
+
+    const hasInProgressOrders = orders.some(
+        (o: any) => o.status === "generating" || o.status === "paid"
+    );
 
     const getStatusDisplay = (status: string) => {
         switch (status) {
@@ -50,6 +55,7 @@ export default async function OrdersPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <NavbarClient />
+            <OrdersAutoRefresh hasInProgressOrders={hasInProgressOrders} />
 
             <main className="max-w-7xl mx-auto px-4 py-24 sm:px-6 lg:px-8">
                 <div className="mb-10 flex items-center justify-between">

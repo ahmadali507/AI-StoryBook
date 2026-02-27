@@ -28,6 +28,7 @@ import type { Character, StorySetting } from "@/types/storybook";
 
 interface StoryGenerationContextValue {
     startStoryGeneration: (params: StoryGenerationParams) => void;
+    startMVPGeneration: (orderId: string, storybookId: string) => void;
 }
 
 const StoryGenerationContext = createContext<StoryGenerationContextValue | undefined>(
@@ -191,8 +192,198 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
         [startGeneration, runGeneration, toast]
     );
 
+    const runMVPChunkedGeneration = useCallback(
+        async (orderId: string, storybookId: string) => {
+            try {
+                // Fetch current state to see if we are resuming
+                const stateRes = await fetch(`/api/generate/state?orderId=${orderId}`);
+                const stateData = await stateRes.json();
+                if (!stateData.success) throw new Error(stateData.error || "Failed to fetch state");
+
+                const generationData = stateData.data || {};
+
+                // STEP 1: Outline
+                let outline = generationData.outline;
+                if (!outline) {
+                    const outlineRes = await fetch("/api/generate/step", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ orderId, step: "outline" })
+                    });
+                    const outlineData = await outlineRes.json();
+                    if (!outlineData.success) throw new Error(outlineData.error || "Failed outline");
+                    outline = outlineData.outline;
+                }
+                setTitle(outline.title);
+
+                // STEP 2: Scene Text Generation
+                const allPreviousScenes: any[] = [];
+                const bookPages: any[] = [];
+                for (let i = 0; i < outline.scenes.length; i++) {
+                    const sceneKey = `sceneText_${i}`;
+                    let sceneData = generationData[sceneKey];
+
+                    if (!sceneData) {
+                        const sceneRes = await fetch("/api/generate/step", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                orderId,
+                                step: "scene_text",
+                                data: { sceneIndex: i, outline, allPreviousScenes }
+                            })
+                        });
+                        const resJson = await sceneRes.json();
+                        if (!resJson.success) throw new Error(resJson.error || `Failed scene text ${i}`);
+                        sceneData = { pageText: resJson.pageText, sceneNumber: resJson.sceneNumber, sceneTitle: resJson.sceneTitle };
+                    }
+
+                    allPreviousScenes.push({
+                        sceneTitle: sceneData.sceneTitle,
+                        text: sceneData.pageText.text
+                    });
+
+                    bookPages.push({
+                        text: sceneData.pageText.text,
+                        visualPrompt: sceneData.pageText.visualPrompt,
+                        sceneNumber: sceneData.sceneNumber
+                    });
+                }
+
+                // STEP 3: Character Consistency
+                let characterDescriptions = generationData.characterDescriptions;
+                if (!characterDescriptions) {
+                    const charRes = await fetch("/api/generate/step", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ orderId, step: "character_consistency" })
+                    });
+                    const charData = await charRes.json();
+                    if (!charData.success) throw new Error(charData.error || "Failed character descriptions");
+                    characterDescriptions = charData.characterDescriptions;
+                }
+
+                // STEP 4: Cover Generation
+                let coverUrl = generationData.coverUrl;
+                if (!coverUrl) {
+                    const coverRes = await fetch("/api/generate/step", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId,
+                            step: "cover",
+                            data: { outline, characterDescriptions }
+                        })
+                    });
+                    const coverData = await coverRes.json();
+                    if (!coverData.success) throw new Error(coverData.error || "Failed cover");
+                    coverUrl = coverData.coverUrl; // Unused directly, but completes step
+                }
+
+                // STEP 5: Scene Images
+                const existingImages = generationData.sceneImages || [];
+                for (let i = 0; i < outline.scenes.length; i++) {
+                    let imgData = existingImages[i];
+
+                    if (!imgData) {
+                        const imgRes = await fetch("/api/generate/step", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                orderId,
+                                step: "scene_image",
+                                data: {
+                                    sceneIndex: i,
+                                    pageText: bookPages[i],
+                                    outline,
+                                    characterDescriptions
+                                }
+                            })
+                        });
+                        imgData = await imgRes.json();
+                        if (!imgData.success) throw new Error(imgData.error || `Failed scene image ${i}`);
+                    }
+
+                    bookPages[i].illustrationUrl = imgData.url;
+                    bookPages[i].illustrationPrompt = imgData.prompt;
+                    bookPages[i].sceneSeed = imgData.seed;
+                    bookPages[i].negativePrompt = imgData.negPrompt;
+                }
+
+                // STEP 6: Finalize (Layout & Assembly)
+                // We format the bookPages array into the final structure expected by generateFullBook
+                const finalPagesMap: any[] = [];
+                bookPages.forEach((page, index) => {
+                    // Illustration spread (Left)
+                    finalPagesMap.push({
+                        pageNumber: 3 + (index * 2),
+                        type: 'story',
+                        illustrationUrl: page.illustrationUrl,
+                        sceneNumber: page.sceneNumber,
+                        illustrationPrompt: page.illustrationPrompt,
+                        sceneSeed: page.sceneSeed,
+                        negativePrompt: page.negativePrompt
+                    });
+                    // Text spread (Right)
+                    finalPagesMap.push({
+                        pageNumber: 4 + (index * 2),
+                        type: 'story',
+                        text: page.text,
+                        sceneNumber: page.sceneNumber
+                    });
+                });
+
+                const finalizeRes = await fetch("/api/generate/step", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        orderId,
+                        step: "finalize",
+                        data: { bookPages: finalPagesMap, outline }
+                    })
+                });
+                const finalizeData = await finalizeRes.json();
+                if (!finalizeData.success) throw new Error(finalizeData.error || "Failed finalizing book");
+
+                // Done
+                completeGeneration(storybookId);
+                toast.success("Your book is ready! 📚", 8000);
+
+                queryClient.invalidateQueries({ queryKey: ["orders"] });
+                queryClient.invalidateQueries({ queryKey: ["library"] });
+                queryClient.invalidateQueries({ queryKey: ["storybooks"] });
+
+            } catch (err) {
+                const message = err instanceof Error ? err.message : "Failed to generate story";
+                console.error("[StoryGenerationProvider] MVP Chunked Generation failed:", err);
+                failGeneration(message);
+                toast.error(`Story generation failed: ${message}`, 8000);
+            } finally {
+                generationRef.current = false;
+            }
+        },
+        [completeGeneration, failGeneration, toast, queryClient, setTitle]
+    );
+
+    const startMVPGeneration = useCallback(
+        (orderId: string, storybookId: string) => {
+            if (generationRef.current) {
+                toast.warning("A story is already being generated.");
+                return;
+            }
+            generationRef.current = true;
+
+            // Set initial UI state immediately
+            startGeneration(storybookId);
+
+            // Fetch chunked orchestration loop instead of awaiting long-running server action
+            runMVPChunkedGeneration(orderId, storybookId);
+        },
+        [startGeneration, runMVPChunkedGeneration, toast]
+    );
+
     return (
-        <StoryGenerationContext.Provider value={{ startStoryGeneration }}>
+        <StoryGenerationContext.Provider value={{ startStoryGeneration, startMVPGeneration }}>
             {children}
         </StoryGenerationContext.Provider>
     );

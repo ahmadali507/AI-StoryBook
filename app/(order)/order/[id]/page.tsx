@@ -4,10 +4,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, CheckCircle2, BookOpen, FileText, ArrowRight, AlertCircle, FileDown } from "lucide-react";
-import { getOrderWithStorybook, triggerBookGeneration } from "@/actions/order";
+import { getOrderWithStorybook } from "@/actions/order";
 import { verifyOrderPayment } from "@/actions/stripe";
 import NavbarClient from "@/app/components/NavbarClient";
 import { useToast } from "@/providers/ToastProvider";
+import { useStoryGeneration } from "@/providers/StoryGenerationProvider";
 import { STORAGE_KEY } from "@/app/components/order/SimpleOrderForm";
 
 export default function OrderStatusPage() {
@@ -15,6 +16,7 @@ export default function OrderStatusPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const toast = useToast();
+    const { startMVPGeneration } = useStoryGeneration();
     const orderId = params.id as string;
 
     // Use refs to track across re-renders (but these reset on page refresh - that's OK)
@@ -88,14 +90,12 @@ export default function OrderStatusPage() {
                             toast.success("Payment verified! Starting generation... 🚀");
                         }
 
-                        const genResult = await triggerBookGeneration(orderId);
-                        if (genResult.success) {
-                            setStatusMessage("Generating your personalized storybook...");
-                        } else {
-                            const errorMsg = "Failed to start generation";
-                            setError(genResult.error || errorMsg);
-                            toast.error("We couldn't start generating your book. Please contact support.");
+                        // Hand off to the global provider to hold the connection open
+                        // even if the user navigates away from this page.
+                        if (orderData.storybook?.id) {
+                            startMVPGeneration(orderId, orderData.storybook.id);
                         }
+                        setStatusMessage("Generating your personalized storybook...");
                         break;
 
                     case "failed":
@@ -115,16 +115,14 @@ export default function OrderStatusPage() {
                                     setStatusMessage("Starting book generation...");
                                     toast.success("Payment successful! Creating your book... ✨");
 
-                                    const genResult = await triggerBookGeneration(orderId);
-                                    if (genResult.success) {
-                                        setStatusMessage("Generating your personalized storybook...");
-                                        // Reload to get updated status
-                                        await loadOrder();
-                                    } else {
-                                        const errorMsg = "Failed to start generation";
-                                        setError(genResult.error || errorMsg);
-                                        toast.error("Payment verified, but we couldn't start generation. Please contact support.");
+                                    // Trigger in global provider
+                                    if (orderData.storybook?.id) {
+                                        startMVPGeneration(orderId, orderData.storybook.id);
                                     }
+                                    setStatusMessage("Generating your personalized storybook...");
+
+                                    // Reload to get updated status
+                                    await loadOrder();
                                 } else {
                                     const errorMsg = result.error || "Payment verification failed";
                                     setError(errorMsg);

@@ -1,5 +1,8 @@
 "use server";
 
+// Allow up to 5 minutes for generation on Vercel
+// export const maxDuration = 300;
+
 
 
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +55,7 @@ export interface GenerationProgress {
 /**
  * Update the generation progress for an order
  */
-async function updateGenerationProgress(
+export async function updateGenerationProgress(
     orderId: string,
     progress: Partial<GenerationProgress>
 ): Promise<void> {
@@ -170,7 +173,7 @@ interface GeneratedBook {
 /**
  * Get the art style prompt modifier based on selected style
  */
-function getArtStylePrompt(artStyle: MVPArtStyle): string {
+export async function getArtStylePrompt(artStyle: MVPArtStyle): Promise<string> {
     const style = MVP_ART_STYLES.find(s => s.id === artStyle);
     if (!style) return "Pixar style 3D cinematic scene, high quality 3D render, ultra detailed";
 
@@ -396,7 +399,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
         });
 
         // 6. Generate illustrations
-        const artStylePrompt = getArtStylePrompt(artStyle);
+        const artStylePrompt = await getArtStylePrompt(artStyle);
         const illustrations: { sceneNumber: number; url: string; prompt: string; seed: number; negPrompt: string; refImages: string[] }[] = [];
 
         // Track progress: Starting cover
