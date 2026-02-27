@@ -112,7 +112,7 @@ export async function generateSceneIllustration(
     negativePrompt?: string,
     imageInput?: string[]
 ): Promise<string> {
-    return generateWithSeedream(prompt, seed, '4:3', negativePrompt, imageInput);
+    return generateWithSeedream(prompt, seed, '3:4', negativePrompt, imageInput);
 }
 
 /**

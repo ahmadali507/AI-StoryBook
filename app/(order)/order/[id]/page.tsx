@@ -220,7 +220,14 @@ export default function OrderStatusPage() {
             <main className="pt-24 pb-16">
                 <div className="max-w-xl mx-auto px-4">
                     {error ? (
-                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center relative pt-16 mt-8">
+                            <Link
+                                href="/orders"
+                                className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                <ArrowRight className="w-4 h-4 rotate-180" />
+                                Back to Orders
+                            </Link>
                             <div className="text-red-500 mb-4">{error}</div>
                             <Link href="/create" className="text-primary hover:underline">
                                 Try again
@@ -228,7 +235,14 @@ export default function OrderStatusPage() {
                         </div>
                     ) : isGenerating ? (
                         /* Simple generating state */
-                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center relative pt-16 mt-8">
+                            <Link
+                                href="/orders"
+                                className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                <ArrowRight className="w-4 h-4 rotate-180" />
+                                Back to Orders
+                            </Link>
                             <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-6" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-3">
                                 {statusMessage}
@@ -247,7 +261,14 @@ export default function OrderStatusPage() {
                         </div>
                     ) : order.status === "complete" ? (
                         /* Complete state */
-                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
+                        <div className="bg-white rounded-2xl shadow-xl p-12 text-center relative pt-16 mt-8">
+                            <Link
+                                href="/orders"
+                                className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                <ArrowRight className="w-4 h-4 rotate-180" />
+                                Back to Orders
+                            </Link>
                             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-6" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-3">
                                 Your Book is Ready! 🎉
@@ -274,7 +295,14 @@ export default function OrderStatusPage() {
                         </div>
                     ) : (
                         /* Default state */
-                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 text-center relative pt-16 mt-8">
+                            <Link
+                                href="/orders"
+                                className="absolute top-4 left-4 inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                            >
+                                <ArrowRight className="w-4 h-4 rotate-180" />
+                                Back to Orders
+                            </Link>
                             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                             <h1 className="text-2xl font-bold text-gray-900 mb-2">
                                 Order Status

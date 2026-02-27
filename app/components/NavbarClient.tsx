@@ -58,6 +58,15 @@ export default function NavbarClient() {
                                 {link.label}
                             </Link>
                         ))}
+                        {user && (
+                            <Link
+                                href="/orders"
+                                className="flex items-center gap-2 text-text-muted hover:text-foreground transition-colors duration-200 font-medium cursor-pointer"
+                            >
+                                <BookOpen className="w-4 h-4" />
+                                Orders
+                            </Link>
+                        )}
                     </div>
 
                     {/* Desktop CTA / Profile */}
@@ -85,7 +94,11 @@ export default function NavbarClient() {
                     </div>
 
                     {/* Mobile menu */}
-                    <NavbarMobileMenu links={navLinks} showAuth={true} user={user} />
+                    <NavbarMobileMenu
+                        links={user ? [...navLinks, { href: "/orders", label: "Orders" }] : navLinks}
+                        showAuth={true}
+                        user={user}
+                    />
                 </div>
             </nav>
         </header>

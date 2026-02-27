@@ -9,6 +9,10 @@ export interface BookPage {
     text?: string;
     illustrationUrl?: string;
     sceneNumber?: number;
+    // Prompt metadata for image regeneration
+    illustrationPrompt?: string;
+    sceneSeed?: number;
+    negativePrompt?: string;
 }
 
 export interface GeneratedBook {
@@ -20,17 +24,53 @@ export interface GeneratedBook {
 
 // New page-based reader interface
 export interface PageBasedStory {
+    storybookId: string;
     title: string;
     author?: string;
     coverImageUrl?: string;
     dedication?: string;
     pages: BookPage[];
+    regenerationCredits: number;
 }
 
 /**
- * Get all orders for the current user
+ * Get all COMPLETE orders for the current user (for Library)
  */
 export async function getUserOrders() {
+    const supabase = await createClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+        throw new Error("Not authenticated");
+    }
+
+    const { data: orders, error } = await supabase
+        .from("orders")
+        .select(`
+            id,
+            created_at,
+            status,
+            storybooks (
+                id,
+                title,
+                cover_url
+            )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "complete")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        throw new Error(`Failed to fetch library orders: ${error.message}`);
+    }
+
+    return orders;
+}
+
+/**
+ * Get ALL orders for the current user regardless of status (for Orders page)
+ */
+export async function getAllUserOrders() {
     const supabase = await createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -86,11 +126,13 @@ export async function getBookForReader(storyId: string): Promise<PageBasedStory 
 
     // Return pages directly for page-based rendering
     return {
+        storybookId: storybook.id,
         title: storybook.title || bookContent.title || "Untitled Story",
         author: "AI Storybook",
         coverImageUrl: storybook.cover_url,
         dedication: bookContent.dedication,
-        pages: bookContent.pages
+        pages: bookContent.pages,
+        regenerationCredits: storybook.regeneration_credits ?? 10
     };
 }
 

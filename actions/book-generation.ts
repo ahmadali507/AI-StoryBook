@@ -154,6 +154,10 @@ interface BookPage {
     text?: string;
     illustrationUrl?: string;
     sceneNumber?: number;
+    // Prompt metadata for image regeneration
+    illustrationPrompt?: string;
+    sceneSeed?: number;
+    negativePrompt?: string;
 }
 
 interface GeneratedBook {
@@ -388,7 +392,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
 
         // 6. Generate illustrations
         const artStylePrompt = getArtStylePrompt(artStyle);
-        const illustrations: { sceneNumber: number; url: string }[] = [];
+        const illustrations: { sceneNumber: number; url: string; prompt: string; seed: number; negPrompt: string; refImages: string[] }[] = [];
 
         // Track progress: Starting cover
         await updateGenerationProgress(orderId, {
@@ -604,7 +608,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             const illustrationUrl = await generateWithSeedream(
                 illustrationPrompt,
                 sceneSeed,
-                '4:3', // Landscape for scene illustrations
+                '3:4', // Portrait for scene illustrations
                 negativePrompt,
                 referenceImages // Pass ONLY character avatars
             );
@@ -620,7 +624,11 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
 
             illustrations.push({
                 sceneNumber: scene.number,
-                url: permanentIllustrationUrl
+                url: permanentIllustrationUrl,
+                prompt: illustrationPrompt,
+                seed: sceneSeed,
+                negPrompt: negativePrompt,
+                refImages: referenceImages
             });
         }
 
@@ -684,7 +692,10 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
                 pageNumber: 3 + (i * 2),
                 type: 'story',
                 illustrationUrl: illustration?.url,
-                sceneNumber: i + 1
+                sceneNumber: i + 1,
+                illustrationPrompt: illustration?.prompt,
+                sceneSeed: illustration?.seed,
+                negativePrompt: illustration?.negPrompt
             });
 
             // Text page (right side of spread)
@@ -703,15 +714,23 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             text: backCoverSummary
         });
 
-        // 8. Store book content in database
-        const bookContentJson = JSON.stringify(bookContent);
+        // Build illustration metadata for regeneration
+        const illustrationMetadata = illustrations.map(ill => ({
+            sceneNumber: ill.sceneNumber,
+            illustrationPrompt: ill.prompt,
+            sceneSeed: ill.seed,
+            negativePrompt: ill.negPrompt,
+            referenceImages: ill.refImages
+        }));
 
         const { error: contentError } = await adminSupabase
             .from("storybooks")
             .update({
                 content: bookContent,
-                cover_url: coverUrl, // Ensure final cover URL is saved
-                status: 'complete'
+                cover_url: coverUrl,
+                status: 'complete',
+                regeneration_credits: 10,
+                illustration_metadata: illustrationMetadata
             })
             .eq("id", storybook.id);
 
