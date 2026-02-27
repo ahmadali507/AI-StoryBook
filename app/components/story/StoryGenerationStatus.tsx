@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useStoryGenerationStore } from "@/stores/story-generation-store";
 import { Loader2, BookOpen, ChevronUp, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
 
 export default function StoryGenerationStatus() {
+    const router = useRouter();
     const {
         isGenerating,
         storyTitle,
@@ -18,6 +20,19 @@ export default function StoryGenerationStatus() {
     } = useStoryGenerationStore();
 
     const [expanded, setExpanded] = useState(false);
+
+    // Track previous isGenerating to detect completion transition
+    const prevIsGenerating = useRef(isGenerating);
+
+    useEffect(() => {
+        // Detect: was generating → now done (either completed or failed)
+        if (prevIsGenerating.current && !isGenerating) {
+            // Force Next.js server components to re-fetch data
+            // This ensures the /orders page (server component) shows updated status
+            router.refresh();
+        }
+        prevIsGenerating.current = isGenerating;
+    }, [isGenerating, router]);
 
     // Show nothing when idle
     if (!isGenerating && !error && !completedStorybookId) {
