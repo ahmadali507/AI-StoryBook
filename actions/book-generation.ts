@@ -218,8 +218,13 @@ function buildPixarPrompt(
  * This is the main entry point for book generation after payment
  */
 export async function generateFullBook(orderId: string): Promise<{ success: boolean; error?: string }> {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient(); // Use admin client for writes
+    // IMPORTANT: Use admin client for ALL operations here.
+    // This function runs fire-and-forget from triggerBookGeneration(),
+    // so the original HTTP request (and its cookies) may be gone by the
+    // time we execute. The cookie-based createClient() would silently
+    // lose auth on Vercel, causing reads to fail.
+    const supabase = createAdminClient();
+    const adminSupabase = supabase; // Alias for backward compat
 
     console.log(`[generateFullBook] Starting generation for order: ${orderId}`);
 
@@ -777,8 +782,7 @@ export async function generateFullBook(orderId: string): Promise<{ success: bool
             startedAt: new Date().toISOString() // New timestamp for error
         });
 
-        // Update order with error status - USING ADMIN CLIENT
-        const adminSupabase = createAdminClient();
+        // Update order with error status
         await adminSupabase
             .from("orders")
             .update({
