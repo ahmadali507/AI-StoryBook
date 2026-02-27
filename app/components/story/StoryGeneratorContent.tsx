@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
+import { useStoryGeneration } from "@/providers/StoryGenerationProvider";
+import { useStoryGenerationStore } from "@/stores/story-generation-store";
 import { ProgressSteps } from "@/app/components/shared";
 import {
     ChevronLeft,
@@ -67,14 +69,11 @@ const GENERATION_MESSAGES = [
 import {
     generateStoryOutline,
     createStorybook,
-    generateChapter,
     updateStorybook,
     generateAndSaveCover,
-    syncStoryContent,
     getStorybookWithChapters
 } from "@/actions/story";
-import { generateIllustration, saveIllustration } from "@/actions/illustration";
-import { createCheckoutSession, verifyPayment, getPaymentStatus } from "@/actions/stripe";
+import { createCheckoutSession } from "@/actions/stripe";
 import { Character, StorySetting, ArtStyle } from "@/types/storybook";
 
 interface StoryGeneratorContentProps {
@@ -87,6 +86,8 @@ type Step4Phase = "preview" | "cover_generating" | "cover_ready" | "paying" | "g
 export default function StoryGeneratorContent({ characters: userCharacters }: StoryGeneratorContentProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { startStoryGeneration } = useStoryGeneration();
+    const bgGeneration = useStoryGenerationStore();
 
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedSetting, setSelectedSetting] = useState("");
@@ -104,9 +105,8 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
     const [generatedStoryId, setGeneratedStoryId] = useState<string | null>(null);
     const [coverUrl, setCoverUrl] = useState<string | null>(null);
     const [storyTitle, setStoryTitle] = useState<string>("");
-    const [generationStep, setGenerationStep] = useState("");
-    const [generationProgress, setGenerationProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [coverGenerationStep, setCoverGenerationStep] = useState("");
 
     // Handle URL params for returning from Stripe
     useEffect(() => {
@@ -117,12 +117,15 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
 
         if (storybookId && sessionId && paid === "true") {
             // Returning from successful Stripe payment
-            setGeneratedStoryId(storybookId);
-            setCurrentStep(4);
-            setStep4Phase("generating");
+            // Delegate generation to the background provider
+            startStoryGeneration({
+                storybookId,
+                sessionId,
+                characters: userCharacters,
+            });
 
-            // Verify payment and start generation
-            handlePostPaymentGeneration(storybookId, sessionId);
+            // Redirect user to orders page so they can browse freely
+            router.replace("/orders");
         } else if (storybookId && cancelled === "true") {
             // User cancelled payment
             setGeneratedStoryId(storybookId);
@@ -186,55 +189,9 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
         }
     });
 
-    const generateChapterMutation = useMutation({
-        mutationFn: async (data: {
-            storybookId: string;
-            chapterNumber: number;
-            title: string;
-            summary: string;
-            sceneDescription: string;
-        }) => {
-            return await generateChapter(
-                data.storybookId,
-                data.chapterNumber,
-                data.title,
-                data.summary,
-                data.sceneDescription
-            );
-        }
-    });
-
-    const generateIllustrationMutation = useMutation({
-        mutationFn: async (data: {
-            characters: Character[];
-            sceneDescription: string;
-            artStyle: ArtStyle;
-            seedNumber: number;
-        }) => {
-            return await generateIllustration({
-                characters: data.characters,
-                sceneDescription: data.sceneDescription,
-                artStyle: data.artStyle,
-                seedNumber: data.seedNumber
-            });
-        }
-    });
-
-    const saveIllustrationMutation = useMutation({
-        mutationFn: async (data: {
-            chapterId: string;
-            imageUrl: string;
-            promptUsed: string;
-            seedUsed: number;
-        }) => {
-            return await saveIllustration(
-                data.chapterId,
-                data.imageUrl,
-                data.promptUsed,
-                data.seedUsed
-            );
-        }
-    });
+    // NOTE: generateChapterMutation, generateIllustrationMutation, and
+    // saveIllustrationMutation have been moved to StoryGenerationProvider
+    // so they can run in the background across route changes.
 
     const toggleCharacter = (charId: string) => {
         setSelectedCharacterIds(prev =>
@@ -277,7 +234,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             const targetChapters = storyLength === "short" ? 3 : storyLength === "medium" ? 5 : 7;
 
             // 1. Create Storybook Record
-            setGenerationStep("Creating storybook...");
+            setCoverGenerationStep("Creating storybook...");
             const sbResult = await createStorybookMutation.mutateAsync({
                 title: "New Adventure",
                 characterIds: selectedCharacterIds,
@@ -295,7 +252,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             setGeneratedStoryId(storybookId);
 
             // 2. Generate Outline to get title
-            setGenerationStep("Planning story structure...");
+            setCoverGenerationStep("Planning story structure...");
             const outlineResult = await generateOutlineMutation.mutateAsync({
                 characterIds: selectedCharacterIds,
                 setting: effectiveSetting,
@@ -314,7 +271,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             setStoryTitle(outline.title);
 
             // 3. Generate cover
-            setGenerationStep("Generating cover artwork...");
+            setCoverGenerationStep("Generating cover artwork...");
             await generateAndSaveCover(storybookId);
 
             // Fetch the cover URL
@@ -354,111 +311,8 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
         }
     };
 
-    // Phase 3: After payment, generate the full book
-    const handlePostPaymentGeneration = async (storybookId: string, sessionId: string) => {
-        setError(null);
-        setGenerationStep("Verifying payment...");
-        setGenerationProgress(5);
-
-        try {
-            // Verify payment
-            const paymentResult = await verifyPayment(storybookId, sessionId);
-
-            if (!paymentResult.success || !paymentResult.paid) {
-                throw new Error(paymentResult.error || "Payment verification failed");
-            }
-
-            // Load storybook data
-            const storybook = await getStorybookWithChapters(storybookId);
-            if (!storybook) {
-                throw new Error("Could not load storybook");
-            }
-            setCoverUrl(storybook.coverUrl || null);
-            setStoryTitle(storybook.title);
-
-            // Need to regenerate outline for chapter structure
-            const effectiveSetting = (storybook.setting || "fantasy") as StorySetting;
-            const targetChapters = storybook.targetChapters || 5;
-            const themeString = storybook.theme || "Adventure";
-
-            setGenerationStep("Planning your adventure...");
-            setGenerationProgress(10);
-
-            const outlineResult = await generateOutlineMutation.mutateAsync({
-                characterIds: storybook.characterIds || [],
-                setting: effectiveSetting,
-                targetChapters,
-                theme: themeString,
-                additionalDetails: storybook.description || ""
-            });
-
-            if (!outlineResult.success || !outlineResult.outline) {
-                throw new Error(outlineResult.error || "Failed to generate outline");
-            }
-            const outline = outlineResult.outline;
-
-            // Generate chapters and illustrations
-            const totalSteps = outline.chapters.length * 2; // chapter + illustration for each
-            let completedSteps = 0;
-
-            for (const chapterOutline of outline.chapters) {
-                // Generate chapter text
-                setGenerationStep(`Writing Chapter ${chapterOutline.number}: ${chapterOutline.title}...`);
-                const chapterResult = await generateChapterMutation.mutateAsync({
-                    storybookId,
-                    chapterNumber: chapterOutline.number,
-                    title: chapterOutline.title,
-                    summary: chapterOutline.summary,
-                    sceneDescription: chapterOutline.sceneDescription
-                });
-
-                if (!chapterResult.success || !chapterResult.chapterId) {
-                    throw new Error(chapterResult.error || `Failed to generate chapter ${chapterOutline.number}`);
-                }
-                completedSteps++;
-                setGenerationProgress(10 + Math.round((completedSteps / totalSteps) * 80));
-
-                // Generate illustration
-                setGenerationStep(`Illustrating Chapter ${chapterOutline.number}...`);
-                const activeCharacters = userCharacters.filter(c =>
-                    storybook.characterIds?.includes(c.id) || selectedCharacterIds.includes(c.id)
-                );
-                const seed = Math.floor(Math.random() * 1000000);
-
-                const illustrationResult = await generateIllustrationMutation.mutateAsync({
-                    characters: activeCharacters,
-                    sceneDescription: chapterOutline.sceneDescription,
-                    artStyle: "storybook",
-                    seedNumber: seed
-                });
-
-                await saveIllustrationMutation.mutateAsync({
-                    chapterId: chapterResult.chapterId,
-                    imageUrl: illustrationResult.imageUrl,
-                    promptUsed: illustrationResult.promptUsed,
-                    seedUsed: seed
-                });
-
-                completedSteps++;
-                setGenerationProgress(10 + Math.round((completedSteps / totalSteps) * 80));
-            }
-
-            // Sync and finalize
-            setGenerationStep("Assembling your storybook...");
-            setGenerationProgress(95);
-            await syncStoryContent(storybookId);
-            await updateStorybook(storybookId, { status: "complete" });
-
-            setGenerationProgress(100);
-            setGenerationStep("Your book is ready!");
-            setStep4Phase("complete");
-
-        } catch (err) {
-            console.error("Generation error:", err);
-            setError(err instanceof Error ? err.message : "Failed to generate story");
-            setStep4Phase("cover_ready");
-        }
-    };
+    // NOTE: handlePostPaymentGeneration has been moved to StoryGenerationProvider
+    // so generation runs in the background and survives route changes.
 
     // Render Step 4 content based on phase
     const renderStep4Content = () => {
@@ -529,7 +383,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         Creating Your Cover...
                     </h2>
                     <p className="text-text-muted mb-4">
-                        {generationStep}
+                        {coverGenerationStep}
                     </p>
                     <p className="text-xs text-text-muted">
                         This usually takes about 30 seconds
@@ -622,7 +476,8 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             );
         }
 
-        // Generating phase - show progress
+        // Generating phase — should not appear anymore since we redirect,
+        // but kept as a fallback showing the background status
         if (step4Phase === "generating") {
             return (
                 <div className="text-center">
@@ -638,7 +493,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         Creating Your Storybook
                     </h2>
                     <p className="text-lg text-primary font-medium mb-6">
-                        "{storyTitle}"
+                        "{bgGeneration.storyTitle || storyTitle}"
                     </p>
 
                     {/* Progress bar */}
@@ -646,26 +501,26 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
-                                style={{ width: `${generationProgress}%` }}
+                                style={{ width: `${bgGeneration.progress}%` }}
                             />
                         </div>
                         <p className="text-sm text-text-muted text-center mt-2">
-                            {generationProgress}% complete
+                            {bgGeneration.progress}% complete
                         </p>
                     </div>
 
                     <p className="text-text-muted animate-pulse mb-8">
-                        {generationStep}
+                        {bgGeneration.currentStep}
                     </p>
 
-                    {error && (
+                    {bgGeneration.error && (
                         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm max-w-md mx-auto">
-                            {error}
+                            {bgGeneration.error}
                         </div>
                     )}
 
                     <p className="text-xs text-text-muted max-w-sm mx-auto">
-                        This usually takes 2-5 minutes. Feel free to keep this tab open!
+                        This usually takes 2-5 minutes. You can navigate away — we'll notify you when it's done!
                     </p>
                 </div>
             );
@@ -727,6 +582,47 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
     };
 
     const isStep4InProgress = step4Phase !== "preview" && step4Phase !== "complete";
+
+    // ── Guard: block new story creation while one is generating ──
+    if (bgGeneration.isGenerating) {
+        return (
+            <main className="pt-24 pb-16">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="bg-surface border border-border rounded-2xl p-8 text-center">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse" />
+                            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto">
+                                <Sparkles className="w-8 h-8 text-primary" />
+                                <Loader2 className="absolute w-20 h-20 text-primary/30 animate-spin" />
+                            </div>
+                        </div>
+                        <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
+                            Story Generation in Progress
+                        </h2>
+                        <p className="text-text-muted mb-4">
+                            {bgGeneration.storyTitle
+                                ? `"${bgGeneration.storyTitle}" is being created (${bgGeneration.progress}%)`
+                                : `A story is being generated (${bgGeneration.progress}%)`}
+                        </p>
+                        <p className="text-sm text-text-muted mb-6">
+                            {bgGeneration.currentStep}
+                        </p>
+                        <div className="w-full max-w-md mx-auto mb-6">
+                            <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500 ease-out"
+                                    style={{ width: `${bgGeneration.progress}%` }}
+                                />
+                            </div>
+                        </div>
+                        <p className="text-xs text-text-muted">
+                            You can create a new story once the current one is complete.
+                        </p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main className="pt-24 pb-16">

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Outfit, Inter, Cinzel_Decorative, Crimson_Text } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
 import { ToastProvider } from "@/providers/ToastProvider";
+import { StoryGenerationProvider } from "@/providers/StoryGenerationProvider";
+import StoryGenerationStatus from "@/app/components/story/StoryGenerationStatus";
 import CookieConsentBanner from "@/app/components/gdpr/CookieConsentBanner";
 import "./globals.css";
 
@@ -45,7 +47,12 @@ export default function RootLayout({
         className={`${outfit.variable} ${inter.variable} ${cinzel.variable} ${crimson.variable} font-sans antialiased bg-background text-foreground`}
       >
         <QueryProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <StoryGenerationProvider>
+              {children}
+              <StoryGenerationStatus />
+            </StoryGenerationProvider>
+          </ToastProvider>
           <CookieConsentBanner />
         </QueryProvider>
       </body>
