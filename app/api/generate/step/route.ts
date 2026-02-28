@@ -30,7 +30,7 @@ async function getGenerationData(supabase: any, orderId: string): Promise<any> {
 }
 
 // Ensure max Vercel timeout just in case
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Step-by-step API for book generation. By breaking the 15-minute generation
