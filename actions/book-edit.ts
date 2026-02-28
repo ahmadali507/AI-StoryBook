@@ -175,6 +175,60 @@ export async function regenerateSceneIllustration(
         return { success: false, error: "No prompt metadata found for this scene. Cannot regenerate." };
     }
 
+    // FALLBACK: If we still don't have reference images (e.g., from an older book), fetch them directly
+    if (referenceImages.length === 0) {
+        try {
+            const { data: order } = await supabase
+                .from("orders")
+                .select("id")
+                .eq("storybook_id", storybookId)
+                .single();
+
+            if (order) {
+                const { getOrderCharacters } = await import("@/actions/order");
+                const characters = await getOrderCharacters(order.id);
+                for (const c of characters) {
+                    let charImage: string | null = null;
+                    if (c.aiAvatarUrl) {
+                        try {
+                            const parsed = JSON.parse(c.aiAvatarUrl);
+                            if (Array.isArray(parsed) && parsed.length > 0) charImage = parsed[0];
+                            else if (typeof parsed === 'string') charImage = parsed;
+                        } catch {
+                            charImage = c.aiAvatarUrl;
+                        }
+                    }
+                    if (!charImage && c.photoUrl) charImage = c.photoUrl;
+                    if (charImage) referenceImages.push(charImage);
+                }
+                console.log(`[regenerateSceneIllustration] Fallback: Fetched ${referenceImages.length} reference images from DB.`);
+            }
+        } catch (err) {
+            console.error("[regenerateSceneIllustration] Failed to fetch fallback reference images:", err);
+        }
+    }
+
+    // Enhance negative prompt to prevent glittery/sparkly effects
+    const antiGlitter = "sparkles, glitter, glowing dust, overly shiny, plastic, overexposed, magic dust";
+    if (negativePrompt) {
+        if (!negativePrompt.includes("sparkles")) {
+            negativePrompt = antiGlitter + ", " + negativePrompt;
+        }
+    } else {
+        negativePrompt = antiGlitter;
+    }
+
+    // Enhance prompt for regeneration to strictly enforce character consistency
+    // We only do this if we have reference images to enforce consistency against
+    const hasReferenceImages = referenceImages && referenceImages.length > 0;
+    const consistencyDirective = hasReferenceImages
+        ? "CRITICAL INSTRUCTION: The characters in this image MUST EXACTLY match the provided reference images in every detail, especially their CLOTHING, OUTFIT, and FACIAL FEATURES. Do not change their clothes. "
+        : "";
+
+    // We prepend the directive so it has high priority in the generation model
+    const enhancedPrompt = consistencyDirective + prompt;
+
+    console.log(`[regenerateSceneIllustration] Regenerating scene ${enhancedPrompt} for storybook ${storybookId} with new prompt`);
     // 6. Generate NEW image with a new random seed (different image, same prompt)
     const newSeed = Math.floor(Math.random() * 999999) + 1;
 
@@ -183,7 +237,7 @@ export async function regenerateSceneIllustration(
     let newImageUrl: string;
     try {
         newImageUrl = await generateWithSeedream(
-            prompt,
+            enhancedPrompt,
             newSeed,
             '3:4', // Portrait for scene illustrations
             negativePrompt,

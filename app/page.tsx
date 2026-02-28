@@ -231,7 +231,7 @@ export default function Home() {
                   <div className="w-64 h-80 bg-white p-2 rounded-2xl shadow-xl transform -rotate-6 hover:rotate-0 hover:scale-105 transition-all duration-300">
                     <div className="w-full h-full relative rounded-xl overflow-hidden">
                       <Image
-                        src="/images/hero-section/hero_snow_pixar.png"
+                        src="https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/cc7995be-cfc1-46d2-a352-e586e82755a8/illustrations/1772090099104-1d48d7e1-2172-4679-a113-ee3bf91af754.webp"
                         alt="Winter Wonderland Storybook"
                         fill
                         className="object-cover"
@@ -252,13 +252,13 @@ export default function Home() {
                     <div className="w-full h-full relative rounded-xl overflow-hidden">
 
                       <Image
-                        src="/images/hero-section/hero_firefighter_pixar.png"
-                        alt="Brave Firefighter Storybook"
+                        src="https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/illustrations/1772188486960-433770d2-2084-4d36-a531-a8239467f67f.webp"
+                        alt="Brave Supergirl"
                         fill
                         className="object-cover"
                       />
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                        <p className="text-white text-xs font-bold text-center">Brave Firefighter</p>
+                        <p className="text-white text-xs font-bold text-center">Brave Supergirl</p>
                       </div>
                     </div>
                   </div>
@@ -272,13 +272,13 @@ export default function Home() {
                   <div className="w-72 h-64 bg-white p-2 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
                     <div className="w-full h-full relative rounded-xl overflow-hidden">
                       <Image
-                        src="/images/hero-section/hero_space_pixar.png"
+                        src="https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/illustrations/1772221745714-cf82faff-556e-4e74-b318-17f9fe5e055c.webp"
                         alt="Space Adventure Storybook"
                         fill
                         className="object-cover"
                       />
                       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                        <p className="text-white text-xs font-bold text-center">Space Explorer</p>
+                        <p className="text-white text-xs font-bold text-center">Magical Forest</p>
                       </div>
                     </div>
                   </div>

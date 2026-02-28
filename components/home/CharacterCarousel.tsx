@@ -8,8 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 const CHARACTERS = [
     {
         id: 1,
-        real: "/images/character-showcase/real_boy_1.png",
-        pixar: "/images/character-showcase/pixar_boy_1.png",
+        real: "https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/characters/62d5a42d-f1fc-473d-af11-0126739a4116/characters/1772263348189-nc181a716fp.jpg",
+        pixar: "https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/avatars/1772263436251-3589dabd-2e31-4942-9aa1-44c1b312fd09.webp",
         label: "Adventure Ready",
     },
     {
@@ -67,7 +67,7 @@ export default function CharacterCarousel() {
                                             src={CHARACTERS[currentIndex].real}
                                             alt="Real Photo"
                                             fill
-                                            className="object-cover"
+                                            className="object-contain"
                                         />
                                         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-slate-600 shadow-sm">
                                             Original Photo

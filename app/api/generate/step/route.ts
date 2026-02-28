@@ -24,6 +24,11 @@ async function updateGenerationData(supabase: any, orderId: string, newData: any
     }).eq('id', orderId);
 }
 
+async function getGenerationData(supabase: any, orderId: string): Promise<any> {
+    const { data: order } = await supabase.from('orders').select('generation_progress').eq('id', orderId).single();
+    return order?.generation_progress?.data || {};
+}
+
 // Ensure max Vercel timeout just in case
 export const maxDuration = 60;
 
@@ -109,9 +114,7 @@ export async function POST(req: NextRequest) {
                 });
 
                 // Save outline to order temporarily so next steps can use it
-                await supabase.from("orders").update({
-                    generation_data: { outline: storyOutline }
-                }).eq("id", orderId);
+                await updateGenerationData(supabase, orderId, { outline: storyOutline });
 
                 if (storyOutline.title && storyOutline.title !== storybook.title) {
                     await supabase.from("storybooks").update({ title: storyOutline.title }).eq("id", storybook.id);
@@ -315,8 +318,7 @@ export async function POST(req: NextRequest) {
                 };
 
                 // Append to existing images
-                const { data: order } = await supabase.from('orders').select('generation_data').eq('id', orderId).single();
-                const currentData = order?.generation_data || {};
+                const currentData = await getGenerationData(supabase, orderId);
                 const sceneImages = currentData.sceneImages || [];
                 sceneImages[sceneIndex] = result;
                 await updateGenerationData(supabase, orderId, { sceneImages });
@@ -357,11 +359,48 @@ export async function POST(req: NextRequest) {
                     pages: finalPages
                 };
 
-                // Update storybook content
-                await supabase.from("storybooks").update({
+                // Build illustration metadata for regeneration
+                // Extract from bookPages — illustration pages have illustrationPrompt, sceneSeed, negativePrompt
+                const charRefImages: string[] = [];
+                for (const c of characters) {
+                    let charImage: string | null = null;
+                    if (c.aiAvatarUrl) {
+                        try {
+                            const parsed = JSON.parse(c.aiAvatarUrl);
+                            if (Array.isArray(parsed) && parsed.length > 0) charImage = parsed[0];
+                            else if (typeof parsed === 'string') charImage = parsed;
+                        } catch {
+                            charImage = c.aiAvatarUrl;
+                        }
+                    }
+                    if (!charImage && c.photoUrl) charImage = c.photoUrl;
+                    if (charImage) charRefImages.push(charImage);
+                }
+
+                // Extract metadata from illustration pages in bookPages
+                const illustrationMetadata = bookPages
+                    .filter((p: any) => p.illustrationPrompt && p.sceneNumber)
+                    .map((p: any) => ({
+                        sceneNumber: p.sceneNumber,
+                        illustrationPrompt: p.illustrationPrompt,
+                        sceneSeed: p.sceneSeed,
+                        negativePrompt: p.negativePrompt || '',
+                        referenceImages: charRefImages
+                    }));
+
+                console.log(`[generate-step] Saving illustration_metadata with ${illustrationMetadata.length} entries and 10 regeneration credits`);
+
+                // Update storybook content WITH illustration metadata and regeneration credits
+                const { error: updateErr } = await supabase.from("storybooks").update({
                     content: bookContent,
-                    status: "complete"
+                    status: "complete",
+                    regeneration_credits: 10,
+                    illustration_metadata: illustrationMetadata
                 }).eq("id", storybook.id);
+
+                if (updateErr) {
+                    console.error(`[generate-step] Error saving storybook:`, updateErr);
+                }
 
                 // Mark order complete
                 await supabase.from("orders").update({

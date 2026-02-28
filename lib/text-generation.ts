@@ -699,41 +699,9 @@ Respond in JSON format:
         const action = charActions.find(a => a.name === char.name)?.action ||
             `in the scene with ${scene.emotionalTone} expression`;
 
-        // Create visual anchors for the character
-        const visualComponents = [];
-        // Entity type is critical for model understanding
-        visualComponents.push(`[${char.entityType.toUpperCase()}]`);
-
-        if (char.gender) visualComponents.push(char.gender);
-        if (char.age) visualComponents.push(`${char.age} years old`);
-        if (char.storyRole) visualComponents.push(`Role: ${char.storyRole}`);
-        if (char.description) visualComponents.push(`Species/Desc: ${char.description}`);
-
-        // Add specific visual descriptors if available
-        const visualDesc = characterDescriptions?.find(d => d.name === char.name)?.visualPrompt;
-        if (visualDesc) visualComponents.push(`Visual traits: ${visualDesc}`);
-
-        const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
-
-        // Strict clothing enforcement — match reference image unless custom clothing is specified
-        let clothingInstruction = "";
-        if (char.clothingStyle) {
-            clothingInstruction = `WEARING: ${char.clothingStyle}. (Keep outfit consistent across all scenes).`;
-        } else if (char.entityType === 'animal') {
-            // Critical for animals: explicit "no clothing" if none provided
-            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only. MATCH SPECIES/COLOR OF REFERENCE IMAGE EXACTLY.`;
-        } else {
-            // Default for humans: always match reference image clothing (fixes checkbox & no-clothing scenarios)
-            clothingInstruction = `WEARING: MATCH REFERENCE IMAGE EXACTLY. Same outfit colors and style as reference. DO NOT invent new clothing.`;
-        }
-
-        // EXACT TEMPLATE MATCH: 
-        // Character N (Name) — FIXED APPEARANCE (reference image N) — [Anchors]
-        // CLOTHING: [Instruction]
-        // ACTION IN THIS SCENE:
-        // [Action Text]
-        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1})${visualAnchors}\n`;
-        finalPrompt += `${clothingInstruction}\n`;
+        // The ONLY instruction for appearance should be to use the reference image exactly.
+        // No textual descriptions of appearance or clothes are allowed here.
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE AND CLOTHING (match reference image ${index + 1} EXACTLY in every detail, including all clothing, outfit, and facial features. DO NOT INVENT NEW CLOTHING OR APPEARANCE PREFERENCES.)\n`;
         finalPrompt += `ACTION IN THIS SCENE:\n`;
         finalPrompt += `${action}\n\n`;
     });
@@ -845,54 +813,21 @@ export async function generateCoverIllustrationPrompt(
         const action = charActions.find(a => a.name === char.name)?.action ||
             `Standing prominently in the center, smiling warmly, inviting pose`;
 
-        // Create visual anchors for the character
-        const visualComponents = [];
-        // Entity type is critical for model understanding
-        visualComponents.push(`[${char.entityType.toUpperCase()}]`);
-
-        if (char.gender) visualComponents.push(char.gender);
-        if (char.age) visualComponents.push(`${char.age} years old`);
-        if (char.storyRole) visualComponents.push(`Role: ${char.storyRole}`);
-        if (char.description) visualComponents.push(`Species/Desc: ${char.description}`);
-
-        // Add specific visual descriptors if available
-        const visualDesc = characterDescriptions?.find(d => d.name === char.name)?.visualPrompt;
-        if (visualDesc) visualComponents.push(`Visual traits: ${visualDesc}`);
-
-        const visualAnchors = visualComponents.length > 0 ? ` — ${visualComponents.join(', ')}` : '';
-
-        // Strict clothing enforcement - PRIORITIZE REFERENCE IMAGE
-        let clothingInstruction = "";
-
-        if (char.entityType === 'animal') {
-            // Critical for animals: explicit "no clothing" if none provided
-            clothingInstruction = `WEARING: NO CLOTHING. Natural fur/skin only. MATCH SPECIES/COLOR OF REFERENCE IMAGE EXACTLY.`;
-        } else {
-            // FORCE REFERENCE CLOTHING. 
-            // We deliberately ignore 'char.clothingStyle' here to prevent text descriptions from conflicting with the reference image.
-            // The reference image (Step 1) already has the correct clothing.
-            clothingInstruction = `WEARING: MATCH REFERENCE IMAGE EXACTLY. Same outfit colors and style as reference.`;
-        }
-
         // EXACT TEMPLATE MATCH:
-        // Character N (Name) — FIXED APPEARANCE (reference image N) — [Anchors]
-        // CLOTHING: [Instruction]
+        // Character N (Name) — FIXED APPEARANCE (reference image N) AND CLOTHING
         // ACTION IN THIS SCENE:
         // [Action Text]
-        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE (reference image ${index + 1}) — MATCH FACE, HAIR, BODY, SPECIES, COLOR EXACTLY.\n`;
-        finalPrompt += `${clothingInstruction}\n`;
+        finalPrompt += `Character ${index + 1} (${char.name}) — FIXED APPEARANCE AND CLOTHING (match reference image ${index + 1} EXACTLY in every detail, including all clothing, outfit, and facial features. DO NOT INVENT NEW CLOTHING OR APPEARANCE PREFERENCES.)\n`;
         finalPrompt += `ACTION IN THIS SCENE:\n`;
         finalPrompt += `${action}\n\n`;
     });
 
-    finalPrompt += `[SETTING & CONTEXT]\n\n`;
-    finalPrompt += `Pixar-style 3D cinematic book cover. ${setting}. \n\n`;
+    finalPrompt += `[SETTING & LIGHTING]\n\n`;
+    finalPrompt += `${setting}. \n`;
+    finalPrompt += `${lighting}\n\n`;
 
-    finalPrompt += `[COMPOSITION & LIGHTING]\n\n`;
-    finalPrompt += `${lighting}, 8k resolution, ultra-detailed textures, physically accurate global illumination. Portrait orientation.\n\n`;
-
-    finalPrompt += `[TECHNICAL SPECS]\n\n`;
-    finalPrompt += `High-quality 3D render, ultra-detailed textures, physically accurate global illumination, realistic volumetric light, cinematic camera lens, photorealistic materials, clean composition, typography, poster art.`;
+    finalPrompt += `[STYLE]\n\n`;
+    finalPrompt += `${artStyle}\n`;
 
     return finalPrompt;
 }

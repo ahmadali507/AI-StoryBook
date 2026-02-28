@@ -6,20 +6,20 @@ import { cn } from "@/lib/utils";
 
 const CAROUSEL_IMAGES = [
     {
-        src: "/hero-space.png",
-        title: "Timmy's Galactic\nSchool Adventure",
+        src: "https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/covers/1772269858494-f91b5796-e103-4066-9811-b17c23f34dcb.webp",
+        title: "",
         color: "from-indigo-100 to-white",
         shadow: "shadow-indigo-500/20"
     },
     {
-        src: "/hero-forest.png",
-        title: "Lily's Magical\nForest Tea Party",
+        src: "https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/covers/1772219774748-7aea96a7-9d6a-4e06-9bd3-b10b03d0c61c.webp",
+        title: "",
         color: "from-green-100 to-white",
         shadow: "shadow-green-500/20"
     },
     {
-        src: "/hero-dino.png",
-        title: "Max and the\nDinosaur Discovery",
+        src: "https://jhzkiwrzqpbzgtrfldup.supabase.co/storage/v1/object/public/generated-images/62d5a42d-f1fc-473d-af11-0126739a4116/covers/1772263485520-d8a8fcbb-1299-4208-9008-d32c443f02d8.webp",
+        title: "",
         color: "from-orange-100 to-white",
         shadow: "shadow-orange-500/20"
     }
