@@ -62,9 +62,15 @@ export default function SignupForm() {
     const { mutate, isPending } = useMutation({
         mutationFn: signUp,
         onSuccess: (result) => {
-            if (result.success && result.redirectTo) {
-                toast.success("Account created! Welcome to StoryMagic ✨");
-                router.push(result.redirectTo);
+            if (result.success) {
+                if (result.requiresEmailConfirmation) {
+                    toast.success("Please confirm your email to log in!", 8000);
+                    // Just stay on the page or redirect to login
+                    router.push("/auth/login");
+                } else if (result.redirectTo) {
+                    toast.success("Account created! Welcome to StoryMagic ✨");
+                    router.push(result.redirectTo);
+                }
             } else if (result.error) {
                 const friendlyMessage = getFriendlySignupErrorMessage(result.error);
                 toast.error(friendlyMessage);

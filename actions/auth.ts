@@ -8,6 +8,7 @@ export interface AuthResult {
     success: boolean;
     error?: string;
     redirectTo?: string;
+    requiresEmailConfirmation?: boolean;
 }
 
 export interface User {
@@ -34,6 +35,7 @@ export async function signUp(data: {
             data: {
                 full_name: data.name,
             },
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
         },
     });
 
@@ -41,8 +43,8 @@ export async function signUp(data: {
         return { success: false, error: error.message };
     }
 
-    revalidatePath("/", "layout");
-    return { success: true, redirectTo: "/create" };
+    // Default to requiring email confirmation
+    return { success: true, requiresEmailConfirmation: true };
 }
 
 /**
@@ -76,7 +78,7 @@ export async function signInWithGoogle(): Promise<AuthResult> {
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
         },
     });
 
@@ -114,7 +116,7 @@ export async function resetPassword(email: string): Promise<AuthResult> {
     const supabase = await createClient();
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/reset-password`,
     });
 
     if (error) {

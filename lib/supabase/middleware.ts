@@ -28,7 +28,26 @@ export async function updateSession(request: NextRequest) {
     )
 
     // Refreshing the auth token
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Protected routes logic
+    // We check if the current path is NOT an auth path or public asset
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
+    const isPublicRoute = request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/api/')
+
+    if (!user && !isAuthRoute && !isPublicRoute) {
+        // Redirect unauthenticated users to login page
+        const url = request.nextUrl.clone()
+        url.pathname = '/auth/login'
+        return NextResponse.redirect(url)
+    }
+
+    if (user && isAuthRoute) {
+        // Redirect authenticated users away from auth pages
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+    }
 
     return supabaseResponse
 }
