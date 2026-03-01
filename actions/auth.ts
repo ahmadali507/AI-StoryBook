@@ -28,7 +28,7 @@ export async function signUp(data: {
 }): Promise<AuthResult> {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -41,6 +41,11 @@ export async function signUp(data: {
 
     if (error) {
         return { success: false, error: error.message };
+    }
+
+    // Supabase returns an empty identities array if the user already exists
+    if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+        return { success: false, error: "already registered" };
     }
 
     // Default to requiring email confirmation
