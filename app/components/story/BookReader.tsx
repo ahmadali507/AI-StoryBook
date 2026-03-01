@@ -532,7 +532,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                     className="text-stone-600 min-w-[4rem] text-center font-medium"
                     style={{ fontSize: '11pt' }}
                 >
-                    {currentPage} / {totalPages - 2}
+                    {currentPage} / {totalPages - 1}
                 </span>
 
                 <button

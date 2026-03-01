@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Upload, User, Sparkles, Shirt, Smile, Plus, Trash2, Star, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { cn } from "@/lib/utils";
 import type { SimpleCharacter, Gender, EntityType } from "@/types/storybook";
+import CharacterImageCropper from "./CharacterImageCropper";
 
 interface CharacterUploadListProps {
     characters: Partial<SimpleCharacter>[];
@@ -39,6 +40,8 @@ export default function CharacterUploadList({
     uploadingIndex,
 }: CharacterUploadListProps) {
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
+    const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
+    const [croppingIndex, setCroppingIndex] = useState<number | null>(null);
 
     // Add a new character slot
     const handleAddCharacter = () => {
@@ -77,16 +80,61 @@ export default function CharacterUploadList({
         onCharactersChange(newCharacters);
     };
 
-    const handlePhotoSelect = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            try {
-                const url = await onPhotoUpload(file);
-                handleUpdate(index, "photoUrl", url);
-            } catch (error) {
-                console.error("Upload failed", error);
-            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCroppingIndex(index);
+                setSelectedImageSrc(reader.result as string);
+
+                // Clear the input value so the same file can be selected again
+                if (fileInputRefs.current[index]) {
+                    fileInputRefs.current[index]!.value = "";
+                }
+            };
+            reader.readAsDataURL(file);
         }
+    };
+
+    const handleCropComplete = async (croppedBase64: string) => {
+        if (croppingIndex === null) return;
+        const index = croppingIndex;
+
+        // Convert base64 back to file without using fetch (which can fail on large URLs)
+        const base64Data = croppedBase64.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteArrays = [];
+
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+            const slice = byteCharacters.slice(offset, offset + 512);
+
+            const byteNumbers = new Array(slice.length);
+            for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+
+            const byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+
+        const blob = new Blob(byteArrays, { type: "image/jpeg" });
+        const file = new File([blob], "cropped-image.jpg", { type: "image/jpeg" });
+
+        setSelectedImageSrc(null);
+        setCroppingIndex(null);
+
+        try {
+            const url = await onPhotoUpload(file);
+            handleUpdate(index, "photoUrl", url);
+        } catch (error) {
+            console.error("Upload failed", error);
+        }
+    };
+
+    const handleCropCancel = () => {
+        setSelectedImageSrc(null);
+        setCroppingIndex(null);
     };
 
     const removeCharacter = (index: number) => {
@@ -420,6 +468,16 @@ export default function CharacterUploadList({
                     ? "Tip: You can add more characters (friends, siblings, pets) using the button above."
                     : "Add up to 3 characters. Only completed characters will be included."}
             </p>
+
+            {/* Image Cropper Modal */}
+            {selectedImageSrc && croppingIndex !== null && (
+                <CharacterImageCropper
+                    imageSrc={selectedImageSrc}
+                    onCropComplete={handleCropComplete}
+                    onCancel={handleCropCancel}
+                    isUploading={uploadingIndex === croppingIndex}
+                />
+            )}
         </div>
     );
 }

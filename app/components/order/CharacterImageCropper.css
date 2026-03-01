@@ -1,0 +1,10 @@
+/* Add to your global css later, or keeping it modular: */
+.ReactCrop__drag-handle::after {
+    width: 12px;
+    height: 12px;
+    background-color: white;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+    border-radius: 50%;
+    margin-top: -6px;
+    margin-left: -6px;
+}

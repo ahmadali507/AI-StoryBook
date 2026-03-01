@@ -203,6 +203,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 const generationData = stateData.data || {};
 
                 // STEP 1: Outline
+                updateProgress(5, "Planning your adventure...");
                 let outline = generationData.outline;
                 if (!outline) {
                     const outlineRes = await fetch("/api/generate/step", {
@@ -217,6 +218,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 setTitle(outline.title);
 
                 // STEP 2: Scene Text Generation
+                updateProgress(15, "Writing your story...");
                 const allPreviousScenes: any[] = [];
                 const bookPages: any[] = [];
                 for (let i = 0; i < outline.scenes.length; i++) {
@@ -224,6 +226,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                     let sceneData = generationData[sceneKey];
 
                     if (!sceneData) {
+                        updateProgress(15 + Math.round((i / outline.scenes.length) * 15), `Writing Scene ${i + 1}...`);
                         const sceneRes = await fetch("/api/generate/step", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -251,6 +254,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 }
 
                 // STEP 3: Character Consistency
+                updateProgress(35, "Preparing characters...");
                 let characterDescriptions = generationData.characterDescriptions;
                 if (!characterDescriptions) {
                     const charRes = await fetch("/api/generate/step", {
@@ -264,6 +268,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 }
 
                 // STEP 4: Cover Generation
+                updateProgress(40, "Designing the cover art...");
                 let coverUrl = generationData.coverUrl;
                 if (!coverUrl) {
                     const coverRes = await fetch("/api/generate/step", {
@@ -281,11 +286,13 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 }
 
                 // STEP 5: Scene Images
+                updateProgress(50, "Illustrating your story...");
                 const existingImages = generationData.sceneImages || [];
                 for (let i = 0; i < outline.scenes.length; i++) {
                     let imgData = existingImages[i];
 
                     if (!imgData) {
+                        updateProgress(50 + Math.round((i / outline.scenes.length) * 40), `Illustrating Scene ${i + 1}...`);
                         const imgRes = await fetch("/api/generate/step", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -311,6 +318,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 }
 
                 // STEP 6: Finalize (Layout & Assembly)
+                updateProgress(95, "Assembling your storybook...");
                 // We format the bookPages array into the final structure expected by generateFullBook
                 const finalPagesMap: any[] = [];
                 bookPages.forEach((page, index) => {
@@ -362,7 +370,7 @@ export function StoryGenerationProvider({ children }: { children: ReactNode }) {
                 generationRef.current = false;
             }
         },
-        [completeGeneration, failGeneration, toast, queryClient, setTitle]
+        [completeGeneration, failGeneration, toast, queryClient, setTitle, updateProgress]
     );
 
     const startMVPGeneration = useCallback(
