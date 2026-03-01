@@ -22,7 +22,7 @@ function getBaseUrl(): string {
 
     // Hardcode production URL as requested to ensure it works in production
     if (process.env.NODE_ENV === 'production') {
-        return 'https://ai-story-book-gray.vercel.app';
+        return 'https://magicalbook.vercel.app';
     }
 
     if (process.env.VERCEL_URL) {
