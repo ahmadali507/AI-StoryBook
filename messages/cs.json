@@ -1,0 +1,498 @@
+{
+    "metadata": {
+        "title": "StoryMagic - Vytvářejte personalizované pohádkové knihy s AI",
+        "description": "Generujte jedinečné ilustrované příběhy s vaším dítětem v hlavní roli. Vytvářejte kouzelné postavy, tvořte dobrodružství a tiskněte krásné vzpomínkové knihy."
+    },
+    "nav": {
+        "createStory": "Vytvořit příběh",
+        "discover": "Objevit",
+        "pricing": "Ceník",
+        "contactUs": "Kontaktujte nás",
+        "createStoryBtn": "VYTVOŘIT PŘÍBĚH",
+        "login": "Přihlásit se",
+        "getStarted": "Začít"
+    },
+    "footer": {
+        "brandDesc": "Vytvářejte personalizované pohádkové knihy generované umělou inteligencí pro vaše děti. Navrhujte postavy, tvořte dobrodružství a tiskněte krásné vzpomínky.",
+        "product": "Produkt",
+        "company": "Společnost",
+        "features": "Funkce",
+        "pricing": "Ceník",
+        "create": "Vytvořit",
+        "about": "O nás",
+        "privacy": "Ochrana soukromí",
+        "terms": "Podmínky",
+        "copyright": "© 2026 StoryMagic. Všechna práva vyhrazena.",
+        "madeWith": "Vytvořeno s ❤️ pro rodiny všude"
+    },
+    "home": {
+        "hero": {
+            "badge": "Poháněno AI Seedream 4.5",
+            "title": "Vytvářejte kouzelné personalizované dětské pohádkové knihy",
+            "subtitle": "Posilujte čtenářské dovednosti, sebevědomí a fantazii pomocí jedinečných příběhů, kde je vaše dítě hvězdou.",
+            "cta": "Vytvořte svou pohádkovou knihu",
+            "tryFree": "Vyzkoušejte zdarma!",
+            "happyParents": "Spokojených rodičů"
+        },
+        "stats": {
+            "stories": "Vytvořených příběhů",
+            "countries": "Obsluhovaných zemí",
+            "featuredIn": "Uvedeno v"
+        },
+        "howItWorks": {
+            "title": "Začněte tvořit",
+            "subtitle": "Proměňte fantazii vašeho dítěte v krásně ilustrovanou knihu ve třech kouzelných krocích.",
+            "step1Title": "Vytvořte příběh s fantazií",
+            "step1Desc": "Jednoduše napište svůj nápad na příběh, krátký nebo podrobný – je to jen na vás! Vyberte témata jako vesmír, džungle nebo pohádky.",
+            "step2Title": "Oživte postavy",
+            "step2Desc": "Přeměňte sebe a ostatní na pohádkové hrdiny! Nahrajte svou fotku a přidejte se do dobrodružství, nebo nechte naši AI navrhnout jedinečné postavy.",
+            "step3Title": "Prožijte svůj jedinečný příběh",
+            "step3Desc": "Sledujte, jak se děje kouzlo! Vygenerujte svůj příběh, proveďte jednoduché úpravy a objednejte tištěnou kopii."
+        },
+        "hero2": {
+            "title": "Buďte",
+            "titleHighlight": "Hrdinou",
+            "titleEnd": "ve svém příběhu",
+            "desc": "Nahrajte fotku a staňte se hlavní postavou! Naše AI vás přemění na hvězdu vašeho vlastního dobrodružství – budete vypadat jako vy, ale v kouzelném novém světě.",
+            "cta": "Vytvořte svou pohádkovou knihu"
+        },
+        "characters": {
+            "title": "Vytvářejte personalizované a",
+            "titleHighlight": "Konzistentní postavy",
+            "desc": "Přizpůsobte postavy svému příběhu, nebo nechte naši AI navrhnout jedinečné. Užijte si konzistenci postav na každé stránce, která dodává hloubku a plynulost.",
+            "cta": "Začněte zdarma"
+        },
+        "printed": {
+            "title": "Vysoce kvalitní",
+            "titleHighlight": "Tištěné pohádkové knihy",
+            "desc": "Objednejte prémiovou tištěnou verzi svého příběhu jako nezapomenutelnou vzpomínku nebo thoughtful dárek.",
+            "bullet1": "Vytvořte jedinečnou tvrdě vázanou pohádkovou knihu, kterou vaše dítě bude milovat navždy.",
+            "bullet2": "24–28 stran plných úžasných ilustrací, které jejich příběh oživí.",
+            "bullet3": "Dokonalá kombinace obrázků a textu, navržená k upoutání mladých myslí.",
+            "bullet4": "Doručujeme po celém světě s flexibilními možnostmi dopravy.",
+            "bullet5": "Dokonalý dárek, který splní dětské sny a přiblíží vás sobě navzájem.",
+            "cta": "Vytvořte svou pohádkovou knihu"
+        },
+        "cta": {
+            "title": "Připraveni vyprávět svůj příběh?",
+            "desc": "Připojte se k tisícům rodičů, kteří tvoří kouzelné chvíle se svými dětmi. Začněte svůj bezplatný příběh ještě dnes.",
+            "btn": "Vytvořte svou první pohádkovou knihu"
+        }
+    },
+    "auth": {
+        "login": {
+            "pageTitle": "Vítejte zpět",
+            "pageSubtitle": "Přihlaste se a pokračujte ve své pohádkové cestě",
+            "heroTitle": "Vytvářejte kouzelné příběhy společně",
+            "heroSubtitle": "Přihlaste se a pokračujte v tvorbě nezapomenutelných pohádkových knih pro vaše nejmenší.",
+            "emailLabel": "E-mail",
+            "emailPlaceholder": "např. vase@email.cz",
+            "passwordLabel": "Heslo",
+            "forgotPassword": "Zapomněli jste heslo?",
+            "signInBtn": "Přihlásit se",
+            "signingIn": "Přihlašování...",
+            "divider": "nebo pokračujte přes",
+            "noAccount": "Nemáte účet?",
+            "signUp": "Zaregistrujte se",
+            "welcomeBack": "Vítejte zpět! 👋"
+        },
+        "signup": {
+            "pageTitle": "Vytvořit účet",
+            "pageSubtitle": "Začněte svou pohádkovou cestu ještě dnes",
+            "heroTitle": "Oživte příběhy",
+            "heroSubtitle": "Vytvářejte personalizované pohádkové knihy, které vaše děti budou milovat navždy.",
+            "nameLabel": "Celé jméno",
+            "namePlaceholder": "např. Jana Nováková",
+            "emailLabel": "E-mail",
+            "emailPlaceholder": "např. vase@email.cz",
+            "passwordLabel": "Heslo",
+            "createBtn": "Vytvořit účet",
+            "creating": "Vytváření účtu...",
+            "divider": "nebo pokračujte přes",
+            "hasAccount": "Už máte účet?",
+            "signIn": "Přihlásit se",
+            "successToast": "Účet vytvořen! Vítejte 🎉"
+        },
+        "social": {
+            "google": "Pokračovat přes Google",
+            "github": "Pokračovat přes GitHub"
+        },
+        "password": {
+            "strength": "Síla hesla",
+            "weak": "Slabé",
+            "fair": "Průměrné",
+            "good": "Dobré",
+            "strong": "Silné"
+        },
+        "errors": {
+            "invalidCredentials": "Zadaný e-mail nebo heslo je nesprávný. Zkuste to prosím znovu.",
+            "emailNotConfirmed": "Zkontrolujte prosím svůj e-mail a potvrďte účet před přihlášením.",
+            "userNotFound": "Nenašli jsme účet s tímto e-mailem. Chcete se zaregistrovat?",
+            "rateLimit": "Příliš mnoho pokusů. Počkejte chvíli a zkuste to znovu.",
+            "network": "Problém s připojením. Zkontrolujte internet a zkuste to znovu.",
+            "generic": "Něco se pokazilo. Zkuste to prosím znovu."
+        }
+    },
+    "profile": {
+        "dropdown": {
+            "accountSettings": "Nastavení účtu",
+            "logout": "Odhlásit se",
+            "loggingOut": "Odhlašování..."
+        },
+        "form": {
+            "title": "Upravit profil",
+            "displayName": "Zobrazované jméno",
+            "displayNamePlaceholder": "Vaše jméno",
+            "email": "E-mail",
+            "bio": "O mně",
+            "bioPlaceholder": "Řekněte nám něco o sobě...",
+            "avatar": "Profilová fotka",
+            "changeAvatar": "Změnit fotku",
+            "saveChanges": "Uložit změny",
+            "saving": "Ukládání...",
+            "savedSuccess": "Profil aktualizován!",
+            "cancel": "Zrušit"
+        },
+        "settings": {
+            "title": "Nastavení účtu",
+            "subtitleOwner": "Spravujte své osobní údaje a předvolby",
+            "subtitleGuest": "Prohlížení profilu uživatele {name}",
+            "yourName": "Vaše jméno",
+            "memberSince": "Členem od {date}",
+            "editPhoto": "Upravit fotku",
+            "changePhoto": "Změnit profilovou fotku",
+            "stats": {
+                "stories": "Příběhy",
+                "characters": "Postavy",
+                "orders": "Objednávky"
+            },
+            "personalInfo": "Osobní údaje",
+            "fullName": "Celé jméno",
+            "fullNamePlaceholder": "Vaše celé jméno",
+            "emailAddress": "E-mailová adresa",
+            "subscription": "Předplatné",
+            "artStyle": "Preferovaný umělecký styl",
+            "artStyleOptions": {
+                "none": "Bez preference",
+                "whimsical": "Rozmarný a akvarelový",
+                "classic": "Klasická ilustrace",
+                "modern": "Moderní digitální",
+                "comic": "Komiks",
+                "pastel": "Pastelový a zasněný",
+                "bold": "Výrazný a grafický"
+            },
+            "preferences": "Předvolby",
+            "emailNotifs": "E-mailová upozornění",
+            "emailNotifsDesc": "Dostávejte aktualizace o vašich příbězích a nových funkcích",
+            "language": "Předvolba jazyka",
+            "languageDesc": "Vyberte si preferovaný jazyk pro rozhraní",
+            "lastUpdated": "Naposledy uloženo {date}",
+            "saveChanges": "Uložit změny",
+            "saving": "Ukládání…",
+            "savedSuccess": "Změny byly úspěšně uloženy",
+            "dangerZone": "Nebezpečná zóna",
+            "dangerDesc": "Jakmile smažete svůj účet, není cesty zpět. Všechny vaše příběhy, postavy, objednávky a osobní údaje budou trvale smazány.",
+            "deleteAccount": "Smazat účet",
+            "deleteTitle": "Smazat účet",
+            "deleteWarning": "Tato akce je <bold>trvalá a nevratná</bold>. Napište <deleteCode>DELETE</deleteCode> pro potvrzení.",
+            "deletePlaceholder": "Napište DELETE pro potvrzení",
+            "cancel": "Zrušit",
+            "deleting": "Mazání…"
+        }
+    },
+    "cookie": {
+        "title": "Vážíme si vašeho soukromí",
+        "body": "Používáme cookies, aby web správně fungoval. S vaším souhlasem bychom také rádi používali volitelné analytické cookies, abychom pochopili, jak náš web používáte, a mohli ho zlepšovat.",
+        "privacyPolicy": "Zásady ochrany osobních údajů",
+        "managePrefs": "Spravovat předvolby",
+        "rejectAll": "Odmítnout vše",
+        "savePrefs": "Uložit předvolby",
+        "acceptAll": "Přijmout vše",
+        "essential": "Nezbytné",
+        "essentialDesc": "Potřebné pro přihlášení a základní funkce. Vždy aktivní.",
+        "alwaysOn": "Vždy zapnuto",
+        "analytics": "Analytické",
+        "analyticsDesc": "Pomáhá nám pochopit, jak návštěvníci používají web, abychom ho mohli zlepšovat.",
+        "marketing": "Marketingové",
+        "marketingDesc": "Umožňuje nám zobrazovat relevantní reklamy na jiných platformách.",
+        "gdprNote": "V souladu s GDPR · Vaše volba je uložena pouze ve vašem prohlížeči"
+    },
+    "story": {
+        "steps": {
+            "basics": "Základy",
+            "characters": "Postavy",
+            "themes": "Témata",
+            "generate": "Generovat"
+        },
+        "settings": {
+            "forest": "Kouzelný les",
+            "castle": "Hradní království",
+            "ocean": "Pod vodou",
+            "space": "Vesmír",
+            "home": "Útulný domov",
+            "mountain": "Horské dobrodružství",
+            "custom": "Vytvořte vlastní"
+        },
+        "themes": {
+            "friendship": "Přátelství",
+            "courage": "Odvaha",
+            "kindness": "Laskavost",
+            "discovery": "Objevování",
+            "family": "Rodina",
+            "magic": "Kouzlo",
+            "adventure": "Dobrodružství",
+            "learning": "Učení"
+        },
+        "lengths": {
+            "shortName": "Krátký",
+            "shortPages": "8–10 stránek",
+            "shortDuration": "5 min čtení",
+            "mediumName": "Střední",
+            "mediumPages": "12–15 stránek",
+            "mediumDuration": "10 min čtení",
+            "longName": "Dlouhý",
+            "longPages": "18–20 stránek",
+            "longDuration": "15 min čtení"
+        },
+        "generation": {
+            "msg1": "Plánování vašeho dobrodružství...",
+            "msg2": "Tvoření osnovy příběhu...",
+            "msg3": "Psaní obsahu kapitol...",
+            "msg4": "Vytváření kouzelných ilustrací...",
+            "msg5": "Přidávání posledních úprav...",
+            "msg6": "Sestavování vaší pohádkové knihy..."
+        },
+        "step1": {
+            "heading": "Základy příběhu",
+            "subheading": "Připravte scénu pro vaše dobrodružství",
+            "chooseSetting": "Vyberte prostředí",
+            "customSettingLabel": "Popište vaše prostředí",
+            "customSettingPlaceholder": "např. Plovoucí město v oblacích postavené z cukroví...",
+            "descriptionLabel": "Co se stane v příběhu? (Nepovinné)",
+            "descriptionPlaceholder": "např. Hrdina najde ztraceného štěňátka a snaží se najít jeho domov...",
+            "lengthLabel": "Délka příběhu"
+        },
+        "step2": {
+            "heading": "Vyberte postavy",
+            "subheading": "Zvolte, kdo bude v tomto příběhu",
+            "noCharacters": "Zatím žádné postavy",
+            "noCharactersDesc": "Vytvořte postavy a přidejte je do svých příběhů.",
+            "createBookBtn": "Vytvořit knihu",
+            "createNew": "Vytvořit novou"
+        },
+        "step3": {
+            "heading": "Vyberte témata",
+            "subheading": "Vyberte až 2 témata pro váš příběh",
+            "customThemePlaceholder": "Přidat vlastní téma...",
+            "addTheme": "Přidat",
+            "maxThemes": "Vybráno max. 2 témata"
+        },
+        "step4": {
+            "previewHeading": "Náhled obálky",
+            "previewDesc": "Nejprve vytvoříme krásnou obálku pro váš příběh",
+            "settingLabel": "Prostředí",
+            "themesLabel": "Témata",
+            "lengthLabel": "Délka",
+            "noneSelected": "Nic nevybráno",
+            "customSetting": "Vlastní prostředí",
+            "generateCoverBtn": "Vygenerovat náhled obálky",
+            "generatingHeading": "Vytváření vaší obálky...",
+            "generatingNote": "Obvykle to trvá přibližně 30 sekund",
+            "coverCreatingStepStart": "Vytváření pohádkové knihy...",
+            "coverCreatingStepOutline": "Plánování struktury příběhu...",
+            "coverCreatingStepArt": "Generování ilustrace obálky...",
+            "readyHeading": "Vaše obálka je připravena!",
+            "whatsIncluded": "Co je zahrnuto:",
+            "include1": "Plně ilustrovaná pohádková kniha",
+            "include2": "Vlastní ilustrace generované AI",
+            "include3": "Personalizovaný příběh s vašimi postavami",
+            "include4": "Okamžitý digitální přístup",
+            "payBtn": "$7.99 – Vygenerovat mou knihu",
+            "redirecting": "Přesměrování k pokladně...",
+            "secureCheckout": "Bezpečná platba přes Stripe",
+            "completeHeading": "Vaše kniha je připravena!",
+            "readStory": "Číst příběh",
+            "createAnother": "Vytvořit další"
+        },
+        "busy": {
+            "heading": "Generování příběhu probíhá",
+            "beingCreated": "se vytváří",
+            "aStory": "Příběh se generuje",
+            "wait": "Jakmile bude aktuální příběh dokončen, můžete vytvořit nový."
+        },
+        "breadcrumb": {
+            "home": "Domů",
+            "generator": "Generátor příběhů"
+        }
+    },
+    "reader": {
+        "storybook": "Pohádková kniha",
+        "noIllustration": "Bez ilustrace",
+        "personalizedEdition": "Personalizované vydání",
+        "theEnd": "Konec",
+        "thanks": "Děkujeme za čtení!",
+        "createdWith": "Vytvořeno s AI pohádkovou knihou",
+        "bookCover": "Obálka knihy",
+        "prevPage": "Předchozí stránka",
+        "nextPage": "Další stránka",
+        "editBook": "Upravit knihu",
+        "exportPDF": "Exportovat PDF",
+        "preparing": "Připravování...",
+        "credit": "kredit",
+        "credits": "kreditů",
+        "pdfFailed": "Generování PDF selhalo. Zkuste to prosím znovu.",
+        "regenMsg": "Znovu generuji ilustraci...",
+        "regenNote": "Může to chvíli trvat",
+        "regenerate": "Znovu vygenerovat",
+        "regenBtnTitle": "Znovu vygenerovat ilustraci (1 kredit)",
+        "cancel": "Zrušit",
+        "regenConfirmText": "Tím spotřebujete 1 kredit. Máte zbývajících {credits} kreditů.",
+        "regen": {
+            "title": "Znovu vygenerovat obrázek?",
+            "body": "Tím spotřebujete {credits} kredit na vygenerování nové ilustrace pro tuto scénu.",
+            "remaining": "Máte zbývajících {count} {label}.",
+            "cancel": "Zrušit",
+            "regenerate": "Znovu vygenerovat",
+            "regenerating": "Znovu generuji ilustraci...",
+            "takesAMinute": "Může to chvíli trvat",
+            "tooltip": "Znovu vygenerovat ilustraci (1 kredit)",
+            "failed": "Regenerace obrázku selhala. Zkuste to prosím znovu."
+        }
+    },
+    "order": {
+        "steps": {
+            "characters": "Postavy",
+            "charactersDesc": "Přidejte své hvězdy",
+            "details": "Detaily příběhu",
+            "detailsDesc": "Téma a styl",
+            "review": "Přehled",
+            "reviewDesc": "Připraveno k tisku"
+        },
+        "step1": {
+            "heading": "Pro koho je tento příběh?",
+            "subheading": "Nahrajte fotku a proměňte je v postavu.",
+            "resetForm": "Resetovat formulář",
+            "confirmReset": "Opravdu chcete smazat všechna data a začít znovu?"
+        },
+        "step2": {
+            "heading": "Vytvořte svůj svět",
+            "subheading": "Vyberte dokonalé téma a styl pro vaše dobrodružství."
+        },
+        "step3": {
+            "heading": "Vaše obálka knihy je připravena!",
+            "subheading": "Toto je pouze náhled. Celý příběh bude kouzelně vygenerován po nákupu.",
+            "orderSummary": "Souhrn objednávky",
+            "characters": "Postavy",
+            "ageGroup": "Věková skupina",
+            "theme": "Téma",
+            "total": "Celkem",
+            "coverPreview": "Náhled obálky",
+            "payBtn": "Zaplatit $7.99 a vygenerovat knihu",
+            "redirecting": "Přesměrování...",
+            "secureCheckout": "Bezpečná platba přes Stripe",
+            "coverToast": "Vaše obálka knihy vypadá úžasně! 🎨"
+        },
+        "nav": {
+            "back": "Zpět",
+            "nextStep": "Další krok",
+            "generateCover": "Vygenerovat obálku",
+            "processing": "Zpracovávám..."
+        },
+        "errors": {
+            "photo": "Nastal problém s vaší fotkou. Zkuste ji nahrát znovu.",
+            "cover": "Obálku se nepodařilo vytvořit. Zkuste to prosím za chvíli.",
+            "checkout": "Nastala chyba při platbě. Zkuste to prosím znovu.",
+            "network": "Problém s připojením. Zkontrolujte internet a zkuste to znovu.",
+            "generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+            "goBack": "Jít zpět"
+        },
+        "settings": {
+            "ageRangeLabel": "Věkové rozmezí",
+            "themeLabel": "Téma příběhu",
+            "artStyleLabel": "Styl výtvarného zpracování",
+            "subjectLabel": "Námět příběhu",
+            "titleLabel": "Název knihy (nepovinné)",
+            "titlePlaceholder": "Zadejte název knihy...",
+            "descLabel": "Popis příběhu (nepovinné)",
+            "descPlaceholder": "Popište, o čem by měl příběh být..."
+        },
+        "character": {
+            "nameLabel": "Jméno postavy",
+            "namePlaceholder": "Zadejte jméno...",
+            "uploadPhoto": "Nahrát fotku",
+            "changePhoto": "Změnit fotku",
+            "genderLabel": "Pohlaví",
+            "entityTypeLabel": "Typ postavy",
+            "roleLabel": "Role",
+            "addCharacter": "Přidat postavu",
+            "removeCharacter": "Odebrat",
+            "main": "Hlavní postava",
+            "supporting": "Vedlejší postava"
+        }
+    },
+    "library": {
+        "title": "Moje knihovna",
+        "subtitle": "Vaše vytvořené pohádkové knihy",
+        "emptyHeading": "Zatím žádné příběhy",
+        "emptyDesc": "Začněte vytvářet svou první personalizovanou pohádkovou knihu!",
+        "createCta": "Vytvořte svůj první příběh",
+        "readBtn": "Číst",
+        "editBtn": "Upravit"
+    },
+    "orders": {
+        "title": "Moje objednávky",
+        "subtitle": "Sledujte své objednávky knih",
+        "emptyHeading": "Zatím žádné objednávky",
+        "emptyDesc": "Vytvořte svou první tištěnou pohádkovou knihu!",
+        "createCta": "Vytvořit knihu",
+        "status": {
+            "pending": "Čekající",
+            "generating": "Generování",
+            "complete": "Dokončeno",
+            "failed": "Selhalo",
+            "processing": "Zpracovávám"
+        }
+    },
+    "status": {
+        "creating": "Vytváření \"{title}\"",
+        "generating": "Generování příběhu...",
+        "complete": "procent dokončeno",
+        "bookReady": "Kniha je připravena!",
+        "readNow": "Číst nyní →",
+        "failed": "Generování selhalo",
+        "browsing": "Můžete pokračovat v prohlížení — upozorníme vás, až bude hotovo."
+    },
+    "common": {
+        "loading": "Načítání...",
+        "error": "Něco se pokazilo",
+        "retry": "Zkusit znovu",
+        "cancel": "Zrušit",
+        "save": "Uložit",
+        "edit": "Upravit",
+        "delete": "Smazat",
+        "confirm": "Potvrdit",
+        "close": "Zavřít",
+        "back": "Zpět",
+        "next": "Další",
+        "previous": "Předchozí",
+        "continue": "Pokračovat",
+        "submit": "Odeslat",
+        "required": "Povinné",
+        "optional": "(Nepovinné)"
+    },
+    "validation": {
+        "emailRequired": "E-mail je povinný",
+        "emailInvalid": "Zadejte prosím platnou e-mailovou adresu",
+        "passwordRequired": "Heslo je povinné",
+        "passwordMin": "Heslo musí mít alespoň 8 znaků",
+        "nameRequired": "Jméno je povinné",
+        "nameMin": "Jméno musí mít alespoň 2 znaky",
+        "fieldRequired": "Toto pole je povinné"
+    },
+    "popup": {
+        "title": "Vyberte jazyk",
+        "description": "Vyberte si prosím preferovaný jazyk.",
+        "english": "Continue in English",
+        "czech": "Pokračovat v češtině"
+    }
+}

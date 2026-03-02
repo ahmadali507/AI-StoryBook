@@ -8,6 +8,7 @@ import { regenerateSceneIllustration } from "@/actions/book-edit";
 import { pdf } from "@react-pdf/renderer";
 import { StoryPDF } from "./PDFExport";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 interface BookReaderProps {
     story: PageBasedStory;
@@ -130,8 +131,8 @@ const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-20">
                             <div className="flex flex-col items-center gap-3 p-6 bg-white/90 rounded-2xl shadow-lg border border-sky-100">
                                 <Loader2 className="w-8 h-8 animate-spin text-sky-600" />
-                                <p className="text-sm font-medium text-slate-700">Regenerating illustration...</p>
-                                <p className="text-xs text-slate-400">This may take a minute</p>
+                                <p className="text-sm font-medium text-slate-700">{props.regenMsg || "Regenerating illustration..."}</p>
+                                <p className="text-xs text-slate-400">{props.regenNote || "This may take a minute"}</p>
                             </div>
                         </div>
                     )}
@@ -149,8 +150,9 @@ const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
                                     <h3 className="font-semibold text-slate-900 text-sm">Regenerate Image?</h3>
                                 </div>
                                 <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-                                    This will use <strong>1 credit</strong> to generate a new illustration for this scene.
-                                    You have <strong>{props.credits ?? 0} credit{(props.credits ?? 0) !== 1 ? 's' : ''}</strong> remaining.
+                                    {props.regenConfirmText
+                                        ? props.regenConfirmText(props.credits ?? 0)
+                                        : `This will use 1 credit. You have ${props.credits ?? 0} credit${(props.credits ?? 0) !== 1 ? 's' : ''} remaining.`}
                                 </p>
                                 <div className="flex gap-2">
                                     <button
@@ -158,14 +160,14 @@ const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="flex-1 px-3 py-2 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
                                     >
-                                        Cancel
+                                        {props.cancelLabel || "Cancel"}
                                     </button>
                                     <button
                                         onClick={handleConfirmRegenerate}
                                         onMouseDown={(e) => e.stopPropagation()}
                                         className="flex-1 px-3 py-2 rounded-lg text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 transition-colors"
                                     >
-                                        Regenerate
+                                        {props.regenLabel || "Regenerate"}
                                     </button>
                                 </div>
                             </div>
@@ -178,16 +180,16 @@ const IllustrationPage = forwardRef<HTMLDivElement, any>((props, ref) => {
                             onClick={handleRegenerate}
                             onMouseDown={(e) => e.stopPropagation()}
                             className="absolute top-3 right-3 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/90 shadow-md border border-slate-200 text-slate-600 hover:text-sky-600 hover:border-sky-300 hover:shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 text-xs font-medium"
-                            title="Regenerate illustration (1 credit)"
+                            title={props.regenBtnTitle || "Regenerate illustration"}
                         >
                             <RefreshCw className="w-3.5 h-3.5" />
-                            Regenerate
+                            {props.regenLabel || "Regenerate"}
                         </button>
                     )}
                 </>
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-slate-300 bg-slate-50">
-                    <span className="text-xs uppercase tracking-widest">No Illustration</span>
+                    <span className="text-xs uppercase tracking-widest">{props.noIllustrationLabel || "No Illustration"}</span>
                 </div>
             )}
 
@@ -262,7 +264,7 @@ const Cover = forwardRef<HTMLDivElement, any>((props, ref) => {
                     )}
                     <div className="mt-auto">
                         <p className="text-[10px] uppercase tracking-[0.2em] text-sky-400 font-bold drop-shadow-sm">
-                            Personalized Edition
+                            {props.personalizedEditionLabel || "Personalized Edition"}
                         </p>
                     </div>
                 </div>
@@ -279,9 +281,9 @@ const EndPage = forwardRef<HTMLDivElement, any>((props, ref) => {
             <div className="h-full flex flex-col items-center justify-center text-center">
                 <div className="w-12 h-1 bg-sky-500 mb-8"></div>
                 <h2 className="font-serif text-4xl font-bold text-slate-900 mb-4">
-                    The End
+                    {props.theEndLabel || "The End"}
                 </h2>
-                <p className="text-slate-500 text-sm">Thank you for reading!</p>
+                <p className="text-slate-500 text-sm">{props.thanksLabel || "Thank you for reading!"}</p>
             </div>
         </Page>
     );
@@ -307,7 +309,7 @@ const BackCover = forwardRef<HTMLDivElement, any>((props, ref) => {
                 ) : null}
                 <div className="mt-auto mb-8">
                     <p className="font-sans text-sky-200 text-sm opacity-75">
-                        Created with AI Storybook
+                        {props.createdWithLabel || "Created with AI Storybook"}
                     </p>
                 </div>
             </div>
@@ -322,6 +324,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
     const [totalPages, setTotalPages] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const t = useTranslations("reader");
 
     // Mutable story data for live image regen updates
     const [livePages, setLivePages] = useState<BookPage[]>(story.pages);
@@ -390,6 +393,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                             title={story.title}
                             author={story.author}
                             coverUrl={page.illustrationUrl || story.coverImageUrl}
+                            personalizedEditionLabel={t("personalizedEdition")}
                         />
                     );
                     break;
@@ -428,6 +432,15 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                                 pageNumber={page.pageNumber}
                                 credits={credits}
                                 onImageRegenerated={handleImageRegenerated}
+                                regenMsg={t("regenMsg")}
+                                regenNote={t("regenNote")}
+                                regenLabel={t("regenerate")}
+                                regenBtnTitle={t("regenBtnTitle")}
+                                cancelLabel={t("cancel")}
+                                noIllustrationLabel={t("noIllustration")}
+                                regenConfirmText={(credits: number) =>
+                                    t("regenConfirmText", { credits })
+                                }
                             />
                         );
                     } else if (page.text) {
@@ -448,6 +461,8 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                             key={`page-${index}`}
                             number={displayPageNumber++}
                             runningHeader={story.title}
+                            theEndLabel={t("theEnd")}
+                            thanksLabel={t("thanks")}
                         />
                     );
                     break;
@@ -457,6 +472,7 @@ export default function BookReader({ story, onPageChange }: BookReaderProps) {
                         <BackCover
                             key={`page-${index}`}
                             text={page.text}
+                            createdWithLabel={t("createdWith")}
                         />
                     );
                     break;

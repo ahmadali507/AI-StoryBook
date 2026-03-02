@@ -1,0 +1,498 @@
+{
+    "metadata": {
+        "title": "StoryMagic - Create Personalized Storybooks with AI",
+        "description": "Generate unique, illustrated stories starring your child. Create magical characters, craft adventures, and print beautiful keepsake books."
+    },
+    "nav": {
+        "createStory": "Create Story",
+        "discover": "Discover",
+        "pricing": "Pricing",
+        "contactUs": "Contact Us",
+        "createStoryBtn": "CREATE STORY",
+        "login": "Login",
+        "getStarted": "Get Started"
+    },
+    "footer": {
+        "brandDesc": "Create personalized AI-generated storybooks for your children. Design characters, craft adventures, and print beautiful keepsakes.",
+        "product": "Product",
+        "company": "Company",
+        "features": "Features",
+        "pricing": "Pricing",
+        "create": "Create",
+        "about": "About",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "copyright": "© 2026 StoryMagic. All rights reserved.",
+        "madeWith": "Made with ❤️ for families everywhere"
+    },
+    "home": {
+        "hero": {
+            "badge": "Running on Seedream 4.5 AI",
+            "title": "Create magical personalized children Storybooks",
+            "subtitle": "Empower reading skills, confidence, and imagination with one-of-a-kind stories where your child is the star.",
+            "cta": "Create your Storybook",
+            "tryFree": "Try it for Free!",
+            "happyParents": "Happy Parents"
+        },
+        "stats": {
+            "stories": "Stories Created",
+            "countries": "Countries Served",
+            "featuredIn": "Featured In"
+        },
+        "howItWorks": {
+            "title": "Start Creating",
+            "subtitle": "Turn your child's imagination into a beautifully illustrated book in just three magical steps.",
+            "step1Title": "Craft your story with imagination",
+            "step1Desc": "Simply write your story idea, short or detailed, it's up to you! Choose themes like Space, Jungle or Fairy Tales.",
+            "step2Title": "Bring Characters to Life",
+            "step2Desc": "Transform yourself and others into storybook heroes! Upload your photo to join the adventure, or let our AI design unique characters for you.",
+            "step3Title": "Experience your unique story",
+            "step3Desc": "Watch the magic happen! Generate your story and make simple edits to perfect it before ordering your printed copy."
+        },
+        "hero2": {
+            "title": "Be the",
+            "titleHighlight": "Hero",
+            "titleEnd": "in Your Story",
+            "desc": "Upload a photo and become the central character! Our AI transforms you into the star of your very own adventure, ensuring you look like yourself, but in a magical new world.",
+            "cta": "Create your Storybook"
+        },
+        "characters": {
+            "title": "Create Personalised and",
+            "titleHighlight": "Consistent Characters",
+            "desc": "Customise characters to fit your story, or let our AI design unique ones for you. Enjoy character consistency throughout, bringing depth and continuity to each page.",
+            "cta": "Get Started For Free"
+        },
+        "printed": {
+            "title": "High-Quality",
+            "titleHighlight": "Printed Storybooks",
+            "desc": "Order a premium printed version of your story to create a memorable keepsake or thoughtful gift.",
+            "bullet1": "Create a one-of-a-kind hardcover storybook your child will treasure forever.",
+            "bullet2": "24-28 pages filled with stunning illustrations that bring their story to life.",
+            "bullet3": "A perfect blend of pictures and text, crafted to captivate young imaginations.",
+            "bullet4": "Delivered globally, with flexible shipping options to suit your needs.",
+            "bullet5": "The perfect gift to make your child's dreams come true and keep them close to your heart.",
+            "cta": "Create your Storybook"
+        },
+        "cta": {
+            "title": "Ready to tell your story?",
+            "desc": "Join thousands of parents creating magical moments with their children. Start your free story today.",
+            "btn": "Create Your First Storybook"
+        }
+    },
+    "auth": {
+        "login": {
+            "pageTitle": "Welcome Back",
+            "pageSubtitle": "Sign in to continue your storytelling journey",
+            "heroTitle": "Create Magical<br />Stories Together",
+            "heroSubtitle": "Sign in to continue crafting unforgettable storybooks for your little ones.",
+            "emailLabel": "Email",
+            "emailPlaceholder": "e.g., your@email.com",
+            "passwordLabel": "Password",
+            "forgotPassword": "Forgot password?",
+            "signInBtn": "Sign In",
+            "signingIn": "Signing in...",
+            "divider": "or continue with",
+            "noAccount": "Don't have an account?",
+            "signUp": "Sign up",
+            "welcomeBack": "Welcome back! 👋"
+        },
+        "signup": {
+            "pageTitle": "Create Account",
+            "pageSubtitle": "Start your storytelling journey today",
+            "heroTitle": "Bring Stories to Life",
+            "heroSubtitle": "Create personalized storybooks your children will cherish forever.",
+            "nameLabel": "Full Name",
+            "namePlaceholder": "e.g., Jane Smith",
+            "emailLabel": "Email",
+            "emailPlaceholder": "e.g., your@email.com",
+            "passwordLabel": "Password",
+            "createBtn": "Create Account",
+            "creating": "Creating account...",
+            "divider": "or continue with",
+            "hasAccount": "Already have an account?",
+            "signIn": "Sign in",
+            "successToast": "Account created! Welcome 🎉"
+        },
+        "social": {
+            "google": "Continue with Google",
+            "github": "Continue with GitHub"
+        },
+        "password": {
+            "strength": "Password strength",
+            "weak": "Weak",
+            "fair": "Fair",
+            "good": "Good",
+            "strong": "Strong"
+        },
+        "errors": {
+            "invalidCredentials": "The email or password you entered is incorrect. Please try again.",
+            "emailNotConfirmed": "Please check your email and confirm your account before signing in.",
+            "userNotFound": "We couldn't find an account with that email. Would you like to sign up?",
+            "rateLimit": "Too many attempts. Please wait a moment and try again.",
+            "network": "Connection issue. Please check your internet and try again.",
+            "generic": "Something went wrong. Please try again."
+        }
+    },
+    "profile": {
+        "dropdown": {
+            "accountSettings": "Account Settings",
+            "logout": "Logout",
+            "loggingOut": "Logging out..."
+        },
+        "form": {
+            "title": "Edit Profile",
+            "displayName": "Display Name",
+            "displayNamePlaceholder": "Your name",
+            "email": "Email",
+            "bio": "Bio",
+            "bioPlaceholder": "Tell us about yourself...",
+            "avatar": "Profile Photo",
+            "changeAvatar": "Change Photo",
+            "saveChanges": "Save Changes",
+            "saving": "Saving...",
+            "savedSuccess": "Profile updated!",
+            "cancel": "Cancel"
+        },
+        "settings": {
+            "title": "Account Settings",
+            "subtitleOwner": "Manage your personal information and preferences",
+            "subtitleGuest": "Viewing {name}'s profile",
+            "yourName": "Your Name",
+            "memberSince": "Member since {date}",
+            "editPhoto": "Edit Photo",
+            "changePhoto": "Change profile photo",
+            "stats": {
+                "stories": "Stories",
+                "characters": "Characters",
+                "orders": "Orders"
+            },
+            "personalInfo": "Personal Information",
+            "fullName": "Full Name",
+            "fullNamePlaceholder": "Your full name",
+            "emailAddress": "Email Address",
+            "subscription": "Subscription",
+            "artStyle": "Preferred Art Style",
+            "artStyleOptions": {
+                "none": "No preference",
+                "whimsical": "Whimsical & Watercolor",
+                "classic": "Classic Illustration",
+                "modern": "Modern Digital",
+                "comic": "Comic Book",
+                "pastel": "Pastel & Dreamy",
+                "bold": "Bold & Graphic"
+            },
+            "preferences": "Preferences",
+            "emailNotifs": "Email Notifications",
+            "emailNotifsDesc": "Receive updates about your stories and new features",
+            "language": "Language Preference",
+            "languageDesc": "Choose your preferred language for the interface",
+            "lastUpdated": "Last updated {date}",
+            "saveChanges": "Save Changes",
+            "saving": "Saving…",
+            "savedSuccess": "Changes saved successfully",
+            "dangerZone": "Danger Zone",
+            "dangerDesc": "Once you delete your account, there is no going back. All your storybooks, characters, orders, and personal data will be permanently removed.",
+            "deleteAccount": "Delete Your Account",
+            "deleteTitle": "Delete Account",
+            "deleteWarning": "This action is <bold>permanent and irreversible</bold>. Type <deleteCode>DELETE</deleteCode> to confirm.",
+            "deletePlaceholder": "Type DELETE to confirm",
+            "cancel": "Cancel",
+            "deleting": "Deleting…"
+        }
+    },
+    "cookie": {
+        "title": "We value your privacy",
+        "body": "We use cookies to keep the site working. With your permission, we'd also like to use optional analytics cookies to understand how you use our site and improve it.",
+        "privacyPolicy": "Privacy Policy",
+        "managePrefs": "Manage preferences",
+        "rejectAll": "Reject all",
+        "savePrefs": "Save preferences",
+        "acceptAll": "Accept all",
+        "essential": "Essential",
+        "essentialDesc": "Required for login and core functionality. Always active.",
+        "alwaysOn": "Always on",
+        "analytics": "Analytics",
+        "analyticsDesc": "Helps us understand how visitors use the site so we can improve it.",
+        "marketing": "Marketing",
+        "marketingDesc": "Allows us to show you relevant ads on other platforms.",
+        "gdprNote": "GDPR compliant · Your choice is saved in your browser only"
+    },
+    "story": {
+        "steps": {
+            "basics": "Basics",
+            "characters": "Characters",
+            "themes": "Themes",
+            "generate": "Generate"
+        },
+        "settings": {
+            "forest": "Enchanted Forest",
+            "castle": "Castle Kingdom",
+            "ocean": "Under the Sea",
+            "space": "Outer Space",
+            "home": "Cozy Home",
+            "mountain": "Mountain Adventure",
+            "custom": "Create Your Own"
+        },
+        "themes": {
+            "friendship": "Friendship",
+            "courage": "Courage",
+            "kindness": "Kindness",
+            "discovery": "Discovery",
+            "family": "Family",
+            "magic": "Magic",
+            "adventure": "Adventure",
+            "learning": "Learning"
+        },
+        "lengths": {
+            "shortName": "Short",
+            "shortPages": "8-10 pages",
+            "shortDuration": "5 min read",
+            "mediumName": "Medium",
+            "mediumPages": "12-15 pages",
+            "mediumDuration": "10 min read",
+            "longName": "Long",
+            "longPages": "18-20 pages",
+            "longDuration": "15 min read"
+        },
+        "generation": {
+            "msg1": "Planning your adventure...",
+            "msg2": "Crafting the story outline...",
+            "msg3": "Writing chapter content...",
+            "msg4": "Creating magical illustrations...",
+            "msg5": "Adding finishing touches...",
+            "msg6": "Assembling your storybook..."
+        },
+        "step1": {
+            "heading": "Story Basics",
+            "subheading": "Set the stage for your adventure",
+            "chooseSetting": "Choose a Setting",
+            "customSettingLabel": "Describe your setting",
+            "customSettingPlaceholder": "e.g., A floating city in the clouds made of candy...",
+            "descriptionLabel": "What happens in the story? (Optional)",
+            "descriptionPlaceholder": "e.g., The hero finds a lost puppy and tries to find its home...",
+            "lengthLabel": "Story Length"
+        },
+        "step2": {
+            "heading": "Choose Characters",
+            "subheading": "Select who will be in this story",
+            "noCharacters": "No characters yet",
+            "noCharactersDesc": "Create characters to add them to your stories.",
+            "createBookBtn": "Create Book",
+            "createNew": "Create New"
+        },
+        "step3": {
+            "heading": "Choose Themes",
+            "subheading": "Pick up to 2 themes for your story",
+            "customThemePlaceholder": "Add a custom theme...",
+            "addTheme": "Add",
+            "maxThemes": "Max 2 themes selected"
+        },
+        "step4": {
+            "previewHeading": "Generate Cover Preview",
+            "previewDesc": "First, let's create a beautiful cover for your story",
+            "settingLabel": "Setting",
+            "themesLabel": "Themes",
+            "lengthLabel": "Length",
+            "noneSelected": "None selected",
+            "customSetting": "Custom Setting",
+            "generateCoverBtn": "Generate Cover Preview",
+            "generatingHeading": "Creating Your Cover...",
+            "generatingNote": "This usually takes about 30 seconds",
+            "coverCreatingStepStart": "Creating storybook...",
+            "coverCreatingStepOutline": "Planning story structure...",
+            "coverCreatingStepArt": "Generating cover artwork...",
+            "readyHeading": "Your Cover is Ready!",
+            "whatsIncluded": "What's included:",
+            "include1": "Full illustrated storybook",
+            "include2": "Custom AI-generated illustrations",
+            "include3": "Personalized story with your characters",
+            "include4": "Instant digital access",
+            "payBtn": "$7.99 - Generate My Book",
+            "redirecting": "Redirecting to checkout...",
+            "secureCheckout": "Secure checkout powered by Stripe",
+            "completeHeading": "Your Book is Ready!",
+            "readStory": "Read Your Story",
+            "createAnother": "Create Another"
+        },
+        "busy": {
+            "heading": "Story Generation in Progress",
+            "beingCreated": "is being created",
+            "aStory": "A story is being generated",
+            "wait": "You can create a new story once the current one is complete."
+        },
+        "breadcrumb": {
+            "home": "Home",
+            "generator": "Story Generator"
+        }
+    },
+    "reader": {
+        "storybook": "Storybook",
+        "noIllustration": "No Illustration",
+        "personalizedEdition": "Personalized Edition",
+        "theEnd": "The End",
+        "thanks": "Thank you for reading!",
+        "createdWith": "Created with AI Storybook",
+        "bookCover": "Book Cover",
+        "prevPage": "Previous page",
+        "nextPage": "Next page",
+        "editBook": "Edit Book",
+        "exportPDF": "Export PDF",
+        "preparing": "Preparing...",
+        "credit": "credit",
+        "credits": "credits",
+        "pdfFailed": "PDF generation failed. Please try again.",
+        "regenMsg": "Regenerating illustration...",
+        "regenNote": "This may take a minute",
+        "regenerate": "Regenerate",
+        "regenBtnTitle": "Regenerate illustration (1 credit)",
+        "cancel": "Cancel",
+        "regenConfirmText": "This will use 1 credit. You have {credits} credits remaining.",
+        "regen": {
+            "title": "Regenerate Image?",
+            "body": "This will use {credits} credit to generate a new illustration for this scene.",
+            "remaining": "You have {count} {label} remaining.",
+            "cancel": "Cancel",
+            "regenerate": "Regenerate",
+            "regenerating": "Regenerating illustration...",
+            "takesAMinute": "This may take a minute",
+            "tooltip": "Regenerate illustration (1 credit)",
+            "failed": "Image regeneration failed. Please try again."
+        }
+    },
+    "order": {
+        "steps": {
+            "characters": "Characters",
+            "charactersDesc": "Add your stars",
+            "details": "Story Details",
+            "detailsDesc": "Theme & Style",
+            "review": "Review",
+            "reviewDesc": "Ready to print"
+        },
+        "step1": {
+            "heading": "Who is this story for?",
+            "subheading": "Upload a photo to transform them into a character.",
+            "resetForm": "Reset Form",
+            "confirmReset": "Are you sure you want to clear all data and start over?"
+        },
+        "step2": {
+            "heading": "Craft your world",
+            "subheading": "Choose the perfect theme and style for your adventure."
+        },
+        "step3": {
+            "heading": "Your Book Cover is Ready!",
+            "subheading": "This is just a preview. The full story will be generated magically after purchase.",
+            "orderSummary": "Order Summary",
+            "characters": "Characters",
+            "ageGroup": "Age Group",
+            "theme": "Theme",
+            "total": "Total",
+            "coverPreview": "Cover Preview",
+            "payBtn": "Pay $7.99 & Generate Book",
+            "redirecting": "Redirecting...",
+            "secureCheckout": "Secure checkout powered by Stripe",
+            "coverToast": "Your book cover looks amazing! 🎨"
+        },
+        "nav": {
+            "back": "Back",
+            "nextStep": "Next Step",
+            "generateCover": "Generate Cover",
+            "processing": "Processing..."
+        },
+        "errors": {
+            "photo": "We had trouble with your photo. Please try uploading again.",
+            "cover": "We couldn't create your cover right now. Please try again in a moment.",
+            "checkout": "There was an issue with checkout. Please try again.",
+            "network": "Connection issue. Please check your internet and try again.",
+            "generic": "Something went wrong. Please try again.",
+            "goBack": "Go back"
+        },
+        "settings": {
+            "ageRangeLabel": "Age Range",
+            "themeLabel": "Story Theme",
+            "artStyleLabel": "Art Style",
+            "subjectLabel": "Story Subject",
+            "titleLabel": "Book Title (Optional)",
+            "titlePlaceholder": "Enter a title for your book...",
+            "descLabel": "Story Description (Optional)",
+            "descPlaceholder": "Describe what you'd like the story to be about..."
+        },
+        "character": {
+            "nameLabel": "Character Name",
+            "namePlaceholder": "Enter name...",
+            "uploadPhoto": "Upload Photo",
+            "changePhoto": "Change Photo",
+            "genderLabel": "Gender",
+            "entityTypeLabel": "Character Type",
+            "roleLabel": "Role",
+            "addCharacter": "Add Character",
+            "removeCharacter": "Remove",
+            "main": "Main Character",
+            "supporting": "Supporting"
+        }
+    },
+    "library": {
+        "title": "My Library",
+        "subtitle": "Your created storybooks",
+        "emptyHeading": "No stories yet",
+        "emptyDesc": "Start creating your first personalized storybook!",
+        "createCta": "Create Your First Story",
+        "readBtn": "Read",
+        "editBtn": "Edit"
+    },
+    "orders": {
+        "title": "My Orders",
+        "subtitle": "Track your book orders",
+        "emptyHeading": "No orders yet",
+        "emptyDesc": "Create your first printed storybook!",
+        "createCta": "Create a Book",
+        "status": {
+            "pending": "Pending",
+            "generating": "Generating",
+            "complete": "Complete",
+            "failed": "Failed",
+            "processing": "Processing"
+        }
+    },
+    "status": {
+        "creating": "Creating \"{title}\"",
+        "generating": "Generating story...",
+        "complete": "percent complete",
+        "bookReady": "Book ready!",
+        "readNow": "Read now →",
+        "failed": "Generation failed",
+        "browsing": "You can continue browsing — we'll notify you when it's done."
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "Something went wrong",
+        "retry": "Try Again",
+        "cancel": "Cancel",
+        "save": "Save",
+        "edit": "Edit",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "close": "Close",
+        "back": "Back",
+        "next": "Next",
+        "previous": "Previous",
+        "continue": "Continue",
+        "submit": "Submit",
+        "required": "Required",
+        "optional": "(Optional)"
+    },
+    "validation": {
+        "emailRequired": "Email is required",
+        "emailInvalid": "Please enter a valid email address",
+        "passwordRequired": "Password is required",
+        "passwordMin": "Password must be at least 8 characters",
+        "nameRequired": "Name is required",
+        "nameMin": "Name must be at least 2 characters",
+        "fieldRequired": "This field is required"
+    },
+    "popup": {
+        "title": "Choose Language",
+        "description": "Please select your preferred language.",
+        "english": "Continue in English",
+        "czech": "Pokračovat v češtině"
+    }
+}

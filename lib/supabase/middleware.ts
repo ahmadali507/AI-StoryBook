@@ -30,22 +30,37 @@ export async function updateSession(request: NextRequest) {
     // Refreshing the auth token
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Protected routes logic
-    // We check if the current path is NOT an auth path or public asset
-    const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
-    const isPublicRoute = request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/api/')
+    const fullPath = request.nextUrl.pathname
+
+    // Strip locale prefix (/en, /cs) to get the logical path
+    const locales = ['en', 'cs']
+    let logicalPath = fullPath
+    for (const locale of locales) {
+        if (fullPath === `/${locale}` || fullPath.startsWith(`/${locale}/`)) {
+            logicalPath = fullPath.slice(locale.length + 1) || '/'
+            break
+        }
+    }
+
+    // Detect the current locale from the URL (default to 'en')
+    const currentLocale = locales.find(
+        loc => fullPath === `/${loc}` || fullPath.startsWith(`/${loc}/`)
+    ) ?? 'en'
+
+    const isAuthRoute = logicalPath.startsWith('/auth')
+    const isPublicRoute = logicalPath === '/' || logicalPath.startsWith('/api/')
 
     if (!user && !isAuthRoute && !isPublicRoute) {
-        // Redirect unauthenticated users to login page
+        // Redirect unauthenticated users to locale-aware login page
         const url = request.nextUrl.clone()
-        url.pathname = '/auth/login'
+        url.pathname = `/${currentLocale}/auth/login`
         return NextResponse.redirect(url)
     }
 
     if (user && isAuthRoute) {
         // Redirect authenticated users away from auth pages
         const url = request.nextUrl.clone()
-        url.pathname = '/'
+        url.pathname = `/${currentLocale}`
         return NextResponse.redirect(url)
     }
 

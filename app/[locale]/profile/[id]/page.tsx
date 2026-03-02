@@ -1,32 +1,27 @@
 import { redirect } from "next/navigation";
-import { getProfileById, getProfile } from "@/actions/profile";
+import { getProfileById } from "@/actions/profile";
 import { getCurrentUser } from "@/actions/auth";
 import ProfileForm from "@/app/components/profile/ProfileForm";
 import NavbarClient from "@/app/components/NavbarClient";
 import { QueryProvider } from "@/providers/query-provider";
-
-export const metadata = {
-    title: "Account Settings — StoryMagic",
-    description: "Manage your personal information and preferences",
-};
+import { setRequestLocale } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
 interface ProfilePageProps {
-    params: Promise<{ id: string }>;
+    params: Promise<{ id: string; locale: string }>;
 }
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
-    const { id } = await params;
+    const { id, locale } = await params;
+    setRequestLocale(locale);
 
-    // Fetch the profile for this user id
     const profile = await getProfileById(id);
 
     if (!profile) {
-        redirect("/auth/login");
+        redirect(`/${locale}/auth/login`);
     }
 
-    // Check if the viewer is the owner — only owner can edit
     const currentUser = await getCurrentUser();
     const isOwner = currentUser?.id === profile.id;
 

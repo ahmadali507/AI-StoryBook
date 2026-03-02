@@ -6,16 +6,17 @@ import { BookOpen, Wand2, MessageCircle } from "lucide-react";
 import { getCurrentUser } from "@/actions/auth";
 import ProfileDropdown from "@/app/components/ProfileDropdown";
 import NavbarMobileMenu from "@/app/components/NavbarMobileMenu";
-
-// MVP Navigation - simplified for gift-oriented experience
-const navLinks = [
-    { href: "/create", label: "Create Book", icon: "wand" },
-    { href: "/create", label: "AI Chat", icon: "chat" },
-];
+import { useLocale } from "next-intl";
 
 export default function NavbarClient() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const locale = useLocale();
+
+    const navLinks = [
+        { href: `/${locale}/create`, label: "Create Book", icon: "wand" },
+        { href: `/${locale}/create`, label: "AI Chat", icon: "chat" },
+    ];
 
     useEffect(() => {
         async function loadUser() {
@@ -36,7 +37,7 @@ export default function NavbarClient() {
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 cursor-pointer">
+                    <Link href={`/${locale}`} className="flex items-center gap-2 cursor-pointer">
                         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                             <BookOpen className="w-5 h-5 text-white" />
                         </div>
@@ -60,7 +61,7 @@ export default function NavbarClient() {
                         ))}
                         {user && (
                             <Link
-                                href="/orders"
+                                href={`/${locale}/orders`}
                                 className="flex items-center gap-2 text-text-muted hover:text-foreground transition-colors duration-200 font-medium cursor-pointer"
                             >
                                 <BookOpen className="w-4 h-4" />
@@ -78,13 +79,13 @@ export default function NavbarClient() {
                         ) : (
                             <>
                                 <Link
-                                    href="/auth/login"
+                                    href={`/${locale}/auth/login`}
                                     className="text-text-muted hover:text-foreground transition-colors duration-200 font-medium cursor-pointer"
                                 >
                                     Login
                                 </Link>
                                 <Link
-                                    href="/create"
+                                    href={`/${locale}/create`}
                                     className="bg-gradient-to-r from-primary to-secondary text-white px-5 py-2 rounded-full font-medium hover:opacity-90 transition-all duration-200 cursor-pointer shadow-lg shadow-primary/20"
                                 >
                                     Create Your Book
@@ -95,7 +96,7 @@ export default function NavbarClient() {
 
                     {/* Mobile menu */}
                     <NavbarMobileMenu
-                        links={user ? [...navLinks, { href: "/orders", label: "Orders" }] : navLinks}
+                        links={user ? [...navLinks, { href: `/${locale}/orders`, label: "Orders" }] : navLinks}
                         showAuth={true}
                         user={user}
                     />

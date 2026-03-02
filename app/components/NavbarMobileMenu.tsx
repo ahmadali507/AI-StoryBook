@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import ProfileDropdown from "@/app/components/ProfileDropdown";
+import { useTranslations, useLocale } from "next-intl";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
 
 interface NavLink {
     href: string;
@@ -23,6 +25,8 @@ interface NavbarMobileMenuProps {
 
 export default function NavbarMobileMenu({ links, showAuth, user }: NavbarMobileMenuProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const t = useTranslations("nav");
+    const locale = useLocale();
 
     return (
         <>
@@ -64,21 +68,24 @@ export default function NavbarMobileMenu({ links, showAuth, user }: NavbarMobile
                                     ) : (
                                         <>
                                             <Link
-                                                href="/auth/login"
+                                                href={`/${locale}/auth/login`}
                                                 className="text-text-muted hover:text-foreground transition-colors duration-200 font-medium py-2 cursor-pointer"
                                             >
-                                                Login
+                                                {t("login")}
                                             </Link>
                                             <Link
-                                                href="/create"
+                                                href={`/${locale}/create`}
                                                 className="bg-secondary text-white px-5 py-2.5 rounded-full font-medium text-center hover:opacity-90 transition-all duration-200 cursor-pointer"
                                             >
-                                                Get Started
+                                                {t("getStarted")}
                                             </Link>
                                         </>
                                     )}
                                 </div>
                             )}
+                            <div className="pt-4 border-t border-border">
+                                <LanguageSwitcher />
+                            </div>
                         </div>
                     </div>
                 </div>

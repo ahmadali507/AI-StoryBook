@@ -11,6 +11,7 @@ import type { Profile } from "@/actions/profile";
 import { updateProfileAction, deleteAccountAction } from "@/actions/profile";
 import { uploadProfilePicture } from "@/actions/upload-avatar";
 import ImageCropper from "./ImageCropper";
+import { useTranslations, useLocale } from "next-intl";
 
 const ART_STYLE_OPTIONS = [
     { value: "", label: "No preference" },
@@ -44,6 +45,15 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
     const [emailNotifications, setEmailNotifications] = useState(profile.emailNotifications);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+    const t = useTranslations("profile.settings");
+    const currentLocale = useLocale();
+
+    const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newLocale = e.target.value;
+        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+        window.location.href = `/${newLocale}/profile/${profile.id}`;
+    };
 
     // ── Cropper state ───────────────────────────────────────────────────
     const [cropperSrc, setCropperSrc] = useState<string | null>(null);
@@ -131,12 +141,12 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                 {/* ── Page header ──────────────────────────────────── */}
                 <div className="mb-2">
                     <h1 className="text-3xl font-bold text-slate-800 font-heading">
-                        Account Settings
+                        {t("title")}
                     </h1>
                     <p className="text-slate-500 mt-1">
                         {isOwner
-                            ? "Manage your personal information and preferences"
-                            : `Viewing ${profile.fullName ?? "user"}'s profile`}
+                            ? t("subtitleOwner")
+                            : t("subtitleGuest", { name: profile.fullName ?? "user" })}
                     </p>
                 </div>
 
@@ -163,7 +173,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
                                         className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                                        aria-label="Change profile photo"
+                                        aria-label={t("changePhoto")}
                                     >
                                         <Camera className="w-5 h-5 text-white" />
                                     </button>
@@ -179,10 +189,10 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-slate-800 font-semibold text-lg truncate">
-                                {profile.fullName || "Your Name"}
+                                {profile.fullName || t("yourName")}
                             </p>
                             <p className="text-slate-400 text-sm truncate">{profile.email}</p>
-                            <p className="text-slate-300 text-xs mt-0.5">Member since {memberSince}</p>
+                            <p className="text-slate-300 text-xs mt-0.5">{t("memberSince", { date: memberSince })}</p>
                         </div>
                         {/* Edit existing photo button */}
                         {isOwner && avatarUrl && (
@@ -192,7 +202,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                 className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-50"
                             >
                                 <Pencil className="w-3 h-3" />
-                                Edit Photo
+                                {t("editPhoto")}
                             </button>
                         )}
                     </div>
@@ -201,17 +211,17 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                     <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100">
                         <StatCard
                             icon={<BookOpen className="w-4 h-4 text-indigo-400" />}
-                            label="Stories"
+                            label={t("stats.stories")}
                             value={profile.storiesCreated}
                         />
                         <StatCard
                             icon={<Users className="w-4 h-4 text-violet-400" />}
-                            label="Characters"
+                            label={t("stats.characters")}
                             value={profile.charactersCreated}
                         />
                         <StatCard
                             icon={<ShoppingBag className="w-4 h-4 text-emerald-400" />}
-                            label="Orders"
+                            label={t("stats.orders")}
                             value={profile.totalOrders}
                         />
                     </div>
@@ -220,14 +230,14 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                     <div className="px-8 py-6 space-y-6">
 
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                            Personal Information
+                            {t("personalInfo")}
                         </p>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {/* Full Name */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-slate-700" htmlFor="fullName">
-                                    Full Name
+                                    {t("fullName")}
                                 </label>
                                 <input
                                     id="fullName"
@@ -235,7 +245,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     disabled={!isOwner}
-                                    placeholder="Your full name"
+                                    placeholder={t("fullNamePlaceholder")}
                                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:border-indigo-400 transition-all text-sm bg-white disabled:bg-slate-50 disabled:cursor-not-allowed"
                                 />
                             </div>
@@ -243,7 +253,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                             {/* Email — always read only */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5" htmlFor="email">
-                                    Email Address
+                                    {t("emailAddress")}
                                     <Lock className="w-3.5 h-3.5 text-slate-300" />
                                 </label>
                                 <input
@@ -258,7 +268,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                             {/* Subscription tier — read only */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-slate-700" htmlFor="tier">
-                                    Subscription
+                                    {t("subscription")}
                                 </label>
                                 <input
                                     id="tier"
@@ -273,7 +283,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5" htmlFor="artStyle">
                                     <Palette className="w-3.5 h-3.5 text-indigo-400" />
-                                    Preferred Art Style
+                                    {t("artStyle")}
                                 </label>
                                 <select
                                     id="artStyle"
@@ -282,11 +292,13 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                     disabled={!isOwner}
                                     className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:border-indigo-400 transition-all text-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
                                 >
-                                    {ART_STYLE_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
+                                    <option value="">{t("artStyleOptions.none")}</option>
+                                    <option value="whimsical-watercolor">{t("artStyleOptions.whimsical")}</option>
+                                    <option value="classic-illustration">{t("artStyleOptions.classic")}</option>
+                                    <option value="modern-digital">{t("artStyleOptions.modern")}</option>
+                                    <option value="comic-book">{t("artStyleOptions.comic")}</option>
+                                    <option value="pastel-dreamy">{t("artStyleOptions.pastel")}</option>
+                                    <option value="bold-graphic">{t("artStyleOptions.bold")}</option>
                                 </select>
                             </div>
                         </div>
@@ -296,17 +308,17 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
 
                         {/* ── Preferences ────────────────────────────── */}
                         <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                            Preferences
+                            {t("preferences")}
                         </p>
 
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
                                     <Bell className="w-3.5 h-3.5 text-indigo-400" />
-                                    Email Notifications
+                                    {t("emailNotifs")}
                                 </p>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Receive updates about your stories and new features
+                                    {t("emailNotifsDesc")}
                                 </p>
                             </div>
                             <button
@@ -325,13 +337,34 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                             </button>
                         </div>
 
+                        {/* ── Language ────────────────────────────── */}
+                        <div className="flex items-start justify-between gap-4 mt-6">
+                            <div>
+                                <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+                                    {t("language")}
+                                </p>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    {t("languageDesc")}
+                                </p>
+                            </div>
+                            <select
+                                value={currentLocale}
+                                onChange={handleLanguageChange}
+                                disabled={!isOwner}
+                                className="border border-slate-200 rounded-xl px-4 py-2 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/40 focus:border-indigo-400 transition-all text-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
+                            >
+                                <option value="en">English</option>
+                                <option value="cs">Čeština</option>
+                            </select>
+                        </div>
+
                         {/* ── Divider + save ────────────────────────── */}
                         {isOwner && (
                             <>
-                                <div className="border-t border-slate-100" />
+                                <div className="border-t border-slate-100 mt-6 pt-6" />
                                 <div className="flex items-center justify-between gap-4">
                                     <p className="text-xs text-slate-400">
-                                        Last updated {lastUpdated}
+                                        {t("lastUpdated", { date: lastUpdated })}
                                     </p>
                                     <button
                                         onClick={() => saveMutation.mutate()}
@@ -339,16 +372,16 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                         className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-md shadow-indigo-200 disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         {saveMutation.isPending ? (
-                                            <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                                            <><Loader2 className="w-4 h-4 animate-spin" /> {t("saving")}</>
                                         ) : (
-                                            <><Save className="w-4 h-4" /> Save Changes</>
+                                            <><Save className="w-4 h-4" /> {t("saveChanges")}</>
                                         )}
                                     </button>
                                 </div>
 
                                 {saveMutation.isSuccess && saveMutation.data?.success && (
-                                    <p className="text-sm text-emerald-600 text-right flex items-center justify-end gap-1.5">
-                                        <CheckCircle className="w-4 h-4" /> Changes saved successfully
+                                    <p className="text-sm text-emerald-600 text-right flex items-center justify-end gap-1.5 mt-4">
+                                        <CheckCircle className="w-4 h-4" /> {t("savedSuccess")}
                                     </p>
                                 )}
                             </>
@@ -364,11 +397,10 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                 <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800">
-                                        Danger Zone
+                                        {t("dangerZone")}
                                     </h2>
                                     <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                                        Once you delete your account, there is no going back. All your storybooks,
-                                        characters, orders, and personal data will be permanently removed.
+                                        {t("dangerDesc")}
                                     </p>
                                 </div>
                             </div>
@@ -377,7 +409,7 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
                                     onClick={() => setShowDeleteModal(true)}
                                     className="px-5 py-2.5 rounded-xl border border-red-300 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors"
                                 >
-                                    Delete Your Account
+                                    {t("deleteAccount")}
                                 </button>
                             </div>
                         </div>
@@ -386,65 +418,68 @@ export default function ProfileForm({ profile, isOwner }: ProfileFormProps) {
             </div>
 
             {/* ── Image Cropper modal ──────────────────────────────── */}
-            {cropperSrc && (
-                <ImageCropper
-                    imageSrc={cropperSrc}
-                    onCropComplete={handleCropConfirm}
-                    onCancel={() => setCropperSrc(null)}
-                    isUploading={uploadMutation.isPending}
-                />
-            )}
+            {
+                cropperSrc && (
+                    <ImageCropper
+                        imageSrc={cropperSrc}
+                        onCropComplete={handleCropConfirm}
+                        onCancel={() => setCropperSrc(null)}
+                        isUploading={uploadMutation.isPending}
+                    />
+                )
+            }
 
             {/* ── Delete confirmation modal ────────────────────────── */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
-                            <h3 className="text-lg font-bold text-slate-800">Delete Account</h3>
-                        </div>
-                        <p className="text-sm text-slate-500 mb-5 leading-relaxed">
-                            This action is <strong className="text-slate-800">permanent and irreversible</strong>. Type{" "}
-                            <code className="bg-red-50 px-1.5 py-0.5 rounded text-red-500 text-xs border border-red-100">
-                                DELETE
-                            </code>{" "}
-                            to confirm.
-                        </p>
-                        <input
-                            type="text"
-                            value={deleteConfirmText}
-                            onChange={(e) => setDeleteConfirmText(e.target.value)}
-                            placeholder="Type DELETE to confirm"
-                            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-red-300 text-sm mb-4"
-                        />
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowDeleteModal(false);
-                                    setDeleteConfirmText("");
+            {
+                showDeleteModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
+                                <h3 className="text-lg font-bold text-slate-800">{t("deleteTitle")}</h3>
+                            </div>
+                            <p
+                                className="text-sm text-slate-500 mb-5 leading-relaxed"
+                                dangerouslySetInnerHTML={{
+                                    __html: t.raw("deleteWarning").replace('<bold>', '<strong class="text-slate-800">').replace('</bold>', '</strong>').replace('<deleteCode>', '<code class="bg-red-50 px-1.5 py-0.5 rounded text-red-500 text-xs border border-red-100">').replace('</deleteCode>', '</code>')
                                 }}
-                                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => deleteMutation.mutate()}
-                                disabled={deleteConfirmText !== "DELETE" || deleteMutation.isPending}
-                                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                {deleteMutation.isPending ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <Loader2 className="w-4 h-4 animate-spin" />Deleting…
-                                    </span>
-                                ) : (
-                                    "Delete Account"
-                                )}
-                            </button>
+                            />
+                            <input
+                                type="text"
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                placeholder={t("deletePlaceholder")}
+                                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-red-300 text-sm mb-4"
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setDeleteConfirmText("");
+                                    }}
+                                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+                                >
+                                    {t("cancel")}
+                                </button>
+                                <button
+                                    onClick={() => deleteMutation.mutate()}
+                                    disabled={deleteConfirmText !== "DELETE" || deleteMutation.isPending}
+                                    className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    {deleteMutation.isPending ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />{t("deleting")}
+                                        </span>
+                                    ) : (
+                                        t("deleteAccount")
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 

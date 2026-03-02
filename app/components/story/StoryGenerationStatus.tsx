@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useStoryGenerationStore } from "@/stores/story-generation-store";
 import { Loader2, BookOpen, ChevronUp, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function StoryGenerationStatus() {
     const router = useRouter();
+    const t = useTranslations("status");
     const {
         isGenerating,
         storyTitle,
@@ -49,7 +51,7 @@ export default function StoryGenerationStatus() {
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-red-700 truncate">
-                            Generation failed
+                            {t("failed")}
                         </p>
                         <p className="text-xs text-red-500 truncate">{error}</p>
                     </div>
@@ -111,10 +113,10 @@ export default function StoryGenerationStatus() {
                     <div className="flex-1 min-w-0 text-left">
                         <p className="text-sm font-medium text-foreground truncate">
                             {storyTitle
-                                ? `Creating "${storyTitle}"`
-                                : "Generating story..."}
+                                ? t("creating", { title: storyTitle })
+                                : t("generating")}
                         </p>
-                        <p className="text-xs text-text-muted">{progress}% complete</p>
+                        <p className="text-xs text-text-muted">{progress}% {t("complete")}</p>
                     </div>
                     {expanded ? (
                         <ChevronDown className="w-4 h-4 text-text-muted flex-shrink-0" />
@@ -137,7 +139,7 @@ export default function StoryGenerationStatus() {
                             {currentStep}
                         </p>
                         <p className="text-[10px] text-text-muted/60">
-                            You can continue browsing — we'll notify you when it's done.
+                            {t("browsing")}
                         </p>
                     </div>
                 )}

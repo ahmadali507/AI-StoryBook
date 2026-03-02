@@ -11,36 +11,27 @@ import { signupSchema, type SignupInput } from "@/schemas/auth";
 import { signUp } from "@/actions/auth";
 import { Input } from "@/app/components/common";
 import { useToast } from "@/providers/ToastProvider";
+import { useTranslations, useLocale } from "next-intl";
 import SocialLogin from "./SocialLogin";
 import PasswordStrength from "./PasswordStrength";
 
-// Convert technical error messages to user-friendly ones
-function getFriendlySignupErrorMessage(error: string): string {
-    const errorLower = error.toLowerCase();
 
-    if (errorLower.includes("already registered") || errorLower.includes("already exists")) {
-        return "This email is already registered. Try signing in instead.";
-    }
-    if (errorLower.includes("password") && errorLower.includes("weak")) {
-        return "Please choose a stronger password with letters, numbers, and symbols.";
-    }
-    if (errorLower.includes("invalid email") || errorLower.includes("email format")) {
-        return "Please enter a valid email address.";
-    }
-    if (errorLower.includes("rate limit") || errorLower.includes("too many")) {
-        return "Too many attempts. Please wait a moment and try again.";
-    }
-    if (errorLower.includes("network") || errorLower.includes("fetch")) {
-        return "Connection issue. Please check your internet and try again.";
-    }
-
-    return "Something went wrong. Please try again.";
-}
 
 export default function SignupForm() {
     const router = useRouter();
     const toast = useToast();
+    const t = useTranslations("auth.signup");
+    const locale = useLocale();
+    const tErr = useTranslations("auth.errors");
     const [serverError, setServerError] = useState<string | null>(null);
+
+    function getFriendlySignupErrorMessage(error: string): string {
+        const errorLower = error.toLowerCase();
+        if (errorLower.includes("already registered") || errorLower.includes("already exists")) return tErr("invalidCredentials");
+        if (errorLower.includes("rate limit") || errorLower.includes("too many")) return tErr("rateLimit");
+        if (errorLower.includes("network") || errorLower.includes("fetch")) return tErr("network");
+        return tErr("generic");
+    }
 
     const {
         register,
@@ -64,11 +55,10 @@ export default function SignupForm() {
         onSuccess: (result) => {
             if (result.success) {
                 if (result.requiresEmailConfirmation) {
-                    toast.success("Please confirm your email to log in!", 8000);
-                    // Just stay on the page or redirect to login
-                    router.push("/auth/login");
+                    toast.success(tErr("emailNotConfirmed"), 8000);
+                    router.push(`/${locale}/auth/login`);
                 } else if (result.redirectTo) {
-                    toast.success("Account created! Welcome to StoryMagic ✨");
+                    toast.success(t("successToast"));
                     router.push(result.redirectTo);
                 }
             } else if (result.error) {
@@ -78,7 +68,7 @@ export default function SignupForm() {
             }
         },
         onError: () => {
-            const message = "Something went wrong. Please try again.";
+            const message = tErr("generic");
             toast.error(message);
             setServerError(message);
         },
@@ -106,9 +96,9 @@ export default function SignupForm() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {/* Full Name */}
                 <Input
-                    label="Full Name"
+                    label={t("nameLabel")}
                     type="text"
-                    placeholder="e.g. Jane Doe"
+                    placeholder={t("namePlaceholder")}
                     leftIcon={<User className="w-5 h-5" />}
                     error={errors.name?.message}
                     {...register("name")}
@@ -116,9 +106,9 @@ export default function SignupForm() {
 
                 {/* Email */}
                 <Input
-                    label="Email"
+                    label={t("emailLabel")}
                     type="email"
-                    placeholder="e.g. jane@example.com"
+                    placeholder={t("emailPlaceholder")}
                     leftIcon={<Mail className="w-5 h-5" />}
                     error={errors.email?.message}
                     {...register("email")}
@@ -127,7 +117,7 @@ export default function SignupForm() {
                 {/* Password */}
                 <div>
                     <Input
-                        label="Password"
+                        label={t("passwordLabel")}
                         type="password"
                         placeholder="••••••••"
                         leftIcon={<Lock className="w-5 h-5" />}
@@ -139,7 +129,7 @@ export default function SignupForm() {
 
                 {/* Confirm Password */}
                 <Input
-                    label="Confirm Password"
+                    label={t("passwordLabel")}
                     type="password"
                     placeholder="••••••••"
                     leftIcon={<Lock className="w-5 h-5" />}
@@ -156,10 +146,10 @@ export default function SignupForm() {
                     {isPending ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Creating account...
+                            {t("creating")}
                         </>
                     ) : (
-                        "Create Account"
+                        t("createBtn")
                     )}
                 </button>
             </form>
@@ -167,7 +157,7 @@ export default function SignupForm() {
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-sm text-text-muted">or sign up with</span>
+                <span className="text-sm text-text-muted">{t("divider")}</span>
                 <div className="flex-1 h-px bg-border" />
             </div>
 
@@ -176,9 +166,9 @@ export default function SignupForm() {
 
             {/* Sign In Link */}
             <p className="mt-8 text-center text-text-muted">
-                Already have an account?{" "}
-                <Link href="/auth/login" className="text-primary font-medium hover:underline cursor-pointer">
-                    Sign in
+                {t("hasAccount")}{" "}
+                <Link href={`/${locale}/auth/login`} className="text-primary font-medium hover:underline cursor-pointer">
+                    {t("signIn")}
                 </Link>
             </p>
         </>

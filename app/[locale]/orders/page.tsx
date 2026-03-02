@@ -9,7 +9,8 @@ import OrdersAutoRefresh from "@/app/components/order/OrdersAutoRefresh";
 
 export const dynamic = "force-dynamic";
 
-export default async function OrdersPage() {
+export default async function OrdersPage(props: { params: Promise<{ locale: string }> }) {
+    const { locale } = await props.params;
     let orders = [];
     try {
         orders = await getAllUserOrders();
@@ -64,7 +65,7 @@ export default async function OrdersPage() {
                         <p className="mt-2 text-gray-500">Track and manage your magical storybook orders</p>
                     </div>
                     <Link
-                        href="/create"
+                        href={`/${locale}/create`}
                         className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-medium"
                     >
                         <BookOpen className="w-5 h-5" />
@@ -78,7 +79,7 @@ export default async function OrdersPage() {
                         <h3 className="text-xl font-medium text-gray-900 mb-2">You have no orders yet</h3>
                         <p className="text-gray-500 mb-8">Start your first magical journey today!</p>
                         <Link
-                            href="/create"
+                            href={`/${locale}/create`}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-medium"
                         >
                             Create a Story
@@ -141,14 +142,14 @@ export default async function OrdersPage() {
                                     <div className="bg-gray-50/50 p-3 border-t border-gray-100 grid grid-cols-2 gap-2 mt-auto">
                                         {order.status === "complete" ? (
                                             <Link
-                                                href={`/story/${book?.id}`}
+                                                href={`/${locale}/story/${book?.id}`}
                                                 className="col-span-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
                                             >
                                                 Read Book
                                             </Link>
                                         ) : isPaidOrComplete ? (
                                             <Link
-                                                href={`/order/${order.id}`}
+                                                href={`/${locale}/order/${order.id}`}
                                                 className="col-span-1 flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
                                             >
                                                 View Status

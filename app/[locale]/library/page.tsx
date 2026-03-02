@@ -4,14 +4,19 @@ import { BookOpen, Calendar, ArrowRight } from "lucide-react";
 import NavbarClient from "@/app/components/NavbarClient";
 import { getUserOrders } from "@/actions/library";
 import LibraryPDFButton from "@/app/components/library/LibraryPDFButton";
+import { setRequestLocale } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
-export default async function LibraryPage() {
+export default async function LibraryPage({ params }: { params: Promise<{ locale: string }> }) {
+    const { locale } = await params;
+    setRequestLocale(locale);
+    const t = await getTranslations("library");
+
     let orders = [];
     try {
         orders = await getUserOrders();
     } catch (e) {
-        // Redirect if not authenticated
-        redirect("/auth/login");
+        redirect(`/${locale}/auth/login`);
     }
 
     return (
@@ -21,28 +26,28 @@ export default async function LibraryPage() {
             <main className="max-w-7xl mx-auto px-4 py-24 sm:px-6 lg:px-8">
                 <div className="mb-10 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">My Library</h1>
-                        <p className="mt-2 text-gray-500">Your collection of magical generated stories</p>
+                        <h1 className="text-3xl font-bold text-gray-900">{t("title")}</h1>
+                        <p className="mt-2 text-gray-500">{t("subtitle")}</p>
                     </div>
                     <Link
-                        href="/create"
+                        href={`/${locale}/create`}
                         className="inline-flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-medium"
                     >
                         <BookOpen className="w-5 h-5" />
-                        Create New Book
+                        {t("createCta")}
                     </Link>
                 </div>
 
                 {orders.length === 0 ? (
                     <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
                         <BookOpen className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                        <h3 className="text-xl font-medium text-gray-900 mb-2">Your library is empty</h3>
-                        <p className="text-gray-500 mb-8">Create your first magical storybook today!</p>
+                        <h3 className="text-xl font-medium text-gray-900 mb-2">{t("emptyHeading")}</h3>
+                        <p className="text-gray-500 mb-8">{t("emptyDesc")}</p>
                         <Link
-                            href="/create"
+                            href={`/${locale}/create`}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all font-medium"
                         >
-                            Create a Story
+                            {t("createCta")}
                         </Link>
                     </div>
                 ) : (
@@ -54,10 +59,9 @@ export default async function LibraryPage() {
                             return (
                                 <Link
                                     key={order.id}
-                                    href={isReady ? `/story/${book?.id}` : `/order/${order.id}/success`}
+                                    href={isReady ? `/${locale}/story/${book?.id}` : `/${locale}/order/${order.id}/success`}
                                     className="group bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                                 >
-                                    {/* Cover Image */}
                                     <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                                         {book?.cover_url ? (
                                             <img
@@ -86,7 +90,6 @@ export default async function LibraryPage() {
                                         )}
                                     </div>
 
-                                    {/* Content */}
                                     <div className="p-5">
                                         <h3 className="font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-primary transition-colors">
                                             {book?.title || "Untitled Story"}
@@ -97,7 +100,7 @@ export default async function LibraryPage() {
                                                 {new Date(order.created_at).toLocaleDateString()}
                                             </div>
                                             <div className="flex items-center gap-1 text-primary font-medium">
-                                                Read Now <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                                                {t("readBtn")} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                                             </div>
                                         </div>
                                     </div>

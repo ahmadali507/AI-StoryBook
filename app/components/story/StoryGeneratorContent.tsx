@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useStoryGeneration } from "@/providers/StoryGenerationProvider";
 import { useStoryGenerationStore } from "@/stores/story-generation-store";
 import { ProgressSteps } from "@/app/components/shared";
+import { useTranslations, useLocale } from "next-intl";
 import {
     ChevronLeft,
     ChevronRight,
@@ -28,43 +29,8 @@ import {
     CheckCircle2
 } from "lucide-react";
 
-const settings = [
-    { id: "forest", name: "Enchanted Forest", icon: Trees, color: "text-green-600" },
-    { id: "castle", name: "Castle Kingdom", icon: Castle, color: "text-indigo-600" },
-    { id: "ocean", name: "Under the Sea", icon: Waves, color: "text-blue-600" },
-    { id: "space", name: "Outer Space", icon: Rocket, color: "text-indigo-600" },
-    { id: "home", name: "Cozy Home", icon: Home, color: "text-orange-600" },
-    { id: "mountain", name: "Mountain Adventure", icon: Mountain, color: "text-slate-600" },
-    { id: "custom", name: "Create Your Own", icon: PenTool, color: "text-pink-600" },
-];
-
-const themes = [
-    "Friendship", "Courage", "Kindness", "Discovery",
-    "Family", "Magic", "Adventure", "Learning"
-];
-
-const storyLengths = [
-    { id: "short", name: "Short", pages: "8-10 pages", duration: "5 min read" },
-    { id: "medium", name: "Medium", pages: "12-15 pages", duration: "10 min read" },
-    { id: "long", name: "Long", pages: "18-20 pages", duration: "15 min read" },
-];
-
-const steps = [
-    { id: 1, label: "Basics", key: "basics" },
-    { id: 2, label: "Characters", key: "characters" },
-    { id: 3, label: "Themes", key: "themes" },
-    { id: 4, label: "Generate", key: "generate" },
-];
-
-// Generation progress messages
-const GENERATION_MESSAGES = [
-    "Planning your adventure...",
-    "Crafting the story outline...",
-    "Writing chapter content...",
-    "Creating magical illustrations...",
-    "Adding finishing touches...",
-    "Assembling your storybook...",
-];
+// settings, themes, storyLengths, steps, GENERATION_MESSAGES are now built inside the component
+// using useTranslations for full i18n support
 
 import {
     generateStoryOutline,
@@ -88,6 +54,46 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
     const searchParams = useSearchParams();
     const { startStoryGeneration } = useStoryGeneration();
     const bgGeneration = useStoryGenerationStore();
+    const t = useTranslations("story");
+    const locale = useLocale();
+
+    // Build translated arrays inside the component
+    const settings = [
+        { id: "forest", name: t("settings.forest"), icon: Trees, color: "text-green-600" },
+        { id: "castle", name: t("settings.castle"), icon: Castle, color: "text-indigo-600" },
+        { id: "ocean", name: t("settings.ocean"), icon: Waves, color: "text-blue-600" },
+        { id: "space", name: t("settings.space"), icon: Rocket, color: "text-indigo-600" },
+        { id: "home", name: t("settings.home"), icon: Home, color: "text-orange-600" },
+        { id: "mountain", name: t("settings.mountain"), icon: Mountain, color: "text-slate-600" },
+        { id: "custom", name: t("settings.custom"), icon: PenTool, color: "text-pink-600" },
+    ];
+
+    const themes = [
+        t("themes.friendship"), t("themes.courage"), t("themes.kindness"), t("themes.discovery"),
+        t("themes.family"), t("themes.magic"), t("themes.adventure"), t("themes.learning")
+    ];
+
+    const storyLengths = [
+        { id: "short", name: t("lengths.shortName"), pages: t("lengths.shortPages"), duration: t("lengths.shortDuration") },
+        { id: "medium", name: t("lengths.mediumName"), pages: t("lengths.mediumPages"), duration: t("lengths.mediumDuration") },
+        { id: "long", name: t("lengths.longName"), pages: t("lengths.longPages"), duration: t("lengths.longDuration") },
+    ];
+
+    const steps = [
+        { id: 1, label: t("steps.basics"), key: "basics" },
+        { id: 2, label: t("steps.characters"), key: "characters" },
+        { id: 3, label: t("steps.themes"), key: "themes" },
+        { id: 4, label: t("steps.generate"), key: "generate" },
+    ];
+
+    const GENERATION_MESSAGES = [
+        t("generation.msg1"),
+        t("generation.msg2"),
+        t("generation.msg3"),
+        t("generation.msg4"),
+        t("generation.msg5"),
+        t("generation.msg6"),
+    ];
 
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedSetting, setSelectedSetting] = useState("");
@@ -125,7 +131,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             });
 
             // Redirect user to orders page so they can browse freely
-            router.replace("/orders");
+            router.replace(`/${locale}/orders`);
         } else if (storybookId && cancelled === "true") {
             // User cancelled payment
             setGeneratedStoryId(storybookId);
@@ -341,13 +347,13 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-text-muted">Themes</span>
+                                <span className="text-text-muted">{t("step4.themesLabel")}</span>
                                 <span className="text-foreground font-medium">
-                                    {selectedThemes.join(", ") || "None selected"}
+                                    {selectedThemes.join(", ") || t("step4.noneSelected")}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-text-muted">Length</span>
+                                <span className="text-text-muted">{t("step4.lengthLabel")}</span>
                                 <span className="text-foreground font-medium">
                                     {storyLengths.find((l) => l.id === storyLength)?.name}
                                 </span>
@@ -366,7 +372,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         className="inline-flex items-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
                     >
                         <Palette className="w-5 h-5" />
-                        Generate Cover Preview
+                        {t("step4.generateCoverBtn")}
                     </button>
                 </div>
             );
@@ -380,13 +386,13 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         <Loader2 className="w-10 h-10 text-primary animate-spin" />
                     </div>
                     <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                        Creating Your Cover...
+                        {t("step4.generatingHeading")}
                     </h2>
                     <p className="text-text-muted mb-4">
                         {coverGenerationStep}
                     </p>
                     <p className="text-xs text-text-muted">
-                        This usually takes about 30 seconds
+                        {t("step4.generatingNote")}
                     </p>
                 </div>
             );
@@ -397,7 +403,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
             return (
                 <div className="text-center">
                     <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                        Your Cover is Ready!
+                        {t("step4.readyHeading")}
                     </h2>
                     <p className="text-lg text-primary font-medium mb-6">
                         "{storyTitle}"
@@ -423,23 +429,23 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
 
                     {/* What's included */}
                     <div className="bg-background rounded-xl p-6 text-left mb-6 max-w-md mx-auto">
-                        <h3 className="font-semibold text-foreground mb-3">What's included:</h3>
+                        <h3 className="font-semibold text-foreground mb-3">{t("step4.whatsIncluded")}</h3>
                         <ul className="space-y-2 text-sm text-text-muted">
                             <li className="flex items-center gap-2">
                                 <Check className="w-4 h-4 text-green-500" />
-                                Full illustrated storybook ({storyLengths.find(l => l.id === storyLength)?.pages})
+                                {t("step4.include1")} ({storyLengths.find(l => l.id === storyLength)?.pages})
                             </li>
                             <li className="flex items-center gap-2">
                                 <Check className="w-4 h-4 text-green-500" />
-                                Custom AI-generated illustrations
+                                {t("step4.include2")}
                             </li>
                             <li className="flex items-center gap-2">
                                 <Check className="w-4 h-4 text-green-500" />
-                                Personalized story with your characters
+                                {t("step4.include3")}
                             </li>
                             <li className="flex items-center gap-2">
                                 <Check className="w-4 h-4 text-green-500" />
-                                Instant digital access
+                                {t("step4.include4")}
                             </li>
                         </ul>
                     </div>
@@ -459,18 +465,18 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         {step4Phase === "paying" ? (
                             <>
                                 <Loader2 className="w-6 h-6 animate-spin" />
-                                Redirecting to checkout...
+                                {t("step4.redirecting")}
                             </>
                         ) : (
                             <>
                                 <CreditCard className="w-6 h-6" />
-                                $7.99 - Generate My Book
+                                {t("step4.payBtn")}
                             </>
                         )}
                     </button>
 
                     <p className="text-xs text-text-muted mt-4">
-                        Secure checkout powered by Stripe
+                        {t("step4.secureCheckout")}
                     </p>
                 </div>
             );
@@ -534,7 +540,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         <CheckCircle2 className="w-10 h-10 text-green-600" />
                     </div>
                     <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                        Your Book is Ready!
+                        {t("step4.completeHeading")}
                     </h2>
                     <p className="text-lg text-primary font-medium mb-6">
                         "{storyTitle}"
@@ -556,7 +562,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                             className="inline-flex items-center justify-center gap-2 bg-secondary text-white px-8 py-4 rounded-full font-semibold hover:opacity-90 transition-all cursor-pointer"
                         >
                             <BookOpen className="w-5 h-5" />
-                            Read Your Story
+                            {t("step4.readStory")}
                         </Link>
                         <button
                             onClick={() => {
@@ -567,11 +573,11 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                 setGeneratedStoryId(null);
                                 setCoverUrl(null);
                                 setStoryTitle("");
-                                router.replace("/generate");
+                                router.replace(`/${locale}/create`);
                             }}
                             className="inline-flex items-center justify-center gap-2 border border-border text-foreground px-8 py-4 rounded-full font-semibold hover:bg-background transition-all cursor-pointer"
                         >
-                            Create Another
+                            {t("step4.createAnother")}
                         </button>
                     </div>
                 </div>
@@ -597,12 +603,12 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                             </div>
                         </div>
                         <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-                            Story Generation in Progress
+                            {t("busy.heading")}
                         </h2>
                         <p className="text-text-muted mb-4">
                             {bgGeneration.storyTitle
-                                ? `"${bgGeneration.storyTitle}" is being created (${bgGeneration.progress}%)`
-                                : `A story is being generated (${bgGeneration.progress}%)`}
+                                ? `"${bgGeneration.storyTitle}" ${t("busy.beingCreated")} (${bgGeneration.progress}%)`
+                                : `${t("busy.aStory")} (${bgGeneration.progress}%)`}
                         </p>
                         <p className="text-sm text-text-muted mb-6">
                             {bgGeneration.currentStep}
@@ -616,7 +622,7 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                             </div>
                         </div>
                         <p className="text-xs text-text-muted">
-                            You can create a new story once the current one is complete.
+                            {t("busy.wait")}
                         </p>
                     </div>
                 </div>
@@ -628,11 +634,11 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
         <main className="pt-24 pb-16">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-2 text-sm text-text-muted mb-6">
-                    <Link href="/" className="hover:text-foreground cursor-pointer">
-                        Home
+                    <Link href={`/${locale}`} className="hover:text-foreground cursor-pointer">
+                        {t("breadcrumb.home")}
                     </Link>
                     <ChevronRight className="w-4 h-4" />
-                    <span className="text-foreground">Story Generator</span>
+                    <span className="text-foreground">{t("breadcrumb.generator")}</span>
                 </div>
 
                 {/* Progress Steps */}
@@ -644,10 +650,10 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         {currentStep === 1 && (
                             <>
                                 <h2 className="font-heading text-2xl font-bold text-foreground mb-2 text-center">
-                                    Story Basics
+                                    {t("step1.heading")}
                                 </h2>
                                 <p className="text-text-muted text-center mb-8">
-                                    Set the stage for your adventure
+                                    {t("step1.subheading")}
                                 </p>
 
                                 <div className="space-y-8">
@@ -735,10 +741,10 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                         {currentStep === 2 && (
                             <>
                                 <h2 className="font-heading text-2xl font-bold text-foreground mb-2 text-center">
-                                    Choose Characters
+                                    {t("step2.heading")}
                                 </h2>
                                 <p className="text-text-muted text-center mb-8">
-                                    Select who will be in this story
+                                    {t("step2.subheading")}
                                 </p>
 
                                 {userCharacters.length === 0 ? (
@@ -746,14 +752,14 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                         <div className="w-16 h-16 bg-surface-hover rounded-full flex items-center justify-center mx-auto mb-4">
                                             <span className="text-3xl">👤</span>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-foreground mb-2">No characters yet</h3>
-                                        <p className="text-text-muted mb-6">Create characters to add them to your stories.</p>
+                                        <h3 className="text-lg font-semibold text-foreground mb-2">{t("step2.noCharacters")}</h3>
+                                        <p className="text-text-muted mb-6">{t("step2.noCharactersDesc")}</p>
                                         <Link
-                                            href="/create"
+                                            href={`/${locale}/create`}
                                             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-medium hover:opacity-90 transition-all"
                                         >
                                             <Plus className="w-5 h-5" />
-                                            Create Book
+                                            {t("step2.createBookBtn")}
                                         </Link>
                                     </div>
                                 ) : (
@@ -786,13 +792,13 @@ export default function StoryGeneratorContent({ characters: userCharacters }: St
                                             ))}
 
                                             <Link
-                                                href="/create"
+                                                href={`/${locale}/create`}
                                                 className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-border hover:border-primary hover:bg-surface-hover transition-all cursor-pointer min-h-[180px]"
                                             >
                                                 <div className="w-12 h-12 rounded-full bg-secondary/10 text-secondary flex items-center justify-center mb-3">
                                                     <Plus className="w-6 h-6" />
                                                 </div>
-                                                <p className="font-medium text-foreground">Create New</p>
+                                                <p className="font-medium text-foreground">{t("step2.createNew")}</p>
                                             </Link>
                                         </div>
                                     </div>
